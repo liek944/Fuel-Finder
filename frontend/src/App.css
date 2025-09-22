@@ -1,0 +1,179 @@
+/* App styling */
+.App {
+    width: 100%;
+    height: 100vh;
+    position: relative;
+}
+
+/* Map container styling */
+.leaflet-container {
+    width: 100%;
+    height: 100vh;
+}
+
+/* Custom styles for fuel station markers */
+.custom-fuel-station-marker {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    will-change: transform;
+    transform-origin: bottom center;
+    filter: drop-shadow(0 15px 20px rgba(0, 0, 0, 0.6));
+    z-index: 99999 !important;
+    pointer-events: auto !important;
+}
+
+/* Hover scaling is now in the animation section */
+
+/* Popup styling */
+.leaflet-popup-content {
+    padding: 10px;
+    font-family: Arial, sans-serif;
+}
+
+.leaflet-popup-content b {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 8px;
+    box-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* Animated marker bounce on load */
+@keyframes markerBounce {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Pin drop animation for station markers */
+@keyframes pinDrop {
+    0% {
+        opacity: 0;
+        transform: translateY(-80px) scale(0.5);
+    }
+    50% {
+        opacity: 1;
+    }
+    60% {
+        transform: translateY(10px) scale(1.2);
+    }
+    75% {
+        transform: translateY(-5px) scale(1.1);
+    }
+    90% {
+        transform: translateY(2px) scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Add pulsing animation */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.4));
+    }
+    50% {
+        transform: scale(1.15);
+        filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.6));
+    }
+    100% {
+        transform: scale(1);
+        filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.4));
+    }
+}
+
+.marker-loaded {
+    animation: pinDrop 0.8s ease-out forwards;
+    opacity: 0; /* Start invisible */
+    animation-fill-mode: forwards; /* Maintain final state */
+    z-index: 99999 !important;
+}
+
+/* Hover effect for markers */
+.custom-fuel-station-marker:hover {
+    animation: markerBounce 0.5s ease infinite;
+    z-index: 999999 !important;
+    transform: scale(
+        1.5
+    ) !important; /* Much larger on hover for better visibility */
+    filter: drop-shadow(
+        0 20px 30px rgba(0, 0, 0, 0.7)
+    ) !important; /* Enhanced shadow */
+    transition:
+        transform 0.2s ease,
+        filter 0.2s ease !important;
+}
+
+/* Allow different animation delays */
+.marker-loaded[style*="animation-delay"] {
+    animation-play-state: paused;
+    animation-delay: inherit !important;
+    animation-play-state: running;
+}
+
+/* Z-index overrides to ensure markers are always visible */
+.leaflet-pane {
+    z-index: 400 !important;
+}
+.leaflet-tile-pane {
+    z-index: 200 !important;
+}
+.leaflet-overlay-pane {
+    z-index: 400 !important;
+}
+.leaflet-shadow-pane {
+    z-index: 500 !important;
+}
+.leaflet-marker-pane {
+    z-index: 90000 !important;
+}
+.leaflet-tooltip-pane {
+    z-index: 95000 !important;
+}
+.leaflet-popup-pane {
+    z-index: 99000 !important;
+}
+
+/* Additional overrides to force markers above everything */
+.leaflet-marker-icon {
+    z-index: 99999 !important;
+}
+
+/* Apply pulsing animation to all fuel station markers */
+.custom-fuel-station-marker {
+    animation: pulse 2s infinite;
+}
+
+/* Loading indicator */
+.loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #f5f5f5;
+    font-family: Arial, sans-serif;
+    font-size: 18px;
+    color: #333;
+}
+
+/* Error message */
+.error-message {
+    padding: 20px;
+    background-color: #ffebee;
+    color: #c62828;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin: 20px;
+}
