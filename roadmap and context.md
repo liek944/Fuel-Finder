@@ -42,7 +42,7 @@
   2. **Backend Layer (Node.js + Express):** Build `GET /stations?lat={lat}&lng={lng}&radius={r}`. Connect with `pg`, run SQL query returning id, name, brand, price, services, lat/lng. Respond in JSON.
   3. **Frontend Layer (Leaflet.js):** Fetch `/stations`, loop through results, place `L.marker([lat, lng])` with popups showing station details. Add brand-based icons optionally."
 
-* [ ] **Basic Routing**
+* [x] **Basic Routing**
   **AI Prompt:**
   "Help me integrate OSRM A\*-based routing to generate a route between the user’s current location and a selected station.
 

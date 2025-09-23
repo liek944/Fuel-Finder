@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
+import React, { useState, useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -135,6 +135,20 @@ function App() {
   const [fetchKey, setFetchKey] = useState<number>(Date.now());
   // Search/display radius in meters (controls backend query and which markers appear)
   const [radiusMeters, setRadiusMeters] = useState<number>(5000);
+  // Routing state
+  const [selectedStationForRoute, setSelectedStationForRoute] = useState<Station | null>(null);
+  const [routeData, setRouteData] = useState<{
+    coordinates: [number, number][];
+    distance: number;
+    duration: number;
+    distance_km: number;
+    duration_minutes: number;
+  } | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+
+
 
   useEffect(() => {
     let watchId: number | null = null;
@@ -305,6 +319,80 @@ function App() {
     };
   }, []);
 
+  // Fit map to route bounds when a new route is loaded
+  useEffect(() => {
+    const m = mapRef.current;
+    if (m && routeData && routeData.coordinates && routeData.coordinates.length > 1) {
+      const bounds = L.latLngBounds(routeData.coordinates);
+      m.fitBounds(bounds, { padding: [40, 40] });
+    }
+  }, [routeData]);
+
+  // Function to fetch route from OSRM
+  const fetchRoute = async (station: Station) => {
+    if (!userCoords) {
+      setRouteError("User location not available");
+      return;
+    }
+
+    setRouteLoading(true);
+    setRouteError(null);
+    setSelectedStationForRoute(station);
+
+    try {
+      const startCoords = `${userCoords.lat},${userCoords.lng}`;
+      const endCoords = `${station.location.lat},${station.location.lng}`;
+
+      console.log(`🗺️ Fetching route: ${startCoords} -> ${endCoords}`);
+
+      const response = await fetch(
+        `http://localhost:3001/api/route?start=${startCoords}&end=${endCoords}`,
+        {
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        let message = `HTTP ${response.status}`;
+        try {
+          const contentType = response.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            const errorData = await response.json();
+            message = errorData.message || errorData.error || message;
+          } else {
+            const text = await response.text();
+            if (text && text.trim().length > 0) {
+              message = `${message} - ${text.substring(0, 200)}`;
+            }
+          }
+        } catch (e) {
+          // Ignore parse failures and use default message
+        }
+        throw new Error(message);
+      }
+
+      const routeData = await response.json();
+      setRouteData(routeData);
+      console.log(`✅ Route loaded: ${routeData.distance_km}km, ${routeData.duration_minutes}min`);
+    } catch (error) {
+      console.error("❌ Error fetching route:", error);
+      setRouteError(error instanceof Error ? error.message : "Failed to fetch route");
+    } finally {
+      setRouteLoading(false);
+    }
+  };
+
+  // Function to clear route
+  const clearRoute = () => {
+    setSelectedStationForRoute(null);
+    setRouteData(null);
+    setRouteError(null);
+  };
+
   if (!position) {
     return (
       <div className="loading-container">
@@ -372,6 +460,7 @@ function App() {
         zoomControl={true}
         attributionControl={true}
         preferCanvas={true}
+        ref={mapRef}
       >
         {/* Radius control overlay */}
         <div
@@ -433,6 +522,13 @@ function App() {
             </div>
           </Popup>
         </Marker>
+        {/* Draw route polyline when available */}
+        {routeData && routeData.coordinates && routeData.coordinates.length > 0 && (
+          <Polyline
+            positions={routeData.coordinates}
+            pathOptions={{ color: "#2E7D32", weight: 5, opacity: 0.85 }}
+          />
+        )}
         {(userCoords
           ? stations.filter(
               (station) =>
@@ -608,6 +704,43 @@ function App() {
                 >
                   Click for details
                 </div>
+
+                {/* Route button */}
+                <div style={{ marginTop: "8px", display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => fetchRoute(station)}
+                    disabled={routeLoading && selectedStationForRoute?.id === station.id}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: "none",
+                      background: "#1E88E5",
+                      color: "white",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {routeLoading && selectedStationForRoute?.id === station.id
+                      ? "Routing..."
+                      : "Route from my location"}
+                  </button>
+                  {routeData && selectedStationForRoute?.id === station.id && (
+                    <button
+                      onClick={clearRoute}
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #ccc",
+                        background: "white",
+                        color: "#333",
+                        cursor: "pointer",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </Popup>
             </Marker>
           );
@@ -631,6 +764,58 @@ function App() {
           </div>
         )}
       </MapContainer>
+
+      {/* Route summary overlay */}
+      {(routeLoading || routeData || routeError) && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: 20,
+            left: 20,
+            background: "rgba(255,255,255,0.97)",
+            padding: "12px 14px",
+            borderRadius: 8,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            zIndex: 1000,
+            minWidth: 240,
+            border: routeError ? "1px solid #e53935" : undefined,
+          }}
+        >
+          {routeLoading && (
+            <div style={{ fontWeight: 700 }}>Calculating route...</div>
+          )}
+          {routeError && (
+            <div style={{ color: "#e53935", fontWeight: 600 }}>
+              Error: {routeError}
+            </div>
+          )}
+          {routeData && (
+            <div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Route summary</div>
+              <div style={{ fontSize: 14, marginBottom: 6 }}>
+                Distance: <strong>{routeData.distance_km.toFixed(1)} km</strong>
+              </div>
+              <div style={{ fontSize: 14, marginBottom: 10 }}>
+                Duration: <strong>{routeData.duration_minutes} min</strong>
+              </div>
+              <button
+                onClick={clearRoute}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #ccc",
+                  background: "white",
+                  color: "#333",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Clear route
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Legend for the map */}
       <div className="map-legend">

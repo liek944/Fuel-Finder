@@ -1,5 +1,13 @@
 const express = require("express");
 const cors = require("cors");
+const axios = require("axios");
+const http = require("http");
+const https = require("https");
+const dns = require("dns");
+// Load environment variables from .env
+try {
+  require("dotenv").config();
+} catch (_) {}
 const {
   testConnection,
   getNearbyStations,
@@ -12,6 +20,7 @@ const {
 
 const app = express();
 const port = process.env.PORT || 3001;
+const OSRM_TIMEOUT_MS = parseInt(process.env.OSRM_TIMEOUT_MS || "15000", 10);
 
 console.log(
   "🚀 Starting Fuel Finder backend server with PostgreSQL + PostGIS...",
@@ -71,6 +80,14 @@ function getCacheKey(lat, lng, radius) {
   const kLng = Number(lng).toFixed(3);
   const kRad = Number(radius || 3000);
   return `nearby:${kLat}:${kLng}:${kRad}`;
+}
+
+function getRouteCacheKey(startLat, startLng, endLat, endLng) {
+  const sLat = Number(startLat).toFixed(5);
+  const sLng = Number(startLng).toFixed(5);
+  const eLat = Number(endLat).toFixed(5);
+  const eLng = Number(endLng).toFixed(5);
+  return `route:${sLat}:${sLng}:${eLat}:${eLng}`;
 }
 
 function getCached(key) {
@@ -343,6 +360,199 @@ app.get("/api/stats", async (req, res) => {
   }
 });
 
+// OSRM routing endpoint
+app.get("/api/route", async (req, res) => {
+  try {
+    const { start, end } = req.query;
+
+    // Validate input parameters
+    if (!start || !end) {
+      return res.status(400).json({
+        error: "Missing parameters",
+        message:
+          "Both start and end coordinates are required (format: lat,lng)",
+      });
+    }
+
+    // Parse coordinates
+    const startCoords = start
+      .split(",")
+      .map((coord) => parseFloat(coord.trim()));
+    const endCoords = end.split(",").map((coord) => parseFloat(coord.trim()));
+
+    // Validate coordinate format
+    if (
+      startCoords.length !== 2 ||
+      endCoords.length !== 2 ||
+      startCoords.some(isNaN) ||
+      endCoords.some(isNaN)
+    ) {
+      return res.status(400).json({
+        error: "Invalid coordinates",
+        message: "Coordinates must be in format: lat,lng",
+      });
+    }
+
+    const [startLat, startLng] = startCoords;
+    const [endLat, endLng] = endCoords;
+
+    // Validate coordinate ranges
+    if (
+      Math.abs(startLat) > 90 ||
+      Math.abs(endLat) > 90 ||
+      Math.abs(startLng) > 180 ||
+      Math.abs(endLng) > 180
+    ) {
+      return res.status(400).json({
+        error: "Invalid coordinate range",
+        message:
+          "Latitude must be between -90 and 90, longitude between -180 and 180",
+      });
+    }
+
+    console.log(
+      `🗺️ OSRM routing request: ${startLat},${startLng} -> ${endLat},${endLng}`,
+    );
+
+    // Serve from cache if available
+    const routeCacheKey = getRouteCacheKey(startLat, startLng, endLat, endLng);
+    const cachedRoute = getCached(routeCacheKey);
+    if (cachedRoute) {
+      console.log("📦 Serving route from cache");
+      return res.json(cachedRoute);
+    }
+
+    // Call OSRM API (configurable base URL, default to HTTPS)
+    const OSRM_BASE_URL =
+      process.env.OSRM_BASE_URL || "https://router.project-osrm.org";
+    const queryParams = "overview=full&geometries=geojson&alternatives=false";
+    const osrmUrl = `${OSRM_BASE_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
+    console.log(`➡️  OSRM URL: ${osrmUrl}`);
+
+    // Prefer IPv4 for DNS resolution (workaround for some networks)
+    try {
+      if (typeof dns.setDefaultResultOrder === "function") {
+        dns.setDefaultResultOrder("ipv4first");
+      }
+    } catch (_) {}
+
+    const ipv4Lookup = (hostname, options, cb) => dns.lookup(hostname, { family: 4 }, cb);
+    const httpAgent = new http.Agent({ keepAlive: true });
+    const httpsAgent = new https.Agent({ keepAlive: true });
+
+    async function tryGet(url) {
+      return axios.get(url, {
+        timeout: OSRM_TIMEOUT_MS,
+        headers: { "User-Agent": "FuelFinder/1.0" },
+        family: 4,
+        lookup: ipv4Lookup,
+        httpAgent,
+        httpsAgent,
+      });
+    }
+
+    let osrmResponse;
+    const isDefaultHttps = OSRM_BASE_URL === "https://router.project-osrm.org";
+    const fallbackUrl = osrmUrl.replace("https://", "http://");
+    const attempts = [];
+    const maxTries = 2; // primary + maybe fallback
+    for (let i = 0; i < maxTries; i++) {
+      try {
+        const targetUrl = i === 0 ? osrmUrl : (isDefaultHttps ? fallbackUrl : osrmUrl);
+        if (i === 1 && isDefaultHttps) {
+          console.warn(`↩️  Retrying OSRM via HTTP fallback: ${targetUrl}`);
+        }
+        osrmResponse = await tryGet(targetUrl);
+        break;
+      } catch (e) {
+        attempts.push(e);
+        const isNetworkish =
+          e?.code === "ETIMEDOUT" || e?.code === "ECONNRESET" || e?.code === "EAI_AGAIN" || e?.response == null;
+        if (i < maxTries - 1 && (isDefaultHttps || isNetworkish)) {
+          // small backoff before retry
+          await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+          continue;
+        }
+        throw e;
+      }
+    }
+
+    if (
+      !osrmResponse.data ||
+      !osrmResponse.data.routes ||
+      osrmResponse.data.routes.length === 0
+    ) {
+      return res.status(404).json({
+        error: "No route found",
+        message: "OSRM could not find a route between the specified points",
+      });
+    }
+
+    const route = osrmResponse.data.routes[0];
+    const geometry = route.geometry;
+
+    // Extract route information
+    const routeData = {
+      coordinates: geometry.coordinates.map((coord) => [coord[1], coord[0]]), // Convert [lng, lat] to [lat, lng]
+      distance: Math.round(route.distance), // meters
+      duration: Math.round(route.duration), // seconds
+      distance_km: Math.round((route.distance / 1000) * 10) / 10, // kilometers, rounded to 1 decimal
+      duration_minutes: Math.round(route.duration / 60), // minutes
+    };
+
+    console.log(
+      `✅ Route found: ${routeData.distance_km}km, ${routeData.duration_minutes}min`,
+    );
+
+    // cache route
+    setCached(routeCacheKey, routeData);
+    res.json(routeData);
+  } catch (err) {
+    // Detailed error logging for diagnosis
+    try {
+      console.error("❌ Error in OSRM routing:", err?.message || err);
+      if (err?.code) console.error("   • code:", err.code);
+      if (err?.response) {
+        console.error("   • response.status:", err.response.status);
+        console.error("   • response.data:", JSON.stringify(err.response.data));
+      } else if (err?.request) {
+        console.error("   • request made, no response received");
+      }
+      if (err?.stack) console.error("   • stack:\n", err.stack);
+    } catch (_) {
+      // swallow logging errors
+    }
+
+    // Handle specific network errors
+    if (err?.code === "ENOTFOUND" || err?.code === "ECONNREFUSED" || err?.code === "EAI_AGAIN") {
+      return res.status(503).json({
+        error: "Routing service unavailable",
+        message: "Unable to connect to OSRM routing service",
+      });
+    }
+
+    // If OSRM responded with an error status
+    if (err?.response && err.response.status) {
+      const status = err.response.status;
+      const data = err.response.data;
+      const detailMsg =
+        (typeof data === "string" && data) ||
+        (data && (data.message || data.error)) ||
+        undefined;
+      return res.status(502).json({
+        error: "Routing service error",
+        message: detailMsg ? `OSRM ${status}: ${detailMsg}` : `OSRM returned status ${status}`,
+      });
+    }
+
+    // Fallback
+    res.status(500).json({
+      error: "Route calculation failed",
+      message: err?.message || "Unknown error",
+    });
+  }
+});
+
 // Clear cache endpoint (for development/admin)
 app.post("/api/cache/clear", (req, res) => {
   const oldSize = cache.size;
@@ -417,6 +627,9 @@ app.listen(port, () => {
   );
   console.log(
     `   🔹 GET  /api/stats                            - Database statistics`,
+  );
+  console.log(
+    `   🔹 GET  /api/route?start=lat,lng&end=lat,lng  - OSRM routing`,
   );
   console.log(`   🔹 POST /api/cache/clear                      - Clear cache`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
