@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: osrm
+    restart: unless-stopped
+    command: >
+      osrm-routed --algorithm mld /data/region.osrm
+    volumes:
+      - ./data:/data
+    # Do not publish 5000 externally; Caddy will reverse-proxy to it on the internal network
+    expose:
+      - "5000"
+
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - osrm
+
+volumes:
+  caddy_data:
+  caddy_config:
