@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, Polyline, useMapEvents } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -104,6 +104,68 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
   });
 };
 
+// Function to create custom POI icons (gas, convenience, repair)
+const createPOIIcon = (type: "gas" | "convenience" | "repair") => {
+  const typeConfig: Record<string, { color: string; glyph: string }> = {
+    gas: { color: "#FF9800", glyph: "⛽" },
+    convenience: { color: "#4CAF50", glyph: "🏪" },
+    repair: { color: "#9C27B0", glyph: "🛠️" },
+  };
+
+  const cfg = typeConfig[type] || typeConfig.gas;
+  const size = 36;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size + 18;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    // shadow
+    ctx.beginPath();
+    ctx.arc(size / 2 + 3, size / 2 + 3, size / 2 - 2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.6)";
+    ctx.fill();
+
+    // body
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2);
+    ctx.fillStyle = cfg.color;
+    ctx.fill();
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "white";
+    ctx.stroke();
+
+    // tail
+    ctx.beginPath();
+    ctx.moveTo(size / 2 - 5, size - 3);
+    ctx.lineTo(size / 2, size + 12);
+    ctx.lineTo(size / 2 + 5, size - 3);
+    ctx.fillStyle = cfg.color;
+    ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "white";
+    ctx.stroke();
+
+    // glyph
+    ctx.font = `bold ${size / 2}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.strokeStyle = "black";
+    ctx.lineWidth = 2;
+    ctx.strokeText(cfg.glyph, size / 2, size / 2);
+    ctx.fillStyle = "white";
+    ctx.fillText(cfg.glyph, size / 2, size / 2);
+  }
+  const iconUrl = canvas.toDataURL();
+  return new Icon({
+    iconUrl,
+    iconSize: [size, size + 18],
+    iconAnchor: [size / 2, size + 12],
+    popupAnchor: [0, -(size + 12)],
+    className: "custom-poi-marker",
+    zIndexOffset: 99999,
+  });
+};
+
 // Set the default icon for all markers
 L.Marker.prototype.options.icon = DefaultIcon;
 
@@ -121,6 +183,23 @@ interface Station {
     lat: number;
     lng: number;
   };
+}
+
+interface CustomMarker {
+  id: string;
+  name: string;
+  type: "gas" | "convenience" | "repair";
+  lat: number;
+  lng: number;
+}
+
+// Backend-persisted POI
+interface Poi {
+  id: number;
+  name: string;
+  type: "gas" | "convenience" | "repair";
+  location: { lat: number; lng: number };
+  distance_meters?: number;
 }
 
 function App() {
@@ -147,6 +226,31 @@ function App() {
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState<string | null>(null);
   const mapRef = useRef<L.Map | null>(null);
+
+  // Add-station flow state
+  const [addingMode, setAddingMode] = useState<boolean>(false);
+  const [pendingLatLng, setPendingLatLng] = useState<{ lat: number; lng: number } | null>(null);
+  const [formName, setFormName] = useState<string>("");
+  const [formBrand, setFormBrand] = useState<string>("Local");
+  const [formFuelPrice, setFormFuelPrice] = useState<string>("");
+  const [formServices, setFormServices] = useState<string>("");
+  const [formAddress, setFormAddress] = useState<string>("");
+  const [formPhone, setFormPhone] = useState<string>("");
+  const [formHours, setFormHours] = useState<string>("");
+  const [apiKey, setApiKey] = useState<string>("");
+  const [adminApiKey, setAdminApiKey] = useState<string>("");
+  const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
+  const [formMsg, setFormMsg] = useState<{ type: "error" | "success"; text: string } | null>(null);
+
+  // Custom markers state (local-only, stored in localStorage)
+  const [customMarkers, setCustomMarkers] = useState<CustomMarker[]>([]);
+  const [newMarkerName, setNewMarkerName] = useState<string>("");
+  const [newMarkerType, setNewMarkerType] = useState<CustomMarker["type"]>("convenience");
+  const [newMarkerLat, setNewMarkerLat] = useState<string>("");
+  const [newMarkerLng, setNewMarkerLng] = useState<string>("");
+
+  // Backend POIs
+  const [pois, setPois] = useState<Poi[]>([]);
 
 
 
@@ -184,6 +288,55 @@ function App() {
       if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     };
   }, []);
+
+  // Load admin API key and custom markers from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedKey = localStorage.getItem("admin_api_key") || "";
+      if (savedKey) {
+        setAdminApiKey(savedKey);
+        setApiKey(savedKey);
+      }
+      const savedMarkers = localStorage.getItem("custom_markers_v1");
+      if (savedMarkers) {
+        const arr = JSON.parse(savedMarkers);
+        if (Array.isArray(arr)) setCustomMarkers(arr);
+      }
+    } catch (_) {}
+  }, []);
+
+  // Persist custom markers when changed
+  useEffect(() => {
+    try {
+      localStorage.setItem("custom_markers_v1", JSON.stringify(customMarkers));
+    } catch (_) {}
+  }, [customMarkers]);
+
+  // Fetch POIs from backend (nearby if we know position, else all)
+  useEffect(() => {
+    const fetchPois = async () => {
+      try {
+        let url = "http://localhost:3001/api/pois";
+        if (position) {
+          url = `http://localhost:3001/api/pois/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}&_=${fetchKey}`;
+        }
+        const res = await fetch(url, {
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        });
+        if (!res.ok) throw new Error(`POIs HTTP ${res.status}`);
+        const data: Poi[] = await res.json();
+        setPois(data);
+      } catch (e) {
+        // Keep silent; local custom markers will still render
+        console.warn("POIs fetch failed:", e);
+      }
+    };
+    fetchPois();
+  }, [position, fetchKey, radiusMeters]);
 
   useEffect(() => {
     if (!position) return;
@@ -386,11 +539,183 @@ function App() {
     }
   };
 
+  const isAdminEnabled = !!adminApiKey.trim();
+
+  const handleAdminEnable = () => {
+    try {
+      localStorage.setItem("admin_api_key", adminApiKey.trim());
+      setApiKey(adminApiKey.trim());
+    } catch (_) {}
+  };
+
+  const handleAdminDisable = () => {
+    try {
+      localStorage.removeItem("admin_api_key");
+    } catch (_) {}
+    setAdminApiKey("");
+    setApiKey("");
+    setAddingMode(false);
+    setPendingLatLng(null);
+  };
+
+  // Add a custom marker: if admin enabled, persist to backend; else save locally
+  const addCustomMarker = async () => {
+    const lat = parseFloat(newMarkerLat);
+    const lng = parseFloat(newMarkerLng);
+    if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      alert("Please provide valid coordinates");
+      return;
+    }
+    const name = newMarkerName || newMarkerType;
+    if (isAdminEnabled) {
+      try {
+        const res = await fetch("http://localhost:3001/api/pois", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(adminApiKey.trim() ? { "x-api-key": adminApiKey.trim() } : {}),
+          },
+          body: JSON.stringify({ name, type: newMarkerType, lat, lng }),
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data?.message || `HTTP ${res.status}`);
+        }
+        const created: Poi = await res.json();
+        setPois((prev) => [created, ...prev]);
+        setNewMarkerName("");
+        setNewMarkerLat("");
+        setNewMarkerLng("");
+        return;
+      } catch (e: any) {
+        alert(`Failed to save POI to server: ${e?.message || e}`);
+      }
+    }
+    // Fallback to local-only
+    const m: CustomMarker = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      type: newMarkerType,
+      lat,
+      lng,
+    };
+    setCustomMarkers((prev) => [m, ...prev]);
+    setNewMarkerName("");
+    setNewMarkerLat("");
+    setNewMarkerLng("");
+  };
+
+  const removeCustomMarker = (id: string) => {
+    setCustomMarkers((prev) => prev.filter((m) => m.id !== id));
+  };
+
+  const removePoi = async (id: number) => {
+    try {
+      const res = await fetch(`http://localhost:3001/api/pois/${id}`, {
+        method: "DELETE",
+        headers: {
+          ...(adminApiKey.trim() ? { "x-api-key": adminApiKey.trim() } : {}),
+        },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || `HTTP ${res.status}`);
+      }
+      setPois((prev) => prev.filter((p) => p.id !== id));
+    } catch (e: any) {
+      alert(`Failed to delete POI: ${e?.message || e}`);
+    }
+  };
+
   // Function to clear route
   const clearRoute = () => {
     setSelectedStationForRoute(null);
     setRouteData(null);
     setRouteError(null);
+  };
+
+  // Component to capture map clicks when adding mode is enabled
+  const AddStationClickCatcher: React.FC<{ enabled: boolean; onSelect: (lat: number, lng: number) => void }> = ({ enabled, onSelect }) => {
+    useMapEvents({
+      click(e) {
+        if (enabled) {
+          onSelect(e.latlng.lat, e.latlng.lng);
+        }
+      },
+    });
+    return null;
+  };
+
+  const resetAddForm = () => {
+    setFormName("");
+    setFormBrand("Local");
+    setFormFuelPrice("");
+    setFormServices("");
+    setFormAddress("");
+    setFormPhone("");
+    setFormHours("");
+    setApiKey("");
+    setFormMsg(null);
+  };
+
+  const cancelAdding = () => {
+    setAddingMode(false);
+    setPendingLatLng(null);
+    resetAddForm();
+  };
+
+  const handleSubmitAddStation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingLatLng || !isFinite((pendingLatLng as any).lat) || !isFinite((pendingLatLng as any).lng)) {
+      setFormMsg({ type: "error", text: "Please provide valid latitude and longitude" });
+      return;
+    }
+    setFormSubmitting(true);
+    setFormMsg(null);
+    try {
+      const payload: any = {
+        name: formName,
+        brand: formBrand,
+        fuel_price: formFuelPrice ? Number(formFuelPrice) : null,
+        services: formServices,
+        address: formAddress,
+        phone: formPhone,
+        operating_hours: formHours,
+        lat: pendingLatLng.lat,
+        lng: pendingLatLng.lng,
+      };
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (apiKey.trim()) headers["x-api-key"] = apiKey.trim();
+
+      const res = await fetch("http://localhost:3001/api/stations", {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || `HTTP ${res.status}`);
+      }
+      const created: Station = await res.json();
+
+      // Add to current list and refresh nearby fetch to keep consistent with backend
+      setStations((prev) => [created, ...prev]);
+      setFetchKey(Date.now());
+
+      setFormMsg({ type: "success", text: "Station created successfully" });
+      // Exit add mode after short delay
+      setTimeout(() => {
+        cancelAdding();
+      }, 800);
+    } catch (err: any) {
+      setFormMsg({ type: "error", text: err?.message || "Failed to create station" });
+    } finally {
+      setFormSubmitting(false);
+    }
   };
 
   if (!position) {
@@ -462,6 +787,13 @@ function App() {
         preferCanvas={true}
         ref={mapRef}
       >
+        {/* Add Station Mode: capture map clicks */}
+        <AddStationClickCatcher
+          enabled={addingMode && isAdminEnabled}
+          onSelect={(lat, lng) => {
+            setPendingLatLng({ lat, lng });
+          }}
+        />
         {/* Radius control overlay */}
         <div
           style={{
@@ -522,6 +854,21 @@ function App() {
             </div>
           </Popup>
         </Marker>
+
+        {/* Pending marker for new station location */}
+        {pendingLatLng && isAdminEnabled && (
+          <Marker
+            position={[pendingLatLng.lat, pendingLatLng.lng]}
+            icon={createFuelStationIcon(formBrand || "Local", 0)}
+          >
+            <Popup>
+              <b>New Station Location</b>
+              <div style={{ marginTop: 4, fontSize: 12 }}>
+                {pendingLatLng.lat.toFixed(6)}, {pendingLatLng.lng.toFixed(6)}
+              </div>
+            </Popup>
+          </Marker>
+        )}
         {/* Draw route polyline when available */}
         {routeData && routeData.coordinates && routeData.coordinates.length > 0 && (
           <Polyline
@@ -746,6 +1093,69 @@ function App() {
           );
         })}
 
+        {/* Render backend POIs */}
+        {pois.map((m) => (
+          <Marker key={`poi_${m.id}`} position={[m.location.lat, m.location.lng]} icon={createPOIIcon(m.type)}>
+            <Popup>
+              <b>{m.name}</b>
+              <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>{m.type}</div>
+              {typeof m.distance_meters === "number" && (
+                <div style={{ marginTop: 4, fontSize: 12 }}>📏 {(m.distance_meters / 1000).toFixed(2)} km</div>
+              )}
+              <div style={{ marginTop: 4, fontSize: 12 }}>
+                {m.location.lat.toFixed(6)}, {m.location.lng.toFixed(6)}
+              </div>
+              {isAdminEnabled && (
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    onClick={() => removePoi(m.id)}
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                      background: "white",
+                      color: "#333",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </Popup>
+          </Marker>
+        ))}
+
+        {/* Render custom markers */}
+        {customMarkers.map((m) => (
+          <Marker key={m.id} position={[m.lat, m.lng]} icon={createPOIIcon(m.type)}>
+            <Popup>
+              <b>{m.name}</b>
+              <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>{m.type}</div>
+              <div style={{ marginTop: 4, fontSize: 12 }}>
+                {m.lat.toFixed(6)}, {m.lng.toFixed(6)}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <button
+                  onClick={() => removeCustomMarker(m.id)}
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #ccc",
+                    background: "white",
+                    color: "#333",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
         {loading && (
           <div
             style={{
@@ -764,6 +1174,318 @@ function App() {
           </div>
         )}
       </MapContainer>
+
+      {/* Admin Controls */}
+      <div
+        style={{
+          position: "absolute",
+          top: 10,
+          left: 20,
+          background: "rgba(255,255,255,0.95)",
+          padding: "10px 12px",
+          borderRadius: 8,
+          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+          zIndex: 1100,
+          width: 260,
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>Admin</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            placeholder="Enter API key"
+            value={adminApiKey}
+            onChange={(e) => setAdminApiKey(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          {!isAdminEnabled ? (
+            <button
+              onClick={handleAdminEnable}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: "none",
+                background: "#1E88E5",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Enable
+            </button>
+          ) : (
+            <button
+              onClick={handleAdminDisable}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: "1px solid #ccc",
+                background: "white",
+                color: "#333",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Disable
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Add Station Controls (visible only when admin enabled) */}
+      {isAdminEnabled && (
+        <div
+          style={{
+            position: "absolute",
+            top: 92,
+            left: 20,
+            background: "rgba(255,255,255,0.95)",
+            padding: "10px 12px",
+            borderRadius: 8,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            zIndex: 1100,
+            width: 260,
+            fontFamily: "Arial, sans-serif",
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Add station</div>
+          {!addingMode ? (
+            <button
+              onClick={() => {
+                setAddingMode(true);
+                setFormMsg(null);
+              }}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: "none",
+                background: "#2E7D32",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 600,
+                width: "100%",
+              }}
+            >
+              Click map or enter coordinates
+            </button>
+          ) : (
+            <button
+              onClick={cancelAdding}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: "1px solid #ccc",
+                background: "white",
+                color: "#333",
+                cursor: "pointer",
+                fontWeight: 600,
+                width: "100%",
+              }}
+            >
+              Cancel add mode
+            </button>
+          )}
+          {addingMode && (
+            <div style={{ marginTop: 8, fontSize: 12, color: "#555" }}>
+              {pendingLatLng
+                ? "Location selected. You can tweak coordinates in the form."
+                : "Click the map to select a point or open the form and enter coordinates."}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add Station Form Overlay */}
+      {isAdminEnabled && addingMode && (
+        <div
+          style={{
+            position: "absolute",
+            top: 200,
+            right: 20,
+            background: "rgba(255,255,255,0.97)",
+            padding: 12,
+            borderRadius: 8,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+            zIndex: 1200,
+            width: 320,
+            fontFamily: "Arial, sans-serif",
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>Create station</div>
+          <form onSubmit={handleSubmitAddStation}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, color: "#555" }}>Lat</label>
+                <input
+                  value={pendingLatLng ? String(pendingLatLng.lat) : ""}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (!isNaN(v)) setPendingLatLng((p) => ({ lat: v, lng: p?.lng ?? 0 }));
+                    else setPendingLatLng((p) => (p ? { ...p, lat: NaN as any } : { lat: NaN as any, lng: 0 }));
+                  }}
+                  placeholder="e.g. 14.5995"
+                  style={{ width: "100%" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 12, color: "#555" }}>Lng</label>
+                <input
+                  value={pendingLatLng ? String(pendingLatLng.lng) : ""}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (!isNaN(v)) setPendingLatLng((p) => ({ lat: p?.lat ?? 0, lng: v }));
+                    else setPendingLatLng((p) => (p ? { ...p, lng: NaN as any } : { lat: 0, lng: NaN as any }));
+                  }}
+                  placeholder="e.g. 120.9842"
+                  style={{ width: "100%" }}
+                />
+              </div>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 12, color: "#555" }}>Name</label>
+              <input required value={formName} onChange={(e) => setFormName(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 12, color: "#555" }}>Brand</label>
+              <select value={formBrand} onChange={(e) => setFormBrand(e.target.value)} style={{ width: "100%" }}>
+                <option>Local</option>
+                <option>Shell</option>
+                <option>Petron</option>
+                <option>Caltex</option>
+              </select>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 12, color: "#555" }}>Fuel price (₱/L)</label>
+              <input type="number" step="0.01" value={formFuelPrice} onChange={(e) => setFormFuelPrice(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 12, color: "#555" }}>Services (comma separated)</label>
+              <input value={formServices} onChange={(e) => setFormServices(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 12, color: "#555" }}>Address</label>
+              <input value={formAddress} onChange={(e) => setFormAddress(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 12, color: "#555" }}>Phone</label>
+              <input value={formPhone} onChange={(e) => setFormPhone(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 12, color: "#555" }}>Operating hours</label>
+              <input value={formHours} onChange={(e) => setFormHours(e.target.value)} style={{ width: "100%" }} />
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <label style={{ fontSize: 12, color: "#555" }}>API key (optional)</label>
+              <input value={apiKey} onChange={(e) => setApiKey(e.target.value)} style={{ width: "100%" }} placeholder="Required if server enforces it" />
+            </div>
+
+            {formMsg && (
+              <div
+                style={{
+                  marginTop: 8,
+                  color: formMsg.type === "error" ? "#e53935" : "#2E7D32",
+                  fontWeight: 600,
+                }}
+              >
+                {formMsg.text}
+              </div>
+            )}
+
+            <div style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                onClick={cancelAdding}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #ccc",
+                  background: "white",
+                  color: "#333",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={formSubmitting || !formName.trim()}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: "#1E88E5",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  opacity: formSubmitting ? 0.7 : 1,
+                }}
+              >
+                {formSubmitting ? "Saving..." : "Save station"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Custom Markers Panel */}
+      <div
+        style={{
+          position: "absolute",
+          top: isAdminEnabled ? 360 : 92,
+          left: 20,
+          background: "rgba(255,255,255,0.95)",
+          padding: "10px 12px",
+          borderRadius: 8,
+          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+          zIndex: 1100,
+          width: 260,
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <div style={{ fontWeight: 700, marginBottom: 6 }}>Custom markers</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <input placeholder="Name" value={newMarkerName} onChange={(e) => setNewMarkerName(e.target.value)} />
+          <div style={{ display: "flex", gap: 6 }}>
+            <select value={newMarkerType} onChange={(e) => setNewMarkerType(e.target.value as any)} style={{ flex: 1 }}>
+              <option value="convenience">Convenience store</option>
+              <option value="repair">Vulcanizing/Repair</option>
+              <option value="gas">Gas</option>
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <input placeholder="Lat" value={newMarkerLat} onChange={(e) => setNewMarkerLat(e.target.value)} style={{ flex: 1 }} />
+            <input placeholder="Lng" value={newMarkerLng} onChange={(e) => setNewMarkerLng(e.target.value)} style={{ flex: 1 }} />
+          </div>
+          <button
+            onClick={addCustomMarker}
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "none",
+              background: "#6A1B9A",
+              color: "white",
+              cursor: "pointer",
+              fontWeight: 600,
+            }}
+          >
+            Add marker
+          </button>
+        </div>
+        {customMarkers.length > 0 && (
+          <div style={{ marginTop: 8, maxHeight: 120, overflow: "auto" }}>
+            {customMarkers.map((m) => (
+              <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, padding: "4px 0", borderBottom: "1px solid #eee" }}>
+                <div>
+                  <b>{m.name}</b> <span style={{ color: "#666" }}>({m.type})</span>
+                  <div style={{ color: "#777" }}>{m.lat.toFixed(4)}, {m.lng.toFixed(4)}</div>
+                </div>
+                <button onClick={() => removeCustomMarker(m.id)} style={{ border: "none", background: "transparent", color: "#e53935", cursor: "pointer" }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Route summary overlay */}
       {(routeLoading || routeData || routeError) && (

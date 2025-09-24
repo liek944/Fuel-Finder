@@ -42,6 +42,25 @@ async function testConnection() {
   }
 }
 
+// Ensure POIs table exists
+async function ensurePoisTable() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pois (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('gas','convenience','repair')),
+        geom geometry(Point, 4326) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  } finally {
+    client.release();
+  }
+}
+
 // Get nearby stations using PostGIS ST_DWithin
 async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
   const query = `
@@ -64,6 +83,46 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
 
   const result = await pool.query(query, [latitude, longitude, radiusMeters]);
   return result.rows;
+}
+
+// ----- POIs (custom markers) -----
+
+async function getAllPois() {
+  const query = `
+    SELECT id, name, type, ST_X(geom) as lng, ST_Y(geom) as lat
+    FROM pois
+    ORDER BY created_at DESC;
+  `;
+  const result = await pool.query(query);
+  return result.rows;
+}
+
+async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
+  const query = `
+    SELECT id, name, type, ST_X(geom) as lng, ST_Y(geom) as lat,
+      ST_Distance(geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography) AS distance_meters
+    FROM pois
+    WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography, $3)
+    ORDER BY distance_meters ASC;
+  `;
+  const result = await pool.query(query, [latitude, longitude, radiusMeters]);
+  return result.rows;
+}
+
+async function addPoi({ name, type, lat, lng }) {
+  const query = `
+    INSERT INTO pois (name, type, geom)
+    VALUES ($1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326))
+    RETURNING id, name, type, ST_X(geom) as lng, ST_Y(geom) as lat;
+  `;
+  const result = await pool.query(query, [name, type, lat, lng]);
+  return result.rows[0];
+}
+
+async function deletePoi(id) {
+  const query = `DELETE FROM pois WHERE id = $1 RETURNING id`;
+  const result = await pool.query(query, [id]);
+  return result.rows[0];
 }
 
 // Get all stations
@@ -304,6 +363,7 @@ process.on("SIGTERM", closePool);
 module.exports = {
   pool,
   testConnection,
+  ensurePoisTable,
   getNearbyStations,
   getAllStations,
   getStationById,
@@ -312,6 +372,11 @@ module.exports = {
   deleteStation,
   getStationsByBrand,
   searchStations,
+  // POIs
+  getAllPois,
+  getNearbyPois,
+  addPoi,
+  deletePoi,
   getDatabaseStats,
   closePool,
 };

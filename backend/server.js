@@ -1,3 +1,36 @@
+// Simple in-memory rate limiter (per-IP, fixed window)
+const rlBuckets = new Map(); // ip -> { count, reset }
+function rateLimit(req, res, next) {
+  try {
+    const key = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress || "unknown";
+    const now = Date.now();
+    let bucket = rlBuckets.get(key);
+    if (!bucket || now > bucket.reset) {
+      bucket = { count: 1, reset: now + RATE_LIMIT_WINDOW_MS };
+    } else {
+      bucket.count += 1;
+    }
+    rlBuckets.set(key, bucket);
+
+    const remaining = Math.max(0, RATE_LIMIT_MAX - bucket.count);
+    const retryAfterSec = Math.ceil(Math.max(0, bucket.reset - now) / 1000);
+
+    res.setHeader("X-RateLimit-Limit", String(RATE_LIMIT_MAX));
+    res.setHeader("X-RateLimit-Remaining", String(Math.max(0, remaining)));
+    res.setHeader("X-RateLimit-Reset", String(Math.floor(bucket.reset / 1000)));
+
+    if (bucket.count > RATE_LIMIT_MAX) {
+      res.setHeader("Retry-After", String(retryAfterSec));
+      return res.status(429).json({
+        error: "Rate limit exceeded",
+        message: `Too many requests. Try again in ${retryAfterSec}s`,
+      });
+    }
+    next();
+  } catch (e) {
+    next();
+  }
+}
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
@@ -10,17 +43,26 @@ try {
 } catch (_) {}
 const {
   testConnection,
+  ensurePoisTable,
   getNearbyStations,
   getAllStations,
   getStationById,
   getStationsByBrand,
   searchStations,
   getDatabaseStats,
+  // POIs
+  getAllPois,
+  getNearbyPois,
+  addPoi,
+  deletePoi,
 } = require("./database/db");
 
 const app = express();
 const port = process.env.PORT || 3001;
 const OSRM_TIMEOUT_MS = parseInt(process.env.OSRM_TIMEOUT_MS || "15000", 10);
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
+const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10); // 1 minute default
+const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || "10", 10); // 10 requests per window per IP
 
 console.log(
   "🚀 Starting Fuel Finder backend server with PostgreSQL + PostGIS...",
@@ -30,6 +72,7 @@ console.log(
 (async () => {
   try {
     await testConnection();
+    await ensurePoisTable();
     console.log("🎯 Database connection verified successfully");
   } catch (err) {
     console.error(
@@ -69,6 +112,92 @@ app.use((req, res, next) => {
   res.header("Expires", "0");
 
   next();
+});
+
+// Create a new station (protected by optional API key)
+app.post("/api/stations", rateLimit, async (req, res) => {
+  try {
+    // If ADMIN_API_KEY is configured, require matching x-api-key header
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const {
+      name,
+      brand,
+      fuel_price,
+      services,
+      address,
+      phone,
+      operating_hours,
+      lat,
+      lng,
+    } = req.body || {};
+
+    // Basic validation
+    if (!name || typeof name !== "string" || name.trim().length < 2) {
+      return res.status(400).json({
+        error: "Invalid name",
+        message: "'name' must be a non-empty string with at least 2 characters",
+      });
+    }
+    if (!isFinite(parseFloat(lat)) || !isFinite(parseFloat(lng))) {
+      return res.status(400).json({
+        error: "Invalid coordinates",
+        message: "'lat' and 'lng' must be valid numbers",
+      });
+    }
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (Math.abs(latNum) > 90 || Math.abs(lngNum) > 180) {
+      return res.status(400).json({
+        error: "Invalid coordinate range",
+        message: "Latitude must be between -90 and 90, longitude between -180 and 180",
+      });
+    }
+
+    // Normalize payload
+    const payload = {
+      name: name.trim(),
+      brand: (brand && String(brand).trim()) || "Local",
+      fuel_price: fuel_price != null && fuel_price !== "" ? Number(fuel_price) : null,
+      services: Array.isArray(services)
+        ? services
+        : typeof services === "string" && services.trim().length
+        ? services
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+      address: address ? String(address).trim() : null,
+      phone: phone ? String(phone).trim() : null,
+      operating_hours: operating_hours || null,
+      lat: latNum,
+      lng: lngNum,
+    };
+
+    // Persist
+    const { addStation } = require("./database/db");
+    const created = await addStation(payload);
+
+    // Reuse transformer to keep response consistent with other endpoints
+    const transformed = transformStationData([created])[0];
+
+    console.log(`🆕 Station created: ${transformed.name} (${transformed.brand}) @ ${transformed.location.lat},${transformed.location.lng}`);
+    res.status(201).json(transformed);
+  } catch (err) {
+    console.error("❌ Error creating station:", err.message || err);
+    res.status(500).json({
+      error: "Failed to create station",
+      message: err?.message || "Unknown error",
+    });
+  }
 });
 
 // Simple in-memory cache for performance optimization
@@ -130,6 +259,120 @@ function transformStationData(stations) {
     location: {
       lat: parseFloat(station.lat),
       lng: parseFloat(station.lng),
+    },
+  }));
+}
+
+// ----------- POIs (Custom Markers) -----------
+
+// Get all POIs
+app.get("/api/pois", async (req, res) => {
+  try {
+    const pois = await getAllPois();
+    const data = transformPoiData(pois);
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching POIs:", err.message);
+    res.status(500).json({ error: "Failed to fetch POIs", message: err.message });
+  }
+});
+
+// Get nearby POIs
+app.get("/api/pois/nearby", async (req, res) => {
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const radius = parseInt(req.query.radiusMeters || "3000", 10);
+
+    if (!isFinite(lat) || !isFinite(lng)) {
+      return res.status(400).json({ error: "Invalid coordinates", message: "lat and lng parameters must be valid numbers" });
+    }
+    if (radius < 100 || radius > 50000) {
+      return res.status(400).json({ error: "Invalid radius", message: "radiusMeters must be between 100 and 50000" });
+    }
+
+    const pois = await getNearbyPois(lat, lng, radius);
+    const data = transformPoiData(pois);
+    res.json(data);
+  } catch (err) {
+    console.error("❌ Error fetching nearby POIs:", err.message);
+    res.status(500).json({ error: "Failed to fetch nearby POIs", message: err.message });
+  }
+});
+
+// Create a new POI (protected by optional API key)
+app.post("/api/pois", rateLimit, async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({ error: "Unauthorized", message: "Invalid or missing API key" });
+      }
+    }
+
+    const { name, type, lat, lng } = req.body || {};
+    if (!name || typeof name !== "string" || name.trim().length < 2) {
+      return res.status(400).json({ error: "Invalid name", message: "'name' must be at least 2 characters" });
+    }
+    const allowed = new Set(["gas", "convenience", "repair"]);
+    if (!type || typeof type !== "string" || !allowed.has(type)) {
+      return res.status(400).json({ error: "Invalid type", message: "type must be one of: gas, convenience, repair" });
+    }
+    if (!isFinite(parseFloat(lat)) || !isFinite(parseFloat(lng))) {
+      return res.status(400).json({ error: "Invalid coordinates", message: "'lat' and 'lng' must be valid numbers" });
+    }
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (Math.abs(latNum) > 90 || Math.abs(lngNum) > 180) {
+      return res.status(400).json({ error: "Invalid coordinate range", message: "Latitude must be between -90 and 90, longitude between -180 and 180" });
+    }
+
+    const created = await addPoi({ name: name.trim(), type, lat: latNum, lng: lngNum });
+    const data = transformPoiData([created])[0];
+    console.log(`🆕 POI created: ${data.name} (${data.type}) @ ${data.location.lat},${data.location.lng}`);
+    res.status(201).json(data);
+  } catch (err) {
+    console.error("❌ Error creating POI:", err.message || err);
+    res.status(500).json({ error: "Failed to create POI", message: err?.message || "Unknown error" });
+  }
+});
+
+// Delete a POI (protected by optional API key)
+app.delete("/api/pois/:id", async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({ error: "Unauthorized", message: "Invalid or missing API key" });
+      }
+    }
+    const id = parseInt(req.params.id);
+    if (!isFinite(id)) {
+      return res.status(400).json({ error: "Invalid id", message: "id must be a number" });
+    }
+    const deleted = await deletePoi(id);
+    if (!deleted) {
+      return res.status(404).json({ error: "Not found", message: `No POI with id ${id}` });
+    }
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error("❌ Error deleting POI:", err.message || err);
+    res.status(500).json({ error: "Failed to delete POI", message: err?.message || "Unknown error" });
+  }
+});
+
+// Transform POI data to frontend format
+function transformPoiData(pois) {
+  return pois.map((poi) => ({
+    id: poi.id,
+    name: poi.name,
+    type: poi.type,
+    distance_meters: poi.distance_meters
+      ? Math.round(parseFloat(poi.distance_meters))
+      : undefined,
+    location: {
+      lat: parseFloat(poi.lat),
+      lng: parseFloat(poi.lng),
     },
   }));
 }
@@ -612,6 +855,21 @@ app.listen(port, () => {
   );
   console.log(
     `   🔹 GET  /api/stations                         - All stations`,
+  );
+  console.log(
+    `   🔹 POST /api/stations                         - Create station (x-api-key protected if ADMIN_API_KEY set)`,
+  );
+  console.log(
+    `   🔹 GET  /api/pois                             - All POIs (custom markers)`,
+  );
+  console.log(
+    `   🔹 GET  /api/pois/nearby?lat=X&lng=Y          - Nearby POIs (PostGIS)`,
+  );
+  console.log(
+    `   🔹 POST /api/pois                            - Create POI (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 DELETE /api/pois/:id                      - Delete POI (x-api-key protected)`,
   );
   console.log(
     `   🔹 GET  /api/stations/nearby?lat=X&lng=Y      - PostGIS spatial search`,
