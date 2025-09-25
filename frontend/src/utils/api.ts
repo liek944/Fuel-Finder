@@ -1,0 +1,202 @@
+// API Configuration and Utilities for Fuel Finder Frontend
+// This file handles environment-specific API configuration and provides
+// utility functions for making API calls across development and production
+
+/**
+ * Get the API base URL from environment variables
+ * Falls back to localhost for development if not set
+ */
+const getApiBaseUrl = (): string => {
+  // First try to get from environment variable
+  const envUrl = process.env.REACT_APP_API_BASE_URL;
+
+  if (envUrl) {
+    // Remove trailing slash if present
+    return envUrl.replace(/\/$/, "");
+  }
+
+  // Fallback for development
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:3001";
+  }
+
+  // In production, we should always have the env var set
+  // This will help catch configuration issues early
+  throw new Error(
+    "REACT_APP_API_BASE_URL environment variable is not set. " +
+      "Please configure your backend URL in your hosting platform environment variables.",
+  );
+};
+
+/**
+ * The base URL for all API calls
+ */
+export const API_BASE_URL = getApiBaseUrl();
+
+/**
+ * Construct a full API URL from a path
+ * @param path - The API path (e.g., '/api/stations', '/api/pois/123')
+ * @returns Full URL for the API endpoint
+ */
+export const getApiUrl = (path: string): string => {
+  // Ensure path starts with /
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL}${cleanPath}`;
+};
+
+/**
+ * Common API request headers
+ */
+export const getCommonHeaders = (apiKey?: string): Record<string, string> => {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (apiKey) {
+    headers["x-api-key"] = apiKey;
+  }
+
+  return headers;
+};
+
+/**
+ * Helper function for making authenticated API calls
+ * @param url - The API URL
+ * @param options - Fetch options
+ * @param apiKey - Optional API key for authenticated requests
+ */
+export const apiCall = async (
+  url: string,
+  options: RequestInit = {},
+  apiKey?: string,
+): Promise<Response> => {
+  const defaultOptions: RequestInit = {
+    headers: getCommonHeaders(apiKey),
+  };
+
+  // Merge headers properly
+  const mergedOptions: RequestInit = {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options.headers,
+    },
+  };
+
+  try {
+    const response = await fetch(url, mergedOptions);
+    return response;
+  } catch (error) {
+    console.error("API call failed:", error);
+    throw error;
+  }
+};
+
+/**
+ * Helper for making GET requests
+ */
+export const apiGet = async (
+  path: string,
+  apiKey?: string,
+): Promise<Response> => {
+  return apiCall(getApiUrl(path), { method: "GET" }, apiKey);
+};
+
+/**
+ * Helper for making POST requests
+ */
+export const apiPost = async (
+  path: string,
+  data?: any,
+  apiKey?: string,
+): Promise<Response> => {
+  return apiCall(
+    getApiUrl(path),
+    {
+      method: "POST",
+      body: data ? JSON.stringify(data) : undefined,
+    },
+    apiKey,
+  );
+};
+
+/**
+ * Helper for making POST requests with FormData (for file uploads)
+ */
+export const apiPostFormData = async (
+  path: string,
+  formData: FormData,
+  apiKey?: string,
+): Promise<Response> => {
+  // For FormData, don't set Content-Type header - let browser set it
+  const headers = apiKey ? { "x-api-key": apiKey } : undefined;
+
+  return apiCall(getApiUrl(path), {
+    method: "POST",
+    body: formData,
+    headers,
+  });
+};
+
+/**
+ * Helper for making DELETE requests
+ */
+export const apiDelete = async (
+  path: string,
+  apiKey?: string,
+): Promise<Response> => {
+  return apiCall(getApiUrl(path), { method: "DELETE" }, apiKey);
+};
+
+/**
+ * Helper for making PATCH requests
+ */
+export const apiPatch = async (
+  path: string,
+  data?: any,
+  apiKey?: string,
+): Promise<Response> => {
+  return apiCall(
+    getApiUrl(path),
+    {
+      method: "PATCH",
+      body: data ? JSON.stringify(data) : undefined,
+    },
+    apiKey,
+  );
+};
+
+/**
+ * Get the full URL for image resources
+ * @param imagePath - The image path from API (e.g., '/api/images/stations/filename.jpg')
+ */
+export const getImageUrl = (imagePath: string): string => {
+  if (!imagePath) return "";
+
+  // If it's already a full URL, return as-is
+  if (imagePath.startsWith("http")) {
+    return imagePath;
+  }
+
+  // Otherwise, construct the full URL
+  return `${API_BASE_URL}${imagePath}`;
+};
+
+/**
+ * Configuration object for different environments
+ */
+export const CONFIG = {
+  API_BASE_URL,
+  isDevelopment: process.env.NODE_ENV === "development",
+  isProduction: process.env.NODE_ENV === "production",
+  // Add other environment-specific config here
+};
+
+// Development logging
+if (CONFIG.isDevelopment) {
+  console.log("🔧 API Configuration:", {
+    baseUrl: API_BASE_URL,
+    environment: process.env.NODE_ENV,
+  });
+}

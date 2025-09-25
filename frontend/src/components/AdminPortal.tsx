@@ -6,8 +6,15 @@ import {
   Popup,
   useMapEvents,
 } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import {
+  apiGet,
+  apiPost,
+  apiDelete,
+  apiPostFormData,
+  getImageUrl,
+} from "../utils/api";
 
 // Fix Leaflet's default icon issues
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
@@ -219,6 +226,11 @@ const AdminPortal: React.FC = () => {
 
   const [position, setPosition] = useState<[number, number] | null>(null);
 
+  // Image upload states
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState<boolean>(false);
+
   // Load admin API key from localStorage and validate it
   useEffect(() => {
     try {
@@ -264,13 +276,13 @@ const AdminPortal: React.FC = () => {
   const fetchData = async () => {
     try {
       // Fetch stations
-      const stationsRes = await fetch("http://localhost:3001/api/stations");
+      const stationsRes = await apiGet("/api/stations");
       const stationsData = await stationsRes.json();
       setStations(stationsData);
 
       // Fetch POIs
       try {
-        const poisRes = await fetch("http://localhost:3001/api/pois");
+        const poisRes = await apiGet("/api/pois");
         const poisData = await poisRes.json();
         setPois(poisData);
       } catch (e) {
@@ -302,11 +314,7 @@ const AdminPortal: React.FC = () => {
 
     setAdminValidating(true);
     try {
-      const response = await fetch("http://localhost:3001/api/admin/debug", {
-        headers: {
-          "x-api-key": keyToTest.trim(),
-        },
-      });
+      const response = await apiGet("/api/admin/debug", keyToTest.trim());
 
       if (response.ok) {
         const data = await response.json();
@@ -367,19 +375,16 @@ const AdminPortal: React.FC = () => {
 
     if (isAdminEnabled) {
       try {
-        const res = await fetch("http://localhost:3001/api/pois", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(adminApiKey.trim() ? { "x-api-key": adminApiKey.trim() } : {}),
-          },
-          body: JSON.stringify({
+        const res = await apiPost(
+          "/api/pois",
+          {
             name,
             type: newMarkerType,
             lat,
             lng,
-          }),
-        });
+          },
+          adminApiKey.trim(),
+        );
 
         if (res.ok) {
           fetchData(); // Refresh data
@@ -469,13 +474,10 @@ const AdminPortal: React.FC = () => {
     setFormMsg(null);
 
     try {
-      const res = await fetch("http://localhost:3001/api/stations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(apiKey ? { "x-api-key": apiKey } : {}),
-        },
-        body: JSON.stringify({
+      // First create the station
+      const res = await apiPost(
+        "/api/stations",
+        {
           name: formName,
           brand: formBrand,
           fuel_price: parseFloat(formPrice),
@@ -484,12 +486,49 @@ const AdminPortal: React.FC = () => {
           phone: formPhone,
           lat: pendingLatLng.lat,
           lng: pendingLatLng.lng,
-        }),
-      });
+        },
+        apiKey,
+      );
 
       if (res.ok) {
-        setFormMsg({ type: "success", text: "Station added successfully!" });
+        const newStation = await res.json();
+        let imageUploadSuccess = true;
+
+        // Upload images if any are selected
+        if (selectedImages.length > 0) {
+          setUploadingImages(true);
+
+          try {
+            const formData = new FormData();
+            selectedImages.forEach((file) => {
+              formData.append("images", file);
+            });
+
+            const imageRes = await apiPostFormData(
+              `/api/stations/${newStation.id}/images`,
+              formData,
+              apiKey,
+            );
+
+            if (!imageRes.ok) {
+              console.error("Image upload failed:", await imageRes.text());
+              imageUploadSuccess = false;
+            }
+          } catch (imageErr) {
+            console.error("Error uploading images:", imageErr);
+            imageUploadSuccess = false;
+          } finally {
+            setUploadingImages(false);
+          }
+        }
+
+        const successMessage = imageUploadSuccess
+          ? `Station added successfully${selectedImages.length > 0 ? ` with ${selectedImages.length} image(s)` : ""}!`
+          : "Station added successfully, but image upload failed.";
+
+        setFormMsg({ type: "success", text: successMessage });
         fetchData(); // Refresh stations
+
         // Reset form
         setFormName("");
         setFormBrand("Local");
@@ -502,6 +541,12 @@ const AdminPortal: React.FC = () => {
         setManualLat("");
         setManualLng("");
         setCoordinateSource("map");
+
+        // Reset image states
+        imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+        setSelectedImages([]);
+        setImagePreviewUrls([]);
+        setUploadingImages(false);
       } else {
         const errorData = await res.json();
         setFormMsg({
@@ -697,14 +742,9 @@ const AdminPortal: React.FC = () => {
                       onClick={async () => {
                         if (window.confirm(`Delete "${station.name}"?`)) {
                           try {
-                            const res = await fetch(
-                              `http://localhost:3001/api/stations/${station.id}`,
-                              {
-                                method: "DELETE",
-                                headers: adminApiKey.trim()
-                                  ? { "x-api-key": adminApiKey.trim() }
-                                  : {},
-                              },
+                            const res = await apiDelete(
+                              `/api/stations/${station.id}`,
+                              adminApiKey.trim(),
                             );
                             if (res.ok) {
                               fetchData();
@@ -1518,17 +1558,6 @@ const AdminPortal: React.FC = () => {
                 }}
               >
                 {pendingLatLng.lat.toFixed(6)}, {pendingLatLng.lng.toFixed(6)}
-              </div>
-              <div
-                style={{
-                  fontSize: "12px",
-                  color: "#888",
-                  marginTop: 4,
-                }}
-              >
-                {coordinateSource === "manual"
-                  ? "Coordinates entered manually"
-                  : "Coordinates selected by clicking on map"}
               </div>
             </div>
 
