@@ -122,21 +122,55 @@ export const apiPost = async (
 };
 
 /**
- * Helper for making POST requests with FormData (for file uploads)
+ * Convert a File to base64 string
  */
-export const apiPostFormData = async (
+export const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        // Remove the data URL prefix (e.g., "data:image/png;base64,")
+        const base64 = reader.result.split(",")[1];
+        resolve(base64);
+      } else {
+        reject(new Error("Failed to read file as base64"));
+      }
+    };
+    reader.onerror = (error) => reject(error);
+  });
+};
+
+/**
+ * Convert multiple files to base64 format for API upload
+ */
+export const filesToBase64 = async (
+  files: File[],
+): Promise<{ filename: string; base64: string; mimeType: string }[]> => {
+  const base64Images = await Promise.all(
+    files.map(async (file) => {
+      const base64Data = await fileToBase64(file);
+      return {
+        filename: file.name,
+        base64: base64Data,
+        mimeType: file.type,
+      };
+    }),
+  );
+  return base64Images;
+};
+
+/**
+ * Upload images as base64 JSON payload
+ */
+export const apiPostBase64Images = async (
   path: string,
-  formData: FormData,
+  files: File[],
   apiKey?: string,
 ): Promise<Response> => {
-  // For FormData, don't set Content-Type header - let browser set it
-  const headers = apiKey ? { "x-api-key": apiKey } : undefined;
+  const base64Images = await filesToBase64(files);
 
-  return apiCall(getApiUrl(path), {
-    method: "POST",
-    body: formData,
-    headers,
-  });
+  return apiPost(path, { images: base64Images }, apiKey);
 };
 
 /**

@@ -9,6 +9,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+import { getImageUrl } from "../utils/api";
 
 // Fix Leaflet's default icon issues
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
@@ -29,6 +30,14 @@ interface Station {
     lng: number;
   };
   distance_meters?: number;
+  images?: Array<{
+    id: number;
+    filename: string;
+    original_filename: string;
+    url: string;
+    thumbnailUrl: string;
+    alt_text?: string;
+  }>;
 }
 
 interface POI {
@@ -164,17 +173,176 @@ const calculateDistance = (
   lat2: number,
   lng2: number,
 ): number => {
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLng = (lng2 - lng1) * (Math.PI / 180);
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
       Math.sin(dLng / 2) *
       Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  const distance = R * c;
+  return distance;
+};
+
+// ImageSlideshow component
+interface ImageSlideshowProps {
+  images: Array<{
+    id: number;
+    filename: string;
+    original_filename: string;
+    url: string;
+    thumbnailUrl: string;
+    alt_text?: string;
+  }>;
+  entityId: string;
+}
+
+const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
+  images,
+  entityId,
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (!images || images.length === 0) return null;
+
+  const currentImage = images[currentIndex];
+
+  const nextImage = () => {
+    setCurrentIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const goToImage = (index: number) => {
+    setCurrentIndex(index);
+  };
+
+  return (
+    <div style={{ marginTop: 12, marginBottom: 8 }}>
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: 200,
+          backgroundColor: "#f5f5f5",
+          borderRadius: 8,
+          overflow: "hidden",
+          border: "1px solid #ddd",
+        }}
+      >
+        <img
+          src={getImageUrl(currentImage.url)}
+          alt={currentImage.alt_text || currentImage.original_filename}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = getImageUrl(currentImage.thumbnailUrl);
+          }}
+        />
+
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prevImage}
+              style={{
+                position: "absolute",
+                left: 8,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "rgba(0,0,0,0.5)",
+                color: "white",
+                border: "none",
+                borderRadius: "50%",
+                width: 32,
+                height: 32,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 14,
+              }}
+            >
+              ←
+            </button>
+
+            <button
+              onClick={nextImage}
+              style={{
+                position: "absolute",
+                right: 8,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "rgba(0,0,0,0.5)",
+                color: "white",
+                border: "none",
+                borderRadius: "50%",
+                width: 32,
+                height: 32,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 14,
+              }}
+            >
+              →
+            </button>
+
+            <div
+              style={{
+                position: "absolute",
+                bottom: 8,
+                left: "50%",
+                transform: "translateX(-50%)",
+                display: "flex",
+                gap: 4,
+              }}
+            >
+              {images.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToImage(index)}
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    border: "none",
+                    background:
+                      index === currentIndex
+                        ? "white"
+                        : "rgba(255,255,255,0.5)",
+                    cursor: "pointer",
+                  }}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {images.length > 1 && (
+        <div
+          style={{
+            textAlign: "center",
+            fontSize: 12,
+            color: "#666",
+            marginTop: 4,
+          }}
+        >
+          {currentIndex + 1} of {images.length}
+        </div>
+      )}
+    </div>
+  );
 };
 
 const MainApp: React.FC = () => {
@@ -457,6 +625,14 @@ const MainApp: React.FC = () => {
                     <div style={{ marginBottom: 8 }}>
                       <strong>Phone:</strong> {station.phone}
                     </div>
+                  )}
+
+                  {/* Station Images */}
+                  {station.images && station.images.length > 0 && (
+                    <ImageSlideshow
+                      images={station.images}
+                      entityId={`station-${station.id}`}
+                    />
                   )}
 
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

@@ -2,6 +2,105 @@ const fs = require("fs").promises;
 const path = require("path");
 const { pool } = require("./db");
 
+async function createMigrationsTable() {
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        version VARCHAR(50) PRIMARY KEY,
+        description TEXT,
+        applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `);
+    console.log("✅ Schema migrations table ready");
+  } catch (err) {
+    console.error("❌ Failed to create migrations table:", err);
+    throw err;
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+}
+
+async function runMigrations() {
+  let client;
+  try {
+    console.log("🔄 Running database migrations...");
+
+    await createMigrationsTable();
+    client = await pool.connect();
+
+    // Get applied migrations
+    const appliedResult = await client.query(
+      "SELECT version FROM schema_migrations ORDER BY version",
+    );
+    const appliedMigrations = new Set(
+      appliedResult.rows.map((row) => row.version),
+    );
+
+    // Read migration files
+    const migrationsDir = path.join(__dirname, "migrations");
+    let migrationFiles = [];
+
+    try {
+      const files = await fs.readdir(migrationsDir);
+      migrationFiles = files.filter((file) => file.endsWith(".sql")).sort(); // Sort to ensure proper order
+    } catch (err) {
+      console.log("📁 No migrations directory found, skipping migrations");
+      return;
+    }
+
+    if (migrationFiles.length === 0) {
+      console.log("📝 No migration files found");
+      return;
+    }
+
+    let appliedCount = 0;
+    for (const file of migrationFiles) {
+      const version = file.replace(".sql", "").replace(/^\d+_/, "");
+      const versionNumber = file.split("_")[0];
+
+      if (appliedMigrations.has(versionNumber)) {
+        console.log(`⏭️  Skipping migration ${file} (already applied)`);
+        continue;
+      }
+
+      console.log(`🔧 Applying migration: ${file}`);
+
+      try {
+        const migrationPath = path.join(migrationsDir, file);
+        const migrationSql = await fs.readFile(migrationPath, "utf8");
+
+        await client.query("BEGIN");
+        await client.query(migrationSql);
+        await client.query("COMMIT");
+
+        console.log(`✅ Migration ${file} applied successfully`);
+        appliedCount++;
+      } catch (err) {
+        await client.query("ROLLBACK");
+        console.error(`❌ Failed to apply migration ${file}:`, err);
+        throw err;
+      }
+    }
+
+    if (appliedCount > 0) {
+      console.log(`🎉 Applied ${appliedCount} migrations successfully`);
+    } else {
+      console.log("📋 All migrations are up to date");
+    }
+  } catch (err) {
+    console.error("❌ Migration failed:", err);
+    throw err;
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+}
+
 async function initializeDatabase() {
   let client;
   try {
@@ -17,6 +116,9 @@ async function initializeDatabase() {
     await client.query(schema);
 
     console.log("✅ Database initialized successfully!");
+
+    // Run migrations after initial schema
+    await runMigrations();
 
     // Test by counting stations
     const result = await client.query("SELECT COUNT(*) FROM stations");
@@ -222,6 +324,10 @@ async function main() {
         await addSampleData();
         break;
 
+      case "migrate":
+        await runMigrations();
+        break;
+
       case "init":
       default:
         await initializeDatabase();
@@ -242,10 +348,11 @@ async function main() {
 if (require.main === module) {
   console.log("🔧 Fuel Finder Database Management Tool");
   console.log("Available commands:");
-  console.log("  init   - Initialize database (default)");
-  console.log("  reset  - Reset and reinitialize database");
-  console.log("  check  - Check database status");
-  console.log("  sample - Add additional sample data");
+  console.log("  init    - Initialize database (default)");
+  console.log("  reset   - Reset and reinitialize database");
+  console.log("  check   - Check database status");
+  console.log("  sample  - Add additional sample data");
+  console.log("  migrate - Run database migrations");
   console.log("");
 
   main();
@@ -256,4 +363,6 @@ module.exports = {
   resetDatabase,
   checkDatabase,
   addSampleData,
+  runMigrations,
+  createMigrationsTable,
 };

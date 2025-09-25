@@ -65,19 +65,34 @@ async function ensurePoisTable() {
 async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
   const query = `
         SELECT
-            id,
-            name,
-            brand,
-            fuel_price,
-            services,
-            address,
-            phone,
-            operating_hours,
-            ST_X(geom) as lng,
-            ST_Y(geom) as lat,
-            ST_Distance(geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters
-        FROM stations
-        WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
+            s.id,
+            s.name,
+            s.brand,
+            s.fuel_price,
+            s.services,
+            s.address,
+            s.phone,
+            s.operating_hours,
+            ST_X(s.geom) as lng,
+            ST_Y(s.geom) as lat,
+            ST_Distance(s.geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,
+            COALESCE(
+                JSON_AGG(
+                    JSON_BUILD_OBJECT(
+                        'id', i.id,
+                        'filename', i.filename,
+                        'original_filename', i.original_filename,
+                        'display_order', i.display_order,
+                        'is_primary', i.is_primary,
+                        'alt_text', i.alt_text
+                    ) ORDER BY i.display_order, i.id
+                ) FILTER (WHERE i.id IS NOT NULL),
+                '[]'::json
+            ) as images
+        FROM stations s
+        LEFT JOIN images i ON s.id = i.station_id
+        WHERE ST_DWithin(s.geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
+        GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom
         ORDER BY distance_meters ASC;
     `;
 
@@ -129,18 +144,33 @@ async function deletePoi(id) {
 async function getAllStations() {
   const query = `
         SELECT
-            id,
-            name,
-            brand,
-            fuel_price,
-            services,
-            address,
-            phone,
-            operating_hours,
-            ST_X(geom) as lng,
-            ST_Y(geom) as lat
-        FROM stations
-        ORDER BY name ASC;
+            s.id,
+            s.name,
+            s.brand,
+            s.fuel_price,
+            s.services,
+            s.address,
+            s.phone,
+            s.operating_hours,
+            ST_X(s.geom) as lng,
+            ST_Y(s.geom) as lat,
+            COALESCE(
+                JSON_AGG(
+                    JSON_BUILD_OBJECT(
+                        'id', i.id,
+                        'filename', i.filename,
+                        'original_filename', i.original_filename,
+                        'display_order', i.display_order,
+                        'is_primary', i.is_primary,
+                        'alt_text', i.alt_text
+                    ) ORDER BY i.display_order, i.id
+                ) FILTER (WHERE i.id IS NOT NULL),
+                '[]'::json
+            ) as images
+        FROM stations s
+        LEFT JOIN images i ON s.id = i.station_id
+        GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom
+        ORDER BY s.name ASC;
     `;
 
   const result = await pool.query(query);
