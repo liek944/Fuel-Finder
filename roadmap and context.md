@@ -56,7 +56,7 @@
 
 ### ⏳ Phase 2 – Core Features
 
-* [ ] **Station Details Popup**
+* [x] **Station Details Popup**
   **AI Prompt:**
   "Guide me to implement Leaflet popups that display station details. Show: name, brand, fuel price, services (WiFi, car wash, etc.). Use HTML templates inside popups. Optionally style with CSS for better UX."
 

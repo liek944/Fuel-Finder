@@ -41,6 +41,7 @@ const axios = require("axios");
 const http = require("http");
 const https = require("https");
 const dns = require("dns");
+const path = require("path");
 // Load environment variables from .env
 try {
   require("dotenv").config();
@@ -61,6 +62,16 @@ const {
   addPoi,
   deletePoi,
 } = require("./database/db");
+
+// Import image service
+const {
+  getStationImages,
+  getPoiImages,
+  deleteImage,
+  setPrimaryImage,
+  uploadBase64Images,
+  validateBase64Image,
+} = require("./services/imageService");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -111,6 +122,20 @@ app.use(
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+
+// Static file serving for images
+app.use(
+  "/api/images/stations",
+  express.static(path.join(__dirname, "uploads/images/stations")),
+);
+app.use(
+  "/api/images/pois",
+  express.static(path.join(__dirname, "uploads/images/pois")),
+);
+app.use(
+  "/api/images/thumbnails",
+  express.static(path.join(__dirname, "uploads/images/thumbnails")),
+);
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -275,6 +300,11 @@ function transformStationData(stations) {
       lat: parseFloat(station.lat),
       lng: parseFloat(station.lng),
     },
+    images: (station.images || []).map((image) => ({
+      ...image,
+      url: `/api/images/stations/${image.filename}`,
+      thumbnailUrl: `/api/images/thumbnails/thumb_${image.filename}`,
+    })),
   }));
 }
 
@@ -939,6 +969,356 @@ app.post("/api/cache/clear", (req, res) => {
   });
 });
 
+// ============================================================================
+// IMAGE UPLOAD ENDPOINTS
+// ============================================================================
+
+// Upload images for a station (base64)
+app.post("/api/stations/:id/images", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const stationId = parseInt(req.params.id);
+    if (!stationId || isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    // Check if station exists
+    const station = await getStationById(stationId);
+    if (!station) {
+      return res.status(404).json({
+        error: "Station not found",
+        message: `No station found with ID ${stationId}`,
+      });
+    }
+
+    console.log("🔍 Request body:", JSON.stringify(req.body, null, 2));
+
+    const { images } = req.body;
+    console.log(
+      "🔍 Images array:",
+      images ? `Array of ${images.length} items` : "null/undefined",
+    );
+
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      console.log("❌ No images provided in request");
+      return res.status(400).json({
+        error: "No images provided",
+        message: "Please provide an array of base64 images",
+      });
+    }
+
+    if (images.length > 5) {
+      return res.status(400).json({
+        error: "Too many images",
+        message: "Maximum 5 images allowed per upload",
+      });
+    }
+
+    // Validate all images
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      console.log(`🔍 Image ${i + 1}:`, {
+        hasBase64: !!image.base64,
+        base64Length: image.base64 ? image.base64.length : 0,
+        filename: image.filename,
+        mimeType: image.mimeType,
+      });
+
+      if (!image.base64 || !validateBase64Image(image.base64)) {
+        console.log(`❌ Image ${i + 1} validation failed`);
+        return res.status(400).json({
+          error: "Invalid image data",
+          message: `Image ${i + 1} contains invalid base64 data`,
+        });
+      }
+    }
+
+    console.log(
+      `📸 Uploading ${images.length} images for station ${stationId}`,
+    );
+
+    const { results, errors } = await uploadBase64Images(
+      images,
+      stationId,
+      null,
+    );
+
+    // Clear cache so updated station data with images is served
+    cache.clear();
+    console.log("🗑️ Cache cleared after image upload");
+
+    res.status(201).json({
+      message: `Successfully uploaded ${results.length} images`,
+      images: results,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (err) {
+    console.error("❌ Error uploading station images:", err);
+    res.status(500).json({
+      error: "Failed to upload images",
+      message: err.message,
+    });
+  }
+});
+
+// Get images for a station
+app.get("/api/stations/:id/images", async (req, res) => {
+  try {
+    const stationId = parseInt(req.params.id);
+    if (!stationId || isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    const images = await getStationImages(stationId);
+    res.json({ images });
+  } catch (err) {
+    console.error("❌ Error fetching station images:", err);
+    res.status(500).json({
+      error: "Failed to fetch images",
+      message: err.message,
+    });
+  }
+});
+
+// Upload images for a POI (base64)
+app.post("/api/pois/:id/images", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const poiId = parseInt(req.params.id);
+    if (!poiId || isNaN(poiId)) {
+      return res.status(400).json({
+        error: "Invalid POI ID",
+        message: "POI ID must be a valid number",
+      });
+    }
+
+    const { images } = req.body;
+    if (!images || !Array.isArray(images) || images.length === 0) {
+      return res.status(400).json({
+        error: "No images provided",
+        message: "Please provide an array of base64 images",
+      });
+    }
+
+    if (images.length > 5) {
+      return res.status(400).json({
+        error: "Too many images",
+        message: "Maximum 5 images allowed per upload",
+      });
+    }
+
+    // Validate all images
+    for (let i = 0; i < images.length; i++) {
+      const image = images[i];
+      if (!image.base64 || !validateBase64Image(image.base64)) {
+        return res.status(400).json({
+          error: "Invalid image data",
+          message: `Image ${i + 1} contains invalid base64 data`,
+        });
+      }
+    }
+
+    console.log(`📸 Uploading ${images.length} images for POI ${poiId}`);
+
+    const { results, errors } = await uploadBase64Images(images, null, poiId);
+
+    res.status(201).json({
+      message: `Successfully uploaded ${results.length} images`,
+      images: results,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (err) {
+    console.error("❌ Error uploading POI images:", err);
+    res.status(500).json({
+      error: "Failed to upload images",
+      message: err.message,
+    });
+  }
+});
+
+// Get images for a POI
+app.get("/api/pois/:id/images", async (req, res) => {
+  try {
+    const poiId = parseInt(req.params.id);
+    if (!poiId || isNaN(poiId)) {
+      return res.status(400).json({
+        error: "Invalid POI ID",
+        message: "POI ID must be a valid number",
+      });
+    }
+
+    const images = await getPoiImages(poiId);
+    res.json({ images });
+  } catch (err) {
+    console.error("❌ Error fetching POI images:", err);
+    res.status(500).json({
+      error: "Failed to fetch images",
+      message: err.message,
+    });
+  }
+});
+
+// Delete an image
+app.delete("/api/images/:id", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const imageId = parseInt(req.params.id);
+    if (!imageId || isNaN(imageId)) {
+      return res.status(400).json({
+        error: "Invalid image ID",
+        message: "Image ID must be a valid number",
+      });
+    }
+
+    const deletedImage = await deleteImage(imageId);
+    console.log(`🗑️ Deleted image: ${deletedImage.original_filename}`);
+
+    res.json({
+      message: "Image deleted successfully",
+      image: deletedImage,
+    });
+  } catch (err) {
+    console.error("❌ Error deleting image:", err);
+    if (err.message === "Image not found") {
+      return res.status(404).json({
+        error: "Image not found",
+        message: "No image found with the specified ID",
+      });
+    }
+    res.status(500).json({
+      error: "Failed to delete image",
+      message: err.message,
+    });
+  }
+});
+
+// Set image as primary
+app.patch("/api/images/:id/primary", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const imageId = parseInt(req.params.id);
+    if (!imageId || isNaN(imageId)) {
+      return res.status(400).json({
+        error: "Invalid image ID",
+        message: "Image ID must be a valid number",
+      });
+    }
+
+    const updatedImage = await setPrimaryImage(imageId);
+    console.log(`⭐ Set primary image: ${updatedImage.original_filename}`);
+
+    res.json({
+      message: "Primary image updated successfully",
+      image: updatedImage,
+    });
+  } catch (err) {
+    console.error("❌ Error setting primary image:", err);
+    if (err.message === "Image not found") {
+      return res.status(404).json({
+        error: "Image not found",
+        message: "No image found with the specified ID",
+      });
+    }
+    res.status(500).json({
+      error: "Failed to set primary image",
+      message: err.message,
+    });
+  }
+});
+
+// Debug endpoint to list uploaded image files
+app.get("/api/debug/images", async (req, res) => {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+
+    const stationsDir = path.join(__dirname, "uploads/images/stations");
+    const poisDir = path.join(__dirname, "uploads/images/pois");
+    const thumbnailsDir = path.join(__dirname, "uploads/images/thumbnails");
+
+    const result = {
+      stations: [],
+      pois: [],
+      thumbnails: [],
+    };
+
+    // Check if directories exist and list files
+    if (fs.existsSync(stationsDir)) {
+      result.stations = fs.readdirSync(stationsDir);
+    }
+    if (fs.existsSync(poisDir)) {
+      result.pois = fs.readdirSync(poisDir);
+    }
+    if (fs.existsSync(thumbnailsDir)) {
+      result.thumbnails = fs.readdirSync(thumbnailsDir);
+    }
+
+    res.json({
+      message: "Image files debug info",
+      directories: {
+        stations: stationsDir,
+        pois: poisDir,
+        thumbnails: thumbnailsDir,
+      },
+      files: result,
+      totalFiles:
+        result.stations.length + result.pois.length + result.thumbnails.length,
+    });
+  } catch (err) {
+    console.error("❌ Error listing image files:", err);
+    res.status(500).json({
+      error: "Failed to list image files",
+      message: err.message,
+    });
+  }
+});
+
 // 404 handler for API routes
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {
@@ -1018,6 +1398,33 @@ app.listen(port, () => {
   );
   console.log(
     `   🔹 GET  /api/stats                            - Database statistics`,
+  );
+  console.log(
+    `   🔹 POST /api/stations/:id/images              - Upload base64 images for station (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 GET  /api/stations/:id/images              - Get images for station`,
+  );
+  console.log(
+    `   🔹 POST /api/pois/:id/images                  - Upload base64 images for POI (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 GET  /api/pois/:id/images                  - Get images for POI`,
+  );
+  console.log(
+    `   🔹 DELETE /api/images/:id                     - Delete image (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 PATCH /api/images/:id/primary              - Set image as primary (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 GET  /api/images/stations/*                - Static image serving`,
+  );
+  console.log(
+    `   🔹 GET  /api/images/pois/*                    - Static POI image serving`,
+  );
+  console.log(
+    `   🔹 GET  /api/images/thumbnails/*              - Static thumbnail serving`,
   );
   console.log(
     `   🔹 GET  /api/route?start=lat,lng&end=lat,lng  - OSRM routing`,

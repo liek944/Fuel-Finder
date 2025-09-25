@@ -12,7 +12,7 @@ import {
   apiGet,
   apiPost,
   apiDelete,
-  apiPostFormData,
+  apiPostBase64Images,
   getImageUrl,
 } from "../utils/api";
 
@@ -35,6 +35,38 @@ interface Station {
     lng: number;
   };
   distance_meters?: number;
+  images?: Array<{
+    id: number;
+    filename: string;
+    original_filename: string;
+    file_size: number;
+    mime_type: string;
+    width: number;
+    height: number;
+    display_order: number;
+    alt_text?: string;
+    is_primary: boolean;
+    url: string;
+    thumbnailUrl: string;
+    created_at: string;
+    updated_at: string;
+  }>;
+  primaryImage?: {
+    id: number;
+    filename: string;
+    original_filename: string;
+    file_size: number;
+    mime_type: string;
+    width: number;
+    height: number;
+    display_order: number;
+    alt_text?: string;
+    is_primary: boolean;
+    url: string;
+    thumbnailUrl: string;
+    created_at: string;
+    updated_at: string;
+  } | null;
 }
 
 interface POI {
@@ -46,6 +78,38 @@ interface POI {
     lng: number;
   };
   distance_meters?: number;
+  images?: Array<{
+    id: number;
+    filename: string;
+    original_filename: string;
+    file_size: number;
+    mime_type: string;
+    width: number;
+    height: number;
+    display_order: number;
+    alt_text?: string;
+    is_primary: boolean;
+    url: string;
+    thumbnailUrl: string;
+    created_at: string;
+    updated_at: string;
+  }>;
+  primaryImage?: {
+    id: number;
+    filename: string;
+    original_filename: string;
+    file_size: number;
+    mime_type: string;
+    width: number;
+    height: number;
+    display_order: number;
+    alt_text?: string;
+    is_primary: boolean;
+    url: string;
+    thumbnailUrl: string;
+    created_at: string;
+    updated_at: string;
+  } | null;
 }
 
 interface CustomMarker {
@@ -183,6 +247,143 @@ function AddStationClickCatcher({
   return null;
 }
 
+// Image slideshow component
+interface ImageSlideshowProps {
+  images: Array<{
+    id: number;
+    filename: string;
+    original_filename: string;
+    url: string;
+    thumbnailUrl: string;
+    alt_text?: string;
+  }>;
+  entityId: string;
+}
+
+const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
+  images,
+  entityId,
+}) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (!images || images.length === 0) return null;
+
+  const currentImage = images[currentIndex];
+
+  const nextImage = () => {
+    setCurrentIndex((currentIndex + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentIndex(currentIndex === 0 ? images.length - 1 : currentIndex - 1);
+  };
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ position: "relative", marginBottom: 8 }}>
+        <img
+          src={getImageUrl(currentImage.thumbnailUrl)}
+          alt={currentImage.alt_text || currentImage.original_filename}
+          style={{
+            width: "100%",
+            height: "150px",
+            objectFit: "cover",
+            borderRadius: 4,
+            border: "1px solid #ddd",
+          }}
+        />
+        {images.length > 1 && (
+          <>
+            <button
+              onClick={prevImage}
+              style={{
+                position: "absolute",
+                left: 4,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "rgba(0,0,0,0.5)",
+                color: "white",
+                border: "none",
+                borderRadius: "50%",
+                width: 30,
+                height: 30,
+                cursor: "pointer",
+                fontSize: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ‹
+            </button>
+            <button
+              onClick={nextImage}
+              style={{
+                position: "absolute",
+                right: 4,
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "rgba(0,0,0,0.5)",
+                color: "white",
+                border: "none",
+                borderRadius: "50%",
+                width: 30,
+                height: 30,
+                cursor: "pointer",
+                fontSize: 16,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              ›
+            </button>
+            <div
+              style={{
+                position: "absolute",
+                bottom: 4,
+                right: 4,
+                background: "rgba(0,0,0,0.7)",
+                color: "white",
+                padding: "2px 6px",
+                borderRadius: 12,
+                fontSize: 11,
+              }}
+            >
+              {currentIndex + 1} / {images.length}
+            </div>
+          </>
+        )}
+      </div>
+      {images.length > 1 && (
+        <div
+          style={{
+            display: "flex",
+            gap: 2,
+            justifyContent: "center",
+            marginTop: 4,
+          }}
+        >
+          {images.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                border: "none",
+                background: index === currentIndex ? "#2196F3" : "#ccc",
+                cursor: "pointer",
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminPortal: React.FC = () => {
   // Admin state management
   const [adminApiKey, setAdminApiKey] = useState<string>("");
@@ -230,6 +431,17 @@ const AdminPortal: React.FC = () => {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState<boolean>(false);
+
+  // Image upload states for existing stations
+  const [stationImageUploads, setStationImageUploads] = useState<{
+    [key: string]: File[];
+  }>({});
+  const [stationImageUploadUrls, setStationImageUploadUrls] = useState<{
+    [key: string]: string[];
+  }>({});
+  const [uploadingStationImages, setUploadingStationImages] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   // Load admin API key from localStorage and validate it
   useEffect(() => {
@@ -417,6 +629,168 @@ const AdminPortal: React.FC = () => {
     }
   };
 
+  const handleImageSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    const maxImages = 5;
+
+    if (files.length > maxImages) {
+      alert(`You can only upload up to ${maxImages} images at once.`);
+      return;
+    }
+
+    // Validate file types and sizes
+    const validFiles: File[] = [];
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        alert(
+          `Invalid file type: ${file.name}. Please use JPG, PNG, or WebP images.`,
+        );
+        continue;
+      }
+      if (file.size > maxSize) {
+        alert(`File too large: ${file.name}. Maximum size is 10MB.`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) return;
+
+    setSelectedImages(validFiles);
+
+    // Create preview URLs
+    const previewUrls = validFiles.map((file) => URL.createObjectURL(file));
+    setImagePreviewUrls(previewUrls);
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = selectedImages.filter((_, i) => i !== index);
+    const newUrls = imagePreviewUrls.filter((_, i) => i !== index);
+
+    // Clean up URL object
+    URL.revokeObjectURL(imagePreviewUrls[index]);
+
+    setSelectedImages(newImages);
+    setImagePreviewUrls(newUrls);
+  };
+
+  // Handle image selection for existing stations
+  const handleStationImageSelect = async (
+    stationId: number,
+    files: FileList | null,
+  ) => {
+    if (!files || files.length === 0) return;
+
+    const maxImages = 5;
+    if (files.length > maxImages) {
+      alert(`You can only upload up to ${maxImages} images at once.`);
+      return;
+    }
+
+    const fileArray = Array.from(files);
+    const urls: string[] = [];
+
+    for (const file of fileArray) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Max size is 10MB.`);
+        continue;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        alert(`File ${file.name} is not an image.`);
+        continue;
+      }
+
+      urls.push(URL.createObjectURL(file));
+    }
+
+    const stationKey = stationId.toString();
+    setStationImageUploads((prev) => ({
+      ...prev,
+      [stationKey]: fileArray,
+    }));
+
+    // Clean up old URLs if they exist
+    if (stationImageUploadUrls[stationKey]) {
+      stationImageUploadUrls[stationKey].forEach((url) =>
+        URL.revokeObjectURL(url),
+      );
+    }
+
+    setStationImageUploadUrls((prev) => ({
+      ...prev,
+      [stationKey]: urls,
+    }));
+  };
+
+  // Upload images for existing station
+  const uploadStationImages = async (stationId: number) => {
+    const stationKey = stationId.toString();
+    const images = stationImageUploads[stationKey];
+
+    if (!images || images.length === 0) {
+      alert("Please select images to upload first.");
+      return;
+    }
+
+    setUploadingStationImages((prev) => ({
+      ...prev,
+      [stationKey]: true,
+    }));
+
+    try {
+      const imageRes = await apiPostBase64Images(
+        `/api/stations/${stationId}/images`,
+        images,
+        adminApiKey.trim(),
+      );
+
+      if (imageRes.ok) {
+        alert(`Successfully uploaded ${images.length} image(s)!`);
+
+        // Clear the images for this station
+        setStationImageUploads((prev) => {
+          const updated = { ...prev };
+          delete updated[stationKey];
+          return updated;
+        });
+
+        // Clean up URLs
+        if (stationImageUploadUrls[stationKey]) {
+          stationImageUploadUrls[stationKey].forEach((url) =>
+            URL.revokeObjectURL(url),
+          );
+        }
+        setStationImageUploadUrls((prev) => {
+          const updated = { ...prev };
+          delete updated[stationKey];
+          return updated;
+        });
+
+        // Refresh data to show new images
+        fetchData();
+      } else {
+        const errorData = await imageRes
+          .json()
+          .catch(() => ({ error: "Upload failed" }));
+        alert(
+          `Image upload failed: ${errorData.message || errorData.error || "Unknown error"}`,
+        );
+      }
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      alert("Error uploading images. Please try again.");
+    } finally {
+      setUploadingStationImages((prev) => ({
+        ...prev,
+        [stationKey]: false,
+      }));
+    }
+  };
+
   const removeCustomMarker = (id: number) => {
     setCustomMarkers(customMarkers.filter((m) => m.id !== id));
   };
@@ -499,14 +873,9 @@ const AdminPortal: React.FC = () => {
           setUploadingImages(true);
 
           try {
-            const formData = new FormData();
-            selectedImages.forEach((file) => {
-              formData.append("images", file);
-            });
-
-            const imageRes = await apiPostFormData(
+            const imageRes = await apiPostBase64Images(
               `/api/stations/${newStation.id}/images`,
-              formData,
+              selectedImages,
               apiKey,
             );
 
@@ -720,6 +1089,14 @@ const AdminPortal: React.FC = () => {
                   </div>
                 )}
 
+                {/* Station Images */}
+                {station.images && station.images.length > 0 && (
+                  <ImageSlideshow
+                    images={station.images}
+                    entityId={`station-${station.id}`}
+                  />
+                )}
+
                 {isAdminEnabled && (
                   <div
                     style={{
@@ -728,6 +1105,135 @@ const AdminPortal: React.FC = () => {
                       borderTop: "1px solid #eee",
                     }}
                   >
+                    {/* Image Upload Section */}
+                    <div style={{ marginBottom: 8 }}>
+                      <div
+                        style={{
+                          marginBottom: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                        }}
+                      >
+                        📷 Add Images:
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) =>
+                          handleStationImageSelect(station.id, e.target.files)
+                        }
+                        style={{
+                          fontSize: 10,
+                          marginBottom: 4,
+                          width: "100%",
+                        }}
+                      />
+
+                      {/* Preview selected images */}
+                      {stationImageUploadUrls[station.id.toString()] && (
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 4,
+                            marginBottom: 4,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          {stationImageUploadUrls[station.id.toString()].map(
+                            (url, idx) => (
+                              <img
+                                key={idx}
+                                src={url}
+                                alt={`Preview ${idx + 1}`}
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  objectFit: "cover",
+                                  borderRadius: 4,
+                                  border: "1px solid #ddd",
+                                }}
+                              />
+                            ),
+                          )}
+                        </div>
+                      )}
+
+                      <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                          style={{
+                            background:
+                              stationImageUploads[station.id.toString()] &&
+                              stationImageUploads[station.id.toString()]
+                                .length > 0
+                                ? "#4CAF50"
+                                : "#ccc",
+                            color: "white",
+                            border: "none",
+                            padding: "4px 8px",
+                            borderRadius: 4,
+                            cursor:
+                              stationImageUploads[station.id.toString()] &&
+                              stationImageUploads[station.id.toString()]
+                                .length > 0
+                                ? "pointer"
+                                : "not-allowed",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            flex: 1,
+                          }}
+                          disabled={
+                            !stationImageUploads[station.id.toString()] ||
+                            stationImageUploads[station.id.toString()]
+                              .length === 0 ||
+                            uploadingStationImages[station.id.toString()]
+                          }
+                          onClick={() => uploadStationImages(station.id)}
+                        >
+                          {uploadingStationImages[station.id.toString()]
+                            ? "⏳ Uploading..."
+                            : "📤 Upload"}
+                        </button>
+
+                        {stationImageUploads[station.id.toString()] && (
+                          <button
+                            style={{
+                              background: "#ff9800",
+                              color: "white",
+                              border: "none",
+                              padding: "4px 8px",
+                              borderRadius: 4,
+                              cursor: "pointer",
+                              fontSize: 10,
+                              fontWeight: 600,
+                            }}
+                            onClick={() => {
+                              const stationKey = station.id.toString();
+                              // Clean up URLs
+                              if (stationImageUploadUrls[stationKey]) {
+                                stationImageUploadUrls[stationKey].forEach(
+                                  (url) => URL.revokeObjectURL(url),
+                                );
+                              }
+
+                              setStationImageUploads((prev) => {
+                                const updated = { ...prev };
+                                delete updated[stationKey];
+                                return updated;
+                              });
+                              setStationImageUploadUrls((prev) => {
+                                const updated = { ...prev };
+                                delete updated[stationKey];
+                                return updated;
+                              });
+                            }}
+                          >
+                            🗑️ Clear
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
                     <button
                       style={{
                         background: "#f44336",
@@ -738,6 +1244,7 @@ const AdminPortal: React.FC = () => {
                         cursor: "pointer",
                         fontSize: 12,
                         fontWeight: 600,
+                        width: "100%",
                       }}
                       onClick={async () => {
                         if (window.confirm(`Delete "${station.name}"?`)) {
@@ -784,6 +1291,14 @@ const AdminPortal: React.FC = () => {
                 <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
                   {poi.location.lat.toFixed(6)}, {poi.location.lng.toFixed(6)}
                 </div>
+
+                {/* POI Images */}
+                {poi.images && poi.images.length > 0 && (
+                  <ImageSlideshow
+                    images={poi.images}
+                    entityId={`poi-${poi.id}`}
+                  />
+                )}
 
                 {isAdminEnabled && (
                   <div
@@ -1018,6 +1533,11 @@ const AdminPortal: React.FC = () => {
                   setManualLat("");
                   setManualLng("");
                   setCoordinateSource("map");
+                  // Reset image states
+                  imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+                  setSelectedImages([]);
+                  setImagePreviewUrls([]);
+                  setUploadingImages(false);
                 }}
                 style={{
                   width: "100%",
@@ -1515,6 +2035,101 @@ const AdminPortal: React.FC = () => {
               </div>
             </div>
 
+            {/* Image Upload Section */}
+            <div style={{ marginBottom: 15 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 8,
+                  fontWeight: 600,
+                  color: "#555",
+                }}
+              >
+                📷 Station Images (Optional)
+              </label>
+              <div
+                style={{
+                  padding: "12px",
+                  border: "2px dashed #ddd",
+                  borderRadius: 8,
+                  textAlign: "center",
+                }}
+              >
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelection}
+                  style={{
+                    padding: "6px",
+                    fontSize: "14px",
+                    width: "100%",
+                    marginBottom: "8px",
+                  }}
+                />
+                <p
+                  style={{
+                    margin: "4px 0 0 0",
+                    fontSize: "12px",
+                    color: "#666",
+                  }}
+                >
+                  Max 5 images, 10MB each (JPG, PNG, WebP)
+                </p>
+
+                {/* Image Previews */}
+                {imagePreviewUrls.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: "12px",
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(100px, 1fr))",
+                      gap: "8px",
+                    }}
+                  >
+                    {imagePreviewUrls.map((url, index) => (
+                      <div key={index} style={{ position: "relative" }}>
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
+                          style={{
+                            width: "100%",
+                            height: "100px",
+                            objectFit: "cover",
+                            borderRadius: 4,
+                            border: "1px solid #ddd",
+                          }}
+                        />
+                        <button
+                          onClick={() => removeImage(index)}
+                          style={{
+                            position: "absolute",
+                            top: "-8px",
+                            right: "-8px",
+                            background: "#f44336",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "50%",
+                            width: "24px",
+                            height: "24px",
+                            fontSize: "16px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div
               style={{
                 marginBottom: 15,
@@ -1595,6 +2210,11 @@ const AdminPortal: React.FC = () => {
                   setManualLat("");
                   setManualLng("");
                   setCoordinateSource("map");
+                  // Reset image states
+                  imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+                  setSelectedImages([]);
+                  setImagePreviewUrls([]);
+                  setUploadingImages(false);
                 }}
                 style={{
                   padding: "10px 20px",
@@ -1611,23 +2231,29 @@ const AdminPortal: React.FC = () => {
               </button>
               <button
                 onClick={submitStationForm}
-                disabled={formSubmitting || !formName.trim()}
+                disabled={formSubmitting || uploadingImages || !formName.trim()}
                 style={{
                   padding: "10px 20px",
                   background:
-                    formSubmitting || !formName.trim() ? "#ccc" : "#4CAF50",
+                    formSubmitting || uploadingImages || !formName.trim()
+                      ? "#ccc"
+                      : "#4CAF50",
                   color: "white",
                   border: "none",
                   borderRadius: 4,
                   cursor:
-                    formSubmitting || !formName.trim()
+                    formSubmitting || uploadingImages || !formName.trim()
                       ? "not-allowed"
                       : "pointer",
                   fontSize: "14px",
                   fontWeight: 600,
                 }}
               >
-                {formSubmitting ? "⏳ Adding..." : "✅ Add Station"}
+                {formSubmitting
+                  ? "⏳ Adding Station..."
+                  : uploadingImages
+                    ? "📷 Uploading Images..."
+                    : "✅ Add Station"}
               </button>
             </div>
           </div>
