@@ -2,7 +2,11 @@
 const rlBuckets = new Map(); // ip -> { count, reset }
 function rateLimit(req, res, next) {
   try {
-    const key = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress || "unknown";
+    const key =
+      req.ip ||
+      req.headers["x-forwarded-for"] ||
+      req.connection.remoteAddress ||
+      "unknown";
     const now = Date.now();
     let bucket = rlBuckets.get(key);
     if (!bucket || now > bucket.reset) {
@@ -47,6 +51,7 @@ const {
   getNearbyStations,
   getAllStations,
   getStationById,
+  deleteStation,
   getStationsByBrand,
   searchStations,
   getDatabaseStats,
@@ -61,11 +66,17 @@ const app = express();
 const port = process.env.PORT || 3001;
 const OSRM_TIMEOUT_MS = parseInt(process.env.OSRM_TIMEOUT_MS || "15000", 10);
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
-const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10); // 1 minute default
+const RATE_LIMIT_WINDOW_MS = parseInt(
+  process.env.RATE_LIMIT_WINDOW_MS || "60000",
+  10,
+); // 1 minute default
 const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX || "10", 10); // 10 requests per window per IP
 
 console.log(
   "🚀 Starting Fuel Finder backend server with PostgreSQL + PostGIS...",
+);
+console.log(
+  `🔑 ADMIN_API_KEY configured: ${ADMIN_API_KEY ? `"${ADMIN_API_KEY}"` : "NOT SET"}`,
 );
 
 // Test database connection on startup
@@ -158,7 +169,8 @@ app.post("/api/stations", rateLimit, async (req, res) => {
     if (Math.abs(latNum) > 90 || Math.abs(lngNum) > 180) {
       return res.status(400).json({
         error: "Invalid coordinate range",
-        message: "Latitude must be between -90 and 90, longitude between -180 and 180",
+        message:
+          "Latitude must be between -90 and 90, longitude between -180 and 180",
       });
     }
 
@@ -166,15 +178,16 @@ app.post("/api/stations", rateLimit, async (req, res) => {
     const payload = {
       name: name.trim(),
       brand: (brand && String(brand).trim()) || "Local",
-      fuel_price: fuel_price != null && fuel_price !== "" ? Number(fuel_price) : null,
+      fuel_price:
+        fuel_price != null && fuel_price !== "" ? Number(fuel_price) : null,
       services: Array.isArray(services)
         ? services
         : typeof services === "string" && services.trim().length
-        ? services
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean)
-        : [],
+          ? services
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          : [],
       address: address ? String(address).trim() : null,
       phone: phone ? String(phone).trim() : null,
       operating_hours: operating_hours || null,
@@ -189,7 +202,9 @@ app.post("/api/stations", rateLimit, async (req, res) => {
     // Reuse transformer to keep response consistent with other endpoints
     const transformed = transformStationData([created])[0];
 
-    console.log(`🆕 Station created: ${transformed.name} (${transformed.brand}) @ ${transformed.location.lat},${transformed.location.lng}`);
+    console.log(
+      `🆕 Station created: ${transformed.name} (${transformed.brand}) @ ${transformed.location.lat},${transformed.location.lng}`,
+    );
     res.status(201).json(transformed);
   } catch (err) {
     console.error("❌ Error creating station:", err.message || err);
@@ -273,7 +288,9 @@ app.get("/api/pois", async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error("❌ Error fetching POIs:", err.message);
-    res.status(500).json({ error: "Failed to fetch POIs", message: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch POIs", message: err.message });
   }
 });
 
@@ -285,10 +302,16 @@ app.get("/api/pois/nearby", async (req, res) => {
     const radius = parseInt(req.query.radiusMeters || "3000", 10);
 
     if (!isFinite(lat) || !isFinite(lng)) {
-      return res.status(400).json({ error: "Invalid coordinates", message: "lat and lng parameters must be valid numbers" });
+      return res.status(400).json({
+        error: "Invalid coordinates",
+        message: "lat and lng parameters must be valid numbers",
+      });
     }
     if (radius < 100 || radius > 50000) {
-      return res.status(400).json({ error: "Invalid radius", message: "radiusMeters must be between 100 and 50000" });
+      return res.status(400).json({
+        error: "Invalid radius",
+        message: "radiusMeters must be between 100 and 50000",
+      });
     }
 
     const pois = await getNearbyPois(lat, lng, radius);
@@ -296,8 +319,21 @@ app.get("/api/pois/nearby", async (req, res) => {
     res.json(data);
   } catch (err) {
     console.error("❌ Error fetching nearby POIs:", err.message);
-    res.status(500).json({ error: "Failed to fetch nearby POIs", message: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch nearby POIs", message: err.message });
   }
+});
+
+// Debug endpoint to check API key configuration
+app.get("/api/admin/debug", (req, res) => {
+  const headerKey = req.header("x-api-key");
+  res.json({
+    adminApiKeyConfigured: !!ADMIN_API_KEY,
+    adminApiKeyValue: ADMIN_API_KEY || "NOT SET",
+    receivedHeaderKey: headerKey || "NOT PROVIDED",
+    keysMatch: headerKey === ADMIN_API_KEY,
+  });
 });
 
 // Create a new POI (protected by optional API key)
@@ -305,35 +341,68 @@ app.post("/api/pois", rateLimit, async (req, res) => {
   try {
     if (ADMIN_API_KEY) {
       const headerKey = req.header("x-api-key");
+      console.log(
+        `🔍 POI Creation Debug - Expected: "${ADMIN_API_KEY}", Received: "${headerKey || "NOT PROVIDED"}"`,
+      );
       if (!headerKey || headerKey !== ADMIN_API_KEY) {
-        return res.status(401).json({ error: "Unauthorized", message: "Invalid or missing API key" });
+        console.log(
+          `❌ API Key mismatch - Expected: "${ADMIN_API_KEY}", Got: "${headerKey}"`,
+        );
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
       }
+      console.log(`✅ API Key validated successfully`);
     }
 
     const { name, type, lat, lng } = req.body || {};
     if (!name || typeof name !== "string" || name.trim().length < 2) {
-      return res.status(400).json({ error: "Invalid name", message: "'name' must be at least 2 characters" });
+      return res.status(400).json({
+        error: "Invalid name",
+        message: "'name' must be at least 2 characters",
+      });
     }
     const allowed = new Set(["gas", "convenience", "repair"]);
     if (!type || typeof type !== "string" || !allowed.has(type)) {
-      return res.status(400).json({ error: "Invalid type", message: "type must be one of: gas, convenience, repair" });
+      return res.status(400).json({
+        error: "Invalid type",
+        message: "type must be one of: gas, convenience, repair",
+      });
     }
     if (!isFinite(parseFloat(lat)) || !isFinite(parseFloat(lng))) {
-      return res.status(400).json({ error: "Invalid coordinates", message: "'lat' and 'lng' must be valid numbers" });
+      return res.status(400).json({
+        error: "Invalid coordinates",
+        message: "'lat' and 'lng' must be valid numbers",
+      });
     }
     const latNum = parseFloat(lat);
     const lngNum = parseFloat(lng);
     if (Math.abs(latNum) > 90 || Math.abs(lngNum) > 180) {
-      return res.status(400).json({ error: "Invalid coordinate range", message: "Latitude must be between -90 and 90, longitude between -180 and 180" });
+      return res.status(400).json({
+        error: "Invalid coordinate range",
+        message:
+          "Latitude must be between -90 and 90, longitude between -180 and 180",
+      });
     }
 
-    const created = await addPoi({ name: name.trim(), type, lat: latNum, lng: lngNum });
+    const created = await addPoi({
+      name: name.trim(),
+      type,
+      lat: latNum,
+      lng: lngNum,
+    });
     const data = transformPoiData([created])[0];
-    console.log(`🆕 POI created: ${data.name} (${data.type}) @ ${data.location.lat},${data.location.lng}`);
+    console.log(
+      `🆕 POI created: ${data.name} (${data.type}) @ ${data.location.lat},${data.location.lng}`,
+    );
     res.status(201).json(data);
   } catch (err) {
     console.error("❌ Error creating POI:", err.message || err);
-    res.status(500).json({ error: "Failed to create POI", message: err?.message || "Unknown error" });
+    res.status(500).json({
+      error: "Failed to create POI",
+      message: err?.message || "Unknown error",
+    });
   }
 });
 
@@ -343,21 +412,31 @@ app.delete("/api/pois/:id", async (req, res) => {
     if (ADMIN_API_KEY) {
       const headerKey = req.header("x-api-key");
       if (!headerKey || headerKey !== ADMIN_API_KEY) {
-        return res.status(401).json({ error: "Unauthorized", message: "Invalid or missing API key" });
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
       }
     }
     const id = parseInt(req.params.id);
     if (!isFinite(id)) {
-      return res.status(400).json({ error: "Invalid id", message: "id must be a number" });
+      return res
+        .status(400)
+        .json({ error: "Invalid id", message: "id must be a number" });
     }
     const deleted = await deletePoi(id);
     if (!deleted) {
-      return res.status(404).json({ error: "Not found", message: `No POI with id ${id}` });
+      return res
+        .status(404)
+        .json({ error: "Not found", message: `No POI with id ${id}` });
     }
     res.json({ success: true, id });
   } catch (err) {
     console.error("❌ Error deleting POI:", err.message || err);
-    res.status(500).json({ error: "Failed to delete POI", message: err?.message || "Unknown error" });
+    res.status(500).json({
+      error: "Failed to delete POI",
+      message: err?.message || "Unknown error",
+    });
   }
 });
 
@@ -533,6 +612,46 @@ app.get("/api/stations/:id", async (req, res) => {
   }
 });
 
+// Delete a station (protected by optional API key)
+app.delete("/api/stations/:id", async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const stationId = parseInt(req.params.id);
+    if (!isFinite(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    const deleted = await deleteStation(stationId);
+    if (!deleted) {
+      return res.status(404).json({
+        error: "Not found",
+        message: `No station with id ${stationId}`,
+      });
+    }
+
+    console.log(`🗑️ Station deleted: ${deleted.name} (ID: ${stationId})`);
+    res.json({ success: true, id: stationId });
+  } catch (err) {
+    console.error("❌ Error deleting station:", err.message || err);
+    res.status(500).json({
+      error: "Failed to delete station",
+      message: err?.message || "Unknown error",
+    });
+  }
+});
+
 // Search stations by name, brand, or address
 app.get("/api/stations/search", async (req, res) => {
   try {
@@ -679,7 +798,8 @@ app.get("/api/route", async (req, res) => {
       }
     } catch (_) {}
 
-    const ipv4Lookup = (hostname, options, cb) => dns.lookup(hostname, { family: 4 }, cb);
+    const ipv4Lookup = (hostname, options, cb) =>
+      dns.lookup(hostname, { family: 4 }, cb);
     const httpAgent = new http.Agent({ keepAlive: true });
     const httpsAgent = new https.Agent({ keepAlive: true });
 
@@ -701,7 +821,8 @@ app.get("/api/route", async (req, res) => {
     const maxTries = 2; // primary + maybe fallback
     for (let i = 0; i < maxTries; i++) {
       try {
-        const targetUrl = i === 0 ? osrmUrl : (isDefaultHttps ? fallbackUrl : osrmUrl);
+        const targetUrl =
+          i === 0 ? osrmUrl : isDefaultHttps ? fallbackUrl : osrmUrl;
         if (i === 1 && isDefaultHttps) {
           console.warn(`↩️  Retrying OSRM via HTTP fallback: ${targetUrl}`);
         }
@@ -710,7 +831,10 @@ app.get("/api/route", async (req, res) => {
       } catch (e) {
         attempts.push(e);
         const isNetworkish =
-          e?.code === "ETIMEDOUT" || e?.code === "ECONNRESET" || e?.code === "EAI_AGAIN" || e?.response == null;
+          e?.code === "ETIMEDOUT" ||
+          e?.code === "ECONNRESET" ||
+          e?.code === "EAI_AGAIN" ||
+          e?.response == null;
         if (i < maxTries - 1 && (isDefaultHttps || isNetworkish)) {
           // small backoff before retry
           await new Promise((r) => setTimeout(r, 800 * (i + 1)));
@@ -767,7 +891,11 @@ app.get("/api/route", async (req, res) => {
     }
 
     // Handle specific network errors
-    if (err?.code === "ENOTFOUND" || err?.code === "ECONNREFUSED" || err?.code === "EAI_AGAIN") {
+    if (
+      err?.code === "ENOTFOUND" ||
+      err?.code === "ECONNREFUSED" ||
+      err?.code === "EAI_AGAIN"
+    ) {
       return res.status(503).json({
         error: "Routing service unavailable",
         message: "Unable to connect to OSRM routing service",
@@ -784,7 +912,9 @@ app.get("/api/route", async (req, res) => {
         undefined;
       return res.status(502).json({
         error: "Routing service error",
-        message: detailMsg ? `OSRM ${status}: ${detailMsg}` : `OSRM returned status ${status}`,
+        message: detailMsg
+          ? `OSRM ${status}: ${detailMsg}`
+          : `OSRM returned status ${status}`,
       });
     }
 
@@ -858,6 +988,9 @@ app.listen(port, () => {
   );
   console.log(
     `   🔹 POST /api/stations                         - Create station (x-api-key protected if ADMIN_API_KEY set)`,
+  );
+  console.log(
+    `   🔹 DELETE /api/stations/:id                   - Delete station (x-api-key protected if ADMIN_API_KEY set)`,
   );
   console.log(
     `   🔹 GET  /api/pois                             - All POIs (custom markers)`,
