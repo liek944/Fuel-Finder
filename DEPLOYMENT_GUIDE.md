@@ -28,6 +28,52 @@ Internet → [Frontend (Vercel)] → [Backend API (Railway)] → [PostgreSQL+Pos
    - Go to PostgreSQL service → Connect → Web Editor
    - Run: `CREATE EXTENSION IF NOT EXISTS postgis;`
 
+## 🔧 Environment Variables Configuration
+
+### Backend Environment Variables (Railway)
+
+Set these in your Railway backend service:
+
+```env
+# Database (auto-configured by Railway PostgreSQL)
+DATABASE_URL=postgresql://user:pass@host:port/dbname
+
+# API Configuration
+PORT=3001
+NODE_ENV=production
+ADMIN_API_KEY=your-secure-admin-key-here
+
+# Optional: Rate limiting
+RATE_LIMIT_MAX=10
+RATE_LIMIT_WINDOW_MS=60000
+```
+
+### Frontend Environment Variables (Vercel)
+
+**CRITICAL**: Set the backend URL in Vercel environment variables:
+
+```env
+# Production API URL (Replace with your actual Railway backend URL)
+REACT_APP_API_BASE_URL=https://your-backend-name.up.railway.app
+
+# Build optimizations
+GENERATE_SOURCEMAP=false
+```
+
+### 🚨 Common Deployment Issues
+
+#### Issue 1: Hardcoded localhost URLs
+**Problem**: Frontend tries to connect to `http://localhost:3001` in production
+**Solution**: Environment variables are now configured to handle this automatically
+
+#### Issue 2: CORS Errors
+**Problem**: Frontend can't connect to backend due to CORS
+**Solution**: Backend should allow your frontend domain in CORS settings
+
+#### Issue 3: API Key Missing
+**Problem**: Admin functions don't work
+**Solution**: Set `ADMIN_API_KEY` in both frontend and backend environments
+
 ### Step 2: Deploy Backend to Railway
 
 1. **Connect GitHub repository**:
