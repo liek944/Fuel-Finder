@@ -177,3 +177,34 @@
     text-align: center;
     margin: 20px;
 }
+
+/* Animated route line */
+@keyframes dashAnimation {
+    0% {
+        stroke-dashoffset: 25;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+.animated-route {
+    animation: dashAnimation 1s linear infinite;
+}
+
+/* Route line glow effect */
+@keyframes routeGlow {
+    0%,
+    100% {
+        filter: drop-shadow(0 0 3px rgba(66, 165, 245, 0.6));
+    }
+    50% {
+        filter: drop-shadow(0 0 8px rgba(66, 165, 245, 0.9));
+    }
+}
+
+.animated-route {
+    animation:
+        dashAnimation 1s linear infinite,
+        routeGlow 2s ease-in-out infinite;
+}

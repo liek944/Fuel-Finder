@@ -424,9 +424,12 @@ const MainApp: React.FC = () => {
     const matchesPrice = station.fuel_price <= maxPrice;
     const matchesSearch =
       searchQuery === "" ||
-      station.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      station.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      station.address.toLowerCase().includes(searchQuery.toLowerCase());
+      (station.name &&
+        station.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (station.brand &&
+        station.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (station.address &&
+        station.address.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesBrand && matchesPrice && matchesSearch;
   });
@@ -455,6 +458,36 @@ const MainApp: React.FC = () => {
   const clearRoute = () => {
     setRouteData(null);
     setRoutingTo(null);
+  };
+
+  // Route to nearest station
+  const routeToNearestStation = () => {
+    if (!position || filteredStations.length === 0) return;
+
+    // Find the nearest station based on distance
+    let nearestStation = filteredStations[0];
+    let minDistance = calculateDistance(
+      position[0],
+      position[1],
+      nearestStation.location.lat,
+      nearestStation.location.lng,
+    );
+
+    for (const station of filteredStations) {
+      const distance = calculateDistance(
+        position[0],
+        position[1],
+        station.location.lat,
+        station.location.lng,
+      );
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestStation = station;
+      }
+    }
+
+    // Route to the nearest station
+    getRoute(nearestStation);
   };
 
   // Get unique brands for filter
@@ -549,14 +582,47 @@ const MainApp: React.FC = () => {
           </Popup>
         </Marker>
 
-        {/* Route polyline */}
+        {/* Route polyline with layered styling */}
         {routeData &&
           routeData.coordinates &&
           routeData.coordinates.length > 0 && (
-            <Polyline
-              positions={routeData.coordinates}
-              pathOptions={{ color: "#2E7D32", weight: 5, opacity: 0.85 }}
-            />
+            <>
+              {/* Background shadow line */}
+              <Polyline
+                positions={routeData.coordinates}
+                pathOptions={{
+                  color: "#000000",
+                  weight: 9,
+                  opacity: 0.3,
+                  lineCap: "round",
+                  lineJoin: "round",
+                }}
+              />
+              {/* Main route line */}
+              <Polyline
+                positions={routeData.coordinates}
+                pathOptions={{
+                  color: "#1976D2",
+                  weight: 6,
+                  opacity: 0.9,
+                  lineCap: "round",
+                  lineJoin: "round",
+                }}
+              />
+              {/* Animated dashed overlay */}
+              <Polyline
+                positions={routeData.coordinates}
+                pathOptions={{
+                  color: "#42A5F5",
+                  weight: 4,
+                  opacity: 0.8,
+                  dashArray: "10, 15",
+                  lineCap: "round",
+                  lineJoin: "round",
+                }}
+                className="animated-route"
+              />
+            </>
           )}
 
         {/* Station markers */}
@@ -867,6 +933,40 @@ const MainApp: React.FC = () => {
               <div>📍 POIs: {pois.length}</div>
               {loading && <div style={{ color: "#2196F3" }}>⏳ Loading...</div>}
             </div>
+
+            {/* Route to Nearest Station Button */}
+            {filteredStations.length > 0 && (
+              <button
+                onClick={routeToNearestStation}
+                disabled={loading}
+                style={{
+                  width: "100%",
+                  marginTop: 15,
+                  padding: "12px",
+                  background: "#4CAF50",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  opacity: loading ? 0.7 : 1,
+                  transition: "all 0.2s ease",
+                }}
+                onMouseOver={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = "#45a049";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = "#4CAF50";
+                  }
+                }}
+              >
+                🚗 Route to Nearest Station
+              </button>
+            )}
           </>
         )}
 
