@@ -88,9 +88,9 @@ GENERATE_SOURCEMAP=false
    - Start Command: `npm start`
    - Health Check Path: `/api/health`
 
-2. **Attach a Persistent Disk for uploads** (images are saved to `backend/uploads/...`):
+2. **Attach a Persistent Disk for uploads** (server serves from `backend/uploads/...`):
    - Add Disk → Size e.g. 1–5 GB → Mount Path: `/opt/render/project/src/backend/uploads`
-   - This ensures uploaded images persist across deploys.
+   - This matches `server.js` which serves static files from `path.join(__dirname, "uploads/...")` where `__dirname` is `/backend`.
 
 3. **Configure Environment Variables**:
    ```
