@@ -60,7 +60,7 @@
   **AI Prompt:**
   "Guide me to implement Leaflet popups that display station details. Show: name, brand, fuel price, services (WiFi, car wash, etc.). Use HTML templates inside popups. Optionally style with CSS for better UX."
 
-* [ ] **Search & Filters**
+* [x] **Search & Filters**
   **AI Prompt:**
   "Help me add a search bar and filter system for stations. Backend: support queries by fuel type, price range, and open/closed status. Frontend: dropdowns and inputs that send query params to `/stations`. Update markers dynamically."
 
@@ -96,7 +96,7 @@
 
 ### ⏳ Phase 4 – Admin & Analytics
 
-* [ ] **Admin Dashboard (CRUD for stations)**
+* [x] **Admin Dashboard (CRUD for stations)**
   **AI Prompt:**
   "Help me build an admin dashboard with CRUD for station data. Backend: `/admin/stations` routes (create, update, delete). Frontend: React/Vue forms with validation. Use JWT for admin authentication."
 
@@ -116,7 +116,7 @@
 
 ### ⏳ Phase 5 – Performance & Deployment
 
-* [ ] **Offline Mode (PWA)**
+* [x] **Offline Mode (PWA)**
   **AI Prompt:**
   "Help me turn Fuel Finder into a Progressive Web App. Enable service workers to cache map tiles, routes, and station data. Allow limited offline functionality."
 
