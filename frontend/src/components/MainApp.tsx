@@ -9,7 +9,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { getImageUrl } from "../utils/api";
+import { getImageUrl, getApiUrl } from "../utils/api";
 
 // Fix Leaflet's default icon issues
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
@@ -383,11 +383,12 @@ const MainApp: React.FC = () => {
     const fetchStations = async () => {
       setLoading(true);
       try {
-        const response = await fetch(
-          `http://localhost:3001/api/stations/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
+        const url = getApiUrl(
+          `/api/stations/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
         );
+        const response = await fetch(url);
         const data = await response.json();
-        setStations(data);
+        setStations(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to fetch stations:", error);
       } finally {
@@ -404,11 +405,12 @@ const MainApp: React.FC = () => {
 
     const fetchPOIs = async () => {
       try {
-        const response = await fetch(
-          `http://localhost:3001/api/pois/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
+        const url = getApiUrl(
+          `/api/pois/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
         );
+        const response = await fetch(url);
         const data = await response.json();
-        setPois(data);
+        setPois(Array.isArray(data) ? data : []);
       } catch (error) {
         console.warn("Failed to fetch POIs:", error);
       }
@@ -442,11 +444,15 @@ const MainApp: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `http://localhost:3001/api/route?start=${position[0]},${position[1]}&end=${station.location.lat},${station.location.lng}`,
+      const url = getApiUrl(
+        `/api/route?start=${position[0]},${position[1]}&end=${station.location.lat},${station.location.lng}`,
       );
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Route API error: ${response.status}`);
+      }
       const data = await response.json();
-      setRouteData(data);
+      setRouteData(data || null);
     } catch (error) {
       console.error("Failed to get route:", error);
     } finally {
@@ -553,6 +559,7 @@ const MainApp: React.FC = () => {
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          crossOrigin="anonymous"
         />
 
         {/* Search radius circle */}
