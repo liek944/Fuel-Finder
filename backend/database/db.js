@@ -6,16 +6,20 @@ try {
 const { Pool } = require("pg");
 
 // Database configuration
+const useSSL = process.env.DB_SSL === "true" || process.env.DB_SSL === "1";
+
 const dbConfig = {
   user: process.env.DB_USER || "postgres",
   host: process.env.DB_HOST || "localhost",
   database: process.env.DB_NAME || "fuel_finder",
   password: process.env.DB_PASSWORD || "password",
-  port: process.env.DB_PORT || 5432,
-  // Connection pool settings
-  max: 20, // maximum number of clients in the pool
-  idleTimeoutMillis: 30000, // close idle clients after 30 seconds
-  connectionTimeoutMillis: 2000, // return an error after 2 seconds if connection could not be established
+  port: Number(process.env.DB_PORT || 5432),
+  // Connection pool settings (configurable via env)
+  max: Number(process.env.DB_MAX_CONNECTIONS || 20),
+  idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS || 30000),
+  connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS || 2000),
+  // SSL for managed providers like Supabase
+  ssl: useSSL ? { rejectUnauthorized: false } : undefined,
 };
 
 // Create a connection pool
