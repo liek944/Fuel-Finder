@@ -1,5 +1,7 @@
-// Load environment variables
-require("dotenv").config();
+// Load environment variables (optional in production)
+try {
+  require("dotenv").config();
+} catch (_) {}
 
 const { Pool } = require("pg");
 
