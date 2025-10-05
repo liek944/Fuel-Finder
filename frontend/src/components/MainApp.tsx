@@ -131,6 +131,8 @@ const createPOIIcon = (type: string) => {
     gas: "⛽",
     convenience: "🏪",
     repair: "🔧",
+    car_wash: "🚗",
+    motor_shop: "🏍️",
   };
 
   const size = 32;
@@ -804,15 +806,16 @@ const MainApp: React.FC = () => {
         style={{
           position: "absolute",
           top: 80,
-          left: 20,
+          left: 10,
           background: "rgba(255,255,255,0.95)",
-          padding: "15px",
-          borderRadius: 8,
+          padding: "10px",
+          borderRadius: 6,
           boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
           zIndex: 1100,
-          width: isSearchPanelCollapsed ? 200 : 280,
+          width: isSearchPanelCollapsed ? 150 : 240,
           maxHeight: "calc(100vh - 100px)",
           overflowY: "auto",
+          fontSize: "13px",
         }}
       >
         <div
@@ -820,18 +823,18 @@ const MainApp: React.FC = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 15,
+            marginBottom: 10,
           }}
         >
-          <h3 style={{ margin: 0, color: "#333" }}>🔍 Search & Filter</h3>
+          <h3 style={{ margin: 0, color: "#333", fontSize: "14px" }}>🔍 Filter</h3>
           <button
             onClick={() => setIsSearchPanelCollapsed(!isSearchPanelCollapsed)}
             style={{
               background: "none",
               border: "none",
               cursor: "pointer",
-              fontSize: "16px",
-              padding: "4px",
+              fontSize: "14px",
+              padding: "2px",
               borderRadius: 4,
               display: "flex",
               alignItems: "center",
@@ -846,28 +849,28 @@ const MainApp: React.FC = () => {
         {!isSearchPanelCollapsed && (
           <>
             {/* Search bar */}
-            <div style={{ marginBottom: 15 }}>
+            <div style={{ marginBottom: 10 }}>
               <input
                 type="text"
-                placeholder="Search stations..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "8px",
+                  padding: "6px 8px",
                   border: "1px solid #ddd",
                   borderRadius: 4,
-                  fontSize: "14px",
+                  fontSize: "12px",
                 }}
               />
             </div>
 
             {/* Search radius */}
-            <div style={{ marginBottom: 15 }}>
+            <div style={{ marginBottom: 10 }}>
               <label
-                style={{ display: "block", marginBottom: 5, fontWeight: 600 }}
+                style={{ display: "block", marginBottom: 3, fontWeight: 600, fontSize: "12px" }}
               >
-                Search Radius: {(radiusMeters / 1000).toFixed(1)} km
+                Radius: {(radiusMeters / 1000).toFixed(1)} km
               </label>
               <input
                 type="range"
@@ -881,9 +884,9 @@ const MainApp: React.FC = () => {
             </div>
 
             {/* Brand filter */}
-            <div style={{ marginBottom: 15 }}>
+            <div style={{ marginBottom: 10 }}>
               <label
-                style={{ display: "block", marginBottom: 5, fontWeight: 600 }}
+                style={{ display: "block", marginBottom: 3, fontWeight: 600, fontSize: "12px" }}
               >
                 Brand
               </label>
@@ -892,10 +895,10 @@ const MainApp: React.FC = () => {
                 onChange={(e) => setSelectedBrand(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "8px",
+                  padding: "6px 8px",
                   border: "1px solid #ddd",
                   borderRadius: 4,
-                  fontSize: "14px",
+                  fontSize: "12px",
                 }}
               >
                 <option value="All">All Brands</option>
@@ -908,11 +911,11 @@ const MainApp: React.FC = () => {
             </div>
 
             {/* Price filter */}
-            <div style={{ marginBottom: 15 }}>
+            <div style={{ marginBottom: 10 }}>
               <label
-                style={{ display: "block", marginBottom: 5, fontWeight: 600 }}
+                style={{ display: "block", marginBottom: 3, fontWeight: 600, fontSize: "12px" }}
               >
-                Max Price: ₱{maxPrice}/L
+                Max: ₱{maxPrice}/L
               </label>
               <input
                 type="range"
@@ -929,15 +932,15 @@ const MainApp: React.FC = () => {
             <div
               style={{
                 background: "#f5f5f5",
-                padding: "10px",
+                padding: "8px",
                 borderRadius: 4,
-                fontSize: 14,
+                fontSize: 11,
                 color: "#666",
               }}
             >
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>📊 Results</div>
-              <div>⛽ Stations: {filteredStations.length}</div>
-              <div>📍 POIs: {pois.length}</div>
+              <div style={{ fontWeight: 600, marginBottom: 2, fontSize: "12px" }}>📊 Results</div>
+              <div>⛽ {filteredStations.length} stations</div>
+              <div>📍 {pois.length} POIs</div>
               {loading && <div style={{ color: "#2196F3" }}>⏳ Loading...</div>}
             </div>
 
@@ -948,14 +951,14 @@ const MainApp: React.FC = () => {
                 disabled={loading}
                 style={{
                   width: "100%",
-                  marginTop: 15,
-                  padding: "12px",
+                  marginTop: 10,
+                  padding: "8px",
                   background: "#4CAF50",
                   color: "white",
                   border: "none",
-                  borderRadius: 6,
+                  borderRadius: 4,
                   cursor: loading ? "not-allowed" : "pointer",
-                  fontSize: "14px",
+                  fontSize: "12px",
                   fontWeight: 600,
                   opacity: loading ? 0.7 : 1,
                   transition: "all 0.2s ease",
@@ -971,7 +974,7 @@ const MainApp: React.FC = () => {
                   }
                 }}
               >
-                🚗 Route to Nearest Station
+                🚗 Nearest
               </button>
             )}
           </>
@@ -996,62 +999,6 @@ const MainApp: React.FC = () => {
         )}
       </div>
 
-      {/* Brand Legend */}
-      <div
-        style={{
-          position: "absolute",
-          top: 80,
-          right: 20,
-          background: "rgba(255,255,255,0.95)",
-          padding: "12px",
-          borderRadius: 8,
-          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-          zIndex: 1100,
-          width: 200,
-        }}
-      >
-        <div style={{ fontWeight: 700, marginBottom: 8, color: "#333" }}>
-          🏷️ Station Brands
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {[
-            { brand: "Your Location", color: "#000", icon: "📍" },
-            { brand: "Shell", color: "#FFCC00", icon: "⛽" },
-            { brand: "Petron", color: "#FF0000", icon: "⛽" },
-            { brand: "Caltex", color: "#0066B2", icon: "⛽" },
-            { brand: "Phoenix", color: "#FF6600", icon: "⛽" },
-            { brand: "Local", color: "#ff6b6b", icon: "⛽" },
-            { brand: "POIs", color: "#FF9800", icon: "📍" },
-          ].map((item) => (
-            <div
-              key={item.brand}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 12,
-              }}
-            >
-              <div
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: "50%",
-                  background: item.color,
-                  border: "1px solid #333",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 8,
-                }}
-              >
-                {item.icon}
-              </div>
-              <span style={{ color: "#666" }}>{item.brand}</span>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
