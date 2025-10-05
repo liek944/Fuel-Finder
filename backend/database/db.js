@@ -33,9 +33,29 @@ async function testConnection() {
     const client = await pool.connect();
     console.log("✅ Database connected successfully");
 
-    // Test PostGIS extension
-    const result = await client.query("SELECT PostGIS_Version()");
-    console.log("✅ PostGIS version:", result.rows[0].postgis_version);
+    // Test PostGIS extension and try to enable if missing
+    try {
+      const result = await client.query("SELECT PostGIS_Version()");
+      console.log("✅ PostGIS version:", result.rows[0].postgis_version);
+    } catch (e) {
+      console.warn(
+        "⚠️  PostGIS not available. Attempting to enable extension (CREATE EXTENSION postgis)...",
+      );
+      try {
+        await client.query("CREATE EXTENSION IF NOT EXISTS postgis");
+        const verify = await client.query("SELECT PostGIS_Version()");
+        console.log("✅ PostGIS enabled. Version:", verify.rows[0].postgis_version);
+      } catch (enableErr) {
+        console.error(
+          "❌ Unable to enable PostGIS automatically. Please enable PostGIS on the database:",
+          enableErr.message,
+        );
+        console.error(
+          "   • Connect to your database and run: CREATE EXTENSION IF NOT EXISTS postgis;",
+        );
+        throw enableErr;
+      }
+    }
 
     client.release();
   } catch (err) {
