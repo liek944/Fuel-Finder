@@ -393,11 +393,11 @@ app.post("/api/pois", rateLimit, async (req, res) => {
         message: "'name' must be at least 2 characters",
       });
     }
-    const allowed = new Set(["gas", "convenience", "repair"]);
+    const allowed = new Set(["gas", "convenience", "repair", "car_wash", "motor_shop"]);
     if (!type || typeof type !== "string" || !allowed.has(type)) {
       return res.status(400).json({
         error: "Invalid type",
-        message: "type must be one of: gas, convenience, repair",
+        message: "type must be one of: gas, convenience, repair, car_wash, motor_shop",
       });
     }
     if (!isFinite(parseFloat(lat)) || !isFinite(parseFloat(lng))) {

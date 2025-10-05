@@ -194,6 +194,8 @@ const createPOIIcon = (type: string) => {
     gas: "⛽",
     convenience: "🏪",
     repair: "🔧",
+    car_wash: "🚗",
+    motor_shop: "🏍️",
   };
 
   const size = 32;
@@ -394,29 +396,26 @@ const AdminPortal: React.FC = () => {
   const [pois, setPois] = useState<POI[]>([]);
   const [customMarkers, setCustomMarkers] = useState<CustomMarker[]>([]);
 
-  // Form states
+  // Form states - unified for all POI types
   const [addingMode, setAddingMode] = useState<boolean>(false);
   const [pendingLatLng, setPendingLatLng] = useState<{
     lat: number;
     lng: number;
   } | null>(null);
   const [formName, setFormName] = useState<string>("");
+  const [formType, setFormType] = useState<string>("gas");
   const [formBrand, setFormBrand] = useState<string>("Local");
   const [formPrice, setFormPrice] = useState<string>("60.00");
   const [formAddress, setFormAddress] = useState<string>("");
   const [formPhone, setFormPhone] = useState<string>("");
   const [formServices, setFormServices] = useState<string[]>([]);
+  const [formOpenTime, setFormOpenTime] = useState<string>("08:00");
+  const [formCloseTime, setFormCloseTime] = useState<string>("20:00");
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
   const [formMsg, setFormMsg] = useState<{
     type: "error" | "success";
     text: string;
   } | null>(null);
-
-  // Custom marker states
-  const [newMarkerName, setNewMarkerName] = useState<string>("");
-  const [newMarkerType, setNewMarkerType] = useState<string>("convenience");
-  const [newMarkerLat, setNewMarkerLat] = useState<string>("");
-  const [newMarkerLng, setNewMarkerLng] = useState<string>("");
 
   // Manual coordinate input states
   const [manualLat, setManualLat] = useState<string>("");
@@ -533,7 +532,7 @@ const AdminPortal: React.FC = () => {
         if (data.keysMatch) {
           return true;
         } else {
-          alert(`Invalid API key. Expected: ${data.adminApiKeyValue}`);
+          alert(`Invalid API key.`);
           return false;
         }
       } else {
@@ -569,64 +568,6 @@ const AdminPortal: React.FC = () => {
     setAdminValidated(false);
     setAddingMode(false);
     setPendingLatLng(null);
-  };
-
-  const addCustomMarker = async () => {
-    const lat = parseFloat(newMarkerLat);
-    const lng = parseFloat(newMarkerLng);
-    if (
-      !isFinite(lat) ||
-      !isFinite(lng) ||
-      Math.abs(lat) > 90 ||
-      Math.abs(lng) > 180
-    ) {
-      alert("Please provide valid coordinates");
-      return;
-    }
-    const name = newMarkerName || newMarkerType;
-
-    if (isAdminEnabled) {
-      try {
-        const res = await apiPost(
-          "/api/pois",
-          {
-            name,
-            type: newMarkerType,
-            lat,
-            lng,
-          },
-          adminApiKey.trim(),
-        );
-
-        if (res.ok) {
-          fetchData(); // Refresh data
-          setNewMarkerName("");
-          setNewMarkerLat("");
-          setNewMarkerLng("");
-          alert("POI added successfully!");
-        } else {
-          const errorData = await res.json();
-          alert("Failed to add POI: " + (errorData.message || "Unknown error"));
-        }
-      } catch (err) {
-        console.error("Error adding POI:", err);
-        alert("Error adding POI");
-      }
-    } else {
-      // Add locally
-      const newMarker: CustomMarker = {
-        id: Date.now(),
-        name,
-        type: newMarkerType,
-        lat,
-        lng,
-      };
-      setCustomMarkers([...customMarkers, newMarker]);
-      setNewMarkerName("");
-      setNewMarkerLat("");
-      setNewMarkerLng("");
-      alert("Custom marker added locally!");
-    }
   };
 
   const handleImageSelection = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -848,24 +789,48 @@ const AdminPortal: React.FC = () => {
     setFormMsg(null);
 
     try {
-      // First create the station
-      const res = await apiPost(
-        "/api/stations",
-        {
-          name: formName,
-          brand: formBrand,
-          fuel_price: parseFloat(formPrice),
-          services: formServices,
-          address: formAddress,
-          phone: formPhone,
-          lat: pendingLatLng.lat,
-          lng: pendingLatLng.lng,
-        },
-        apiKey,
-      );
+      // Determine if this is a gas station or other POI
+      const isGasStation = formType === "gas";
+      const endpoint = isGasStation ? "/api/stations" : "/api/pois";
+      
+      // Prepare the payload based on POI type
+      const payload: any = {
+        name: formName,
+        lat: pendingLatLng.lat,
+        lng: pendingLatLng.lng,
+      };
+
+      if (isGasStation) {
+        payload.brand = formBrand;
+        payload.fuel_price = parseFloat(formPrice);
+        payload.services = formServices;
+        payload.address = formAddress;
+        payload.phone = formPhone;
+        // Add operating hours if both are set
+        if (formOpenTime && formCloseTime) {
+          payload.operating_hours = {
+            open: formOpenTime,
+            close: formCloseTime,
+          };
+        }
+      } else {
+        payload.type = formType;
+        payload.address = formAddress;
+        payload.phone = formPhone;
+        // Add operating hours if both are set
+        if (formOpenTime && formCloseTime) {
+          payload.operating_hours = {
+            open: formOpenTime,
+            close: formCloseTime,
+          };
+        }
+      }
+
+      // Create the station or POI
+      const res = await apiPost(endpoint, payload, apiKey);
 
       if (res.ok) {
-        const newStation = await res.json();
+        const newEntity = await res.json();
         let imageUploadSuccess = true;
 
         // Upload images if any are selected
@@ -873,8 +838,12 @@ const AdminPortal: React.FC = () => {
           setUploadingImages(true);
 
           try {
+            const imageEndpoint = isGasStation
+              ? `/api/stations/${newEntity.id}/images`
+              : `/api/pois/${newEntity.id}/images`;
+              
             const imageRes = await apiPostBase64Images(
-              `/api/stations/${newStation.id}/images`,
+              imageEndpoint,
               selectedImages,
               apiKey,
             );
@@ -891,20 +860,24 @@ const AdminPortal: React.FC = () => {
           }
         }
 
+        const entityType = isGasStation ? "Station" : "POI";
         const successMessage = imageUploadSuccess
-          ? `Station added successfully${selectedImages.length > 0 ? ` with ${selectedImages.length} image(s)` : ""}!`
-          : "Station added successfully, but image upload failed.";
+          ? `${entityType} added successfully${selectedImages.length > 0 ? ` with ${selectedImages.length} image(s)` : ""}!`
+          : `${entityType} added successfully, but image upload failed.`;
 
         setFormMsg({ type: "success", text: successMessage });
-        fetchData(); // Refresh stations
+        fetchData(); // Refresh data
 
         // Reset form
         setFormName("");
+        setFormType("gas");
         setFormBrand("Local");
         setFormPrice("60.00");
         setFormAddress("");
         setFormPhone("");
         setFormServices([]);
+        setFormOpenTime("08:00");
+        setFormCloseTime("20:00");
         setPendingLatLng(null);
         setAddingMode(false);
         setManualLat("");
@@ -920,11 +893,11 @@ const AdminPortal: React.FC = () => {
         const errorData = await res.json();
         setFormMsg({
           type: "error",
-          text: errorData.message || "Failed to add station",
+          text: errorData.message || `Failed to add ${formType === "gas" ? "station" : "POI"}`,
         });
       }
     } catch (err) {
-      console.error("Error adding station:", err);
+      console.error("Error adding POI:", err);
       setFormMsg({ type: "error", text: "Network error. Please try again." });
     } finally {
       setFormSubmitting(false);
@@ -1040,17 +1013,21 @@ const AdminPortal: React.FC = () => {
           </Popup>
         </Marker>
 
-        {/* Pending marker for new station */}
+        {/* Pending marker for new POI */}
         {pendingLatLng && isAdminEnabled && (
           <Marker
             position={[pendingLatLng.lat, pendingLatLng.lng]}
-            icon={createFuelStationIcon(formBrand || "Local", 0)}
+            icon={
+              formType === "gas"
+                ? createFuelStationIcon(formBrand || "Local", 0)
+                : createPOIIcon(formType)
+            }
           >
             <Popup>
               <div>
-                <b>🚧 New Station Location</b>
+                <b>🚧 New POI Location</b>
                 <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
-                  Click "Add Station" to save this location
+                  Type: {formType}
                 </div>
                 <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
                   {pendingLatLng.lat.toFixed(6)}, {pendingLatLng.lng.toFixed(6)}
@@ -1506,25 +1483,25 @@ const AdminPortal: React.FC = () => {
 
         {isAdminEnabled && (
           <>
-            {/* Station Management */}
+            {/* Unified POI Management */}
             <div
               style={{
                 marginBottom: 20,
                 padding: "12px",
-                background: "#e3f2fd",
+                background: "#e8f5e9",
                 borderRadius: 6,
               }}
             >
               <h4
                 style={{
                   margin: "0 0 10px 0",
-                  color: "#1976d2",
+                  color: "#2e7d32",
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
                 }}
               >
-                ⛽ Station Management
+                📍 POI Management
               </h4>
               <button
                 onClick={() => {
@@ -1534,6 +1511,15 @@ const AdminPortal: React.FC = () => {
                   setManualLat("");
                   setManualLng("");
                   setCoordinateSource("map");
+                  setFormName("");
+                  setFormType("gas");
+                  setFormBrand("Local");
+                  setFormPrice("60.00");
+                  setFormAddress("");
+                  setFormPhone("");
+                  setFormServices([]);
+                  setFormOpenTime("08:00");
+                  setFormCloseTime("20:00");
                   // Reset image states
                   imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
                   setSelectedImages([]);
@@ -1543,7 +1529,7 @@ const AdminPortal: React.FC = () => {
                 style={{
                   width: "100%",
                   padding: "12px",
-                  background: addingMode ? "#f44336" : "#2196F3",
+                  background: addingMode ? "#f44336" : "#4CAF50",
                   color: "white",
                   border: "none",
                   borderRadius: 4,
@@ -1552,7 +1538,7 @@ const AdminPortal: React.FC = () => {
                   fontSize: "14px",
                 }}
               >
-                {addingMode ? "❌ Cancel Adding Station" : "➕ Add New Station"}
+                {addingMode ? "❌ Cancel" : "➕ Add New POI"}
               </button>
               {addingMode && (
                 <>
@@ -1569,12 +1555,12 @@ const AdminPortal: React.FC = () => {
                       style={{
                         margin: "0 0 8px 0",
                         fontSize: 12,
-                        color: "#f57c00",
+                        color: "#2e7d32",
                         fontWeight: 600,
                       }}
                     >
-                      👆 Click on the map to place a new station OR enter
-                      coordinates manually:
+                      👆 Click on the map to place a new POI OR enter coordinates
+                      manually:
                     </p>
                     <p
                       style={{
@@ -1652,102 +1638,6 @@ const AdminPortal: React.FC = () => {
               )}
             </div>
 
-            {/* POI Management */}
-            <div
-              style={{
-                marginBottom: 20,
-                padding: "12px",
-                background: "#fff3e0",
-                borderRadius: 6,
-              }}
-            >
-              <h4
-                style={{
-                  margin: "0 0 10px 0",
-                  color: "#f57c00",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                📍 POI Management
-              </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <input
-                  placeholder="POI Name"
-                  value={newMarkerName}
-                  onChange={(e) => setNewMarkerName(e.target.value)}
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #ddd",
-                    borderRadius: 4,
-                    fontSize: "14px",
-                  }}
-                />
-                <select
-                  value={newMarkerType}
-                  onChange={(e) => setNewMarkerType(e.target.value)}
-                  style={{
-                    padding: "8px",
-                    border: "1px solid #ddd",
-                    borderRadius: 4,
-                    fontSize: "14px",
-                  }}
-                >
-                  <option value="gas">⛽ Gas Station</option>
-                  <option value="convenience">🏪 Convenience Store</option>
-                  <option value="repair">🔧 Repair Shop</option>
-                </select>
-                <div style={{ display: "flex", gap: 4 }}>
-                  <input
-                    placeholder="Latitude"
-                    value={newMarkerLat}
-                    onChange={(e) => setNewMarkerLat(e.target.value)}
-                    style={{
-                      flex: 1,
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      borderRadius: 4,
-                      fontSize: "14px",
-                    }}
-                  />
-                  <input
-                    placeholder="Longitude"
-                    value={newMarkerLng}
-                    onChange={(e) => setNewMarkerLng(e.target.value)}
-                    style={{
-                      flex: 1,
-                      padding: "8px",
-                      border: "1px solid #ddd",
-                      borderRadius: 4,
-                      fontSize: "14px",
-                    }}
-                  />
-                </div>
-                <button
-                  onClick={addCustomMarker}
-                  disabled={!newMarkerLat || !newMarkerLng}
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    background:
-                      !newMarkerLat || !newMarkerLng ? "#ccc" : "#FF9800",
-                    color: "white",
-                    border: "none",
-                    borderRadius: 4,
-                    cursor:
-                      !newMarkerLat || !newMarkerLng
-                        ? "not-allowed"
-                        : "pointer",
-                    fontWeight: 600,
-                    fontSize: "14px",
-                  }}
-                >
-                  ➕ Add POI
-                </button>
-              </div>
-            </div>
-
             {/* Stats */}
             <div
               style={{
@@ -1816,7 +1706,7 @@ const AdminPortal: React.FC = () => {
         )}
       </div>
 
-      {/* Station Form Overlay */}
+      {/* POI Form Overlay */}
       {isAdminEnabled && addingMode && pendingLatLng && (
         <div
           style={{
@@ -1853,8 +1743,74 @@ const AdminPortal: React.FC = () => {
                 gap: 8,
               }}
             >
-              ⛽ Add New Station
+              📍 Add New POI
             </h3>
+
+            {/* POI Type Selector with Icons */}
+            <div style={{ marginBottom: 20 }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: 10,
+                  fontWeight: 600,
+                  color: "#555",
+                  fontSize: "14px",
+                }}
+              >
+                POI Type *
+              </label>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 10,
+                }}
+              >
+                {[
+                  { type: "gas", icon: "⛽", label: "Gas Station", color: "#2196F3" },
+                  { type: "convenience", icon: "🏪", label: "Store", color: "#FF9800" },
+                  { type: "repair", icon: "🔧", label: "Repair", color: "#9C27B0" },
+                  { type: "car_wash", icon: "🚗", label: "Car Wash", color: "#00BCD4" },
+                  { type: "motor_shop", icon: "🏍️", label: "Motor Shop", color: "#F44336" },
+                ].map((poiType) => (
+                  <button
+                    key={poiType.type}
+                    onClick={() => {
+                      setFormType(poiType.type);
+                      if (poiType.type !== "gas") {
+                        setFormBrand("");
+                        setFormPrice("");
+                      } else {
+                        setFormBrand("Local");
+                        setFormPrice("60.00");
+                      }
+                    }}
+                    style={{
+                      padding: "15px 10px",
+                      background:
+                        formType === poiType.type ? poiType.color : "#f5f5f5",
+                      color: formType === poiType.type ? "white" : "#666",
+                      border:
+                        formType === poiType.type
+                          ? `2px solid ${poiType.color}`
+                          : "2px solid #ddd",
+                      borderRadius: 8,
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 6,
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    <span style={{ fontSize: "24px" }}>{poiType.icon}</span>
+                    <span>{poiType.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div style={{ marginBottom: 15 }}>
               <label
@@ -1865,7 +1821,7 @@ const AdminPortal: React.FC = () => {
                   color: "#555",
                 }}
               >
-                Station Name *
+                Name *
               </label>
               <input
                 value={formName}
@@ -1877,68 +1833,77 @@ const AdminPortal: React.FC = () => {
                   borderRadius: 4,
                   fontSize: "14px",
                 }}
-                placeholder="e.g. Shell Roxas"
+                placeholder={
+                  formType === "gas"
+                    ? "e.g. Shell Roxas"
+                    : "e.g. 7-Eleven Roxas"
+                }
               />
             </div>
 
-            <div style={{ marginBottom: 15 }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: 5,
-                  fontWeight: 600,
-                  color: "#555",
-                }}
-              >
-                Brand
-              </label>
-              <select
-                value={formBrand}
-                onChange={(e) => setFormBrand(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #ddd",
-                  borderRadius: 4,
-                  fontSize: "14px",
-                }}
-              >
-                <option value="Local">Local</option>
-                <option value="Shell">Shell</option>
-                <option value="Petron">Petron</option>
-                <option value="Caltex">Caltex</option>
-                <option value="Phoenix">Phoenix</option>
-                <option value="Unioil">Unioil</option>
-                <option value="Seaoil">Seaoil</option>
-              </select>
-            </div>
+            {/* Show these fields only for gas stations */}
+            {formType === "gas" && (
+              <>
+                <div style={{ marginBottom: 15 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: 5,
+                      fontWeight: 600,
+                      color: "#555",
+                    }}
+                  >
+                    Brand
+                  </label>
+                  <select
+                    value={formBrand}
+                    onChange={(e) => setFormBrand(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: 4,
+                      fontSize: "14px",
+                    }}
+                  >
+                    <option value="Local">Local</option>
+                    <option value="Shell">Shell</option>
+                    <option value="Petron">Petron</option>
+                    <option value="Caltex">Caltex</option>
+                    <option value="Phoenix">Phoenix</option>
+                    <option value="Unioil">Unioil</option>
+                    <option value="Seaoil">Seaoil</option>
+                  </select>
+                </div>
 
-            <div style={{ marginBottom: 15 }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: 5,
-                  fontWeight: 600,
-                  color: "#555",
-                }}
-              >
-                Fuel Price (₱/L)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formPrice}
-                onChange={(e) => setFormPrice(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  border: "1px solid #ddd",
-                  borderRadius: 4,
-                  fontSize: "14px",
-                }}
-              />
-            </div>
+                <div style={{ marginBottom: 15 }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: 5,
+                      fontWeight: 600,
+                      color: "#555",
+                    }}
+                  >
+                    Fuel Price (₱/L)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formPrice}
+                    onChange={(e) => setFormPrice(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: 4,
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
+              </>
+            )}
 
             <div style={{ marginBottom: 15 }}>
               <label
@@ -1990,6 +1955,7 @@ const AdminPortal: React.FC = () => {
               />
             </div>
 
+            {/* Operating Hours */}
             <div style={{ marginBottom: 15 }}>
               <label
                 style={{
@@ -1999,42 +1965,108 @@ const AdminPortal: React.FC = () => {
                   color: "#555",
                 }}
               >
-                Services (Check all that apply)
+                🕐 Operating Hours (Optional)
               </label>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 8,
-                }}
-              >
-                {[
-                  "WiFi",
-                  "Car Wash",
-                  "ATM",
-                  "Convenience Store",
-                  "Restroom",
-                  "Tire Service",
-                ].map((service) => (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
                   <label
-                    key={service}
                     style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: "14px",
+                      display: "block",
+                      marginBottom: 4,
+                      fontSize: "12px",
+                      color: "#666",
                     }}
                   >
-                    <input
-                      type="checkbox"
-                      checked={formServices.includes(service)}
-                      onChange={() => toggleService(service)}
-                    />
-                    {service}
+                    Open Time
                   </label>
-                ))}
+                  <input
+                    type="time"
+                    value={formOpenTime}
+                    onChange={(e) => setFormOpenTime(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: 4,
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
+                <div>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: 4,
+                      fontSize: "12px",
+                      color: "#666",
+                    }}
+                  >
+                    Close Time
+                  </label>
+                  <input
+                    type="time"
+                    value={formCloseTime}
+                    onChange={(e) => setFormCloseTime(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid #ddd",
+                      borderRadius: 4,
+                      fontSize: "14px",
+                    }}
+                  />
+                </div>
               </div>
             </div>
+
+            {/* Show services only for gas stations */}
+            {formType === "gas" && (
+              <div style={{ marginBottom: 15 }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 8,
+                    fontWeight: 600,
+                    color: "#555",
+                  }}
+                >
+                  Services (Check all that apply)
+                </label>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 8,
+                  }}
+                >
+                  {[
+                    "WiFi",
+                    "Car Wash",
+                    "ATM",
+                    "Convenience Store",
+                    "Restroom",
+                    "Tire Service",
+                  ].map((service) => (
+                    <label
+                      key={service}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        fontSize: "14px",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formServices.includes(service)}
+                        onChange={() => toggleService(service)}
+                      />
+                      {service}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Image Upload Section */}
             <div style={{ marginBottom: 15 }}>
@@ -2046,7 +2078,7 @@ const AdminPortal: React.FC = () => {
                   color: "#555",
                 }}
               >
-                📷 Station Images (Optional)
+                📷 Images (Optional)
               </label>
               <div
                 style={{
@@ -2203,11 +2235,14 @@ const AdminPortal: React.FC = () => {
                   setFormMsg(null);
                   // Reset form
                   setFormName("");
+                  setFormType("gas");
                   setFormBrand("Local");
                   setFormPrice("60.00");
                   setFormAddress("");
                   setFormPhone("");
                   setFormServices([]);
+                  setFormOpenTime("08:00");
+                  setFormCloseTime("20:00");
                   setManualLat("");
                   setManualLng("");
                   setCoordinateSource("map");
@@ -2251,10 +2286,10 @@ const AdminPortal: React.FC = () => {
                 }}
               >
                 {formSubmitting
-                  ? "⏳ Adding Station..."
+                  ? "⏳ Adding POI..."
                   : uploadingImages
                     ? "📷 Uploading Images..."
-                    : "✅ Add Station"}
+                    : "✅ Add POI"}
               </button>
             </div>
           </div>
