@@ -44,11 +44,22 @@ interface POI {
   id: number;
   name: string;
   type: string;
+  address?: string;
+  phone?: string;
+  operating_hours?: any;
   location: {
     lat: number;
     lng: number;
   };
   distance_meters?: number;
+  images?: Array<{
+    id: number;
+    filename: string;
+    original_filename: string;
+    url: string;
+    thumbnailUrl: string;
+    alt_text?: string;
+  }>;
 }
 
 interface RouteData {
@@ -356,10 +367,11 @@ const MainApp: React.FC = () => {
   const [selectedBrand, setSelectedBrand] = useState<string>("All");
   const [maxPrice, setMaxPrice] = useState<number>(100);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
-  const [routingTo, setRoutingTo] = useState<Station | null>(null);
+  const [routingTo, setRoutingTo] = useState<Station | POI | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] =
     useState<boolean>(false);
+  const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
 
   // Get user location
   useEffect(() => {
@@ -468,34 +480,68 @@ const MainApp: React.FC = () => {
     setRoutingTo(null);
   };
 
-  // Route to nearest station
-  const routeToNearestStation = () => {
-    if (!position || filteredStations.length === 0) return;
+  // Check if a location is currently open based on operating hours
+  const isLocationOpen = (operatingHours: any): boolean => {
+    if (!operatingHours || !operatingHours.open || !operatingHours.close) {
+      return true; // Assume open if no hours specified
+    }
 
-    // Find the nearest station based on distance
-    let nearestStation = filteredStations[0];
-    let minDistance = calculateDistance(
-      position[0],
-      position[1],
-      nearestStation.location.lat,
-      nearestStation.location.lng,
-    );
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    return currentTime >= operatingHours.open && currentTime <= operatingHours.close;
+  };
 
-    for (const station of filteredStations) {
-      const distance = calculateDistance(
-        position[0],
-        position[1],
-        station.location.lat,
-        station.location.lng,
-      );
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestStation = station;
+  // Route to nearest POI of selected type
+  const routeToNearestPOI = () => {
+    if (!position) return;
+
+    let locations: (Station | POI)[] = [];
+
+    // Get locations based on selected type
+    if (selectedRouteType === "gas") {
+      locations = filteredStations;
+    } else {
+      locations = pois.filter(poi => poi.type === selectedRouteType);
+    }
+
+    if (locations.length === 0) {
+      alert(`No ${selectedRouteType === "gas" ? "gas stations" : selectedRouteType.replace("_", " ")} found in the area.`);
+      return;
+    }
+
+    // Sort by distance and filter by open status
+    const sortedLocations = [...locations]
+      .map(loc => ({
+        location: loc,
+        distance: calculateDistance(
+          position[0],
+          position[1],
+          loc.location.lat,
+          loc.location.lng,
+        ),
+      }))
+      .sort((a, b) => a.distance - b.distance);
+
+    // Find the first open location
+    let targetLocation = null;
+    for (const item of sortedLocations) {
+      const loc = item.location;
+      if (isLocationOpen(loc.operating_hours)) {
+        targetLocation = loc;
+        break;
       }
     }
 
-    // Route to the nearest station
-    getRoute(nearestStation);
+    // If no open location found, use the nearest one anyway
+    if (!targetLocation && sortedLocations.length > 0) {
+      targetLocation = sortedLocations[0].location;
+      alert("The nearest location appears to be closed, but routing anyway.");
+    }
+
+    if (targetLocation) {
+      getRoute(targetLocation);
+    }
   };
 
   // Get unique brands for filter
@@ -944,14 +990,36 @@ const MainApp: React.FC = () => {
               {loading && <div style={{ color: "#2196F3" }}>⏳ Loading...</div>}
             </div>
 
-            {/* Route to Nearest Station Button */}
-            {filteredStations.length > 0 && (
+            {/* Route to Nearest POI Section */}
+            <div style={{ marginTop: 10 }}>
+              <label
+                style={{ display: "block", marginBottom: 5, fontWeight: 600, fontSize: "12px" }}
+              >
+                🧭 Route To
+              </label>
+              <select
+                value={selectedRouteType}
+                onChange={(e) => setSelectedRouteType(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #ddd",
+                  borderRadius: 4,
+                  fontSize: "12px",
+                  marginBottom: 8,
+                }}
+              >
+                <option value="gas">⛽ Gas Station</option>
+                <option value="convenience">🏪 Convenience Store</option>
+                <option value="repair">🔧 Repair Shop</option>
+                <option value="car_wash">🚗 Car Wash</option>
+                <option value="motor_shop">🏍️ Motor Shop</option>
+              </select>
               <button
-                onClick={routeToNearestStation}
+                onClick={routeToNearestPOI}
                 disabled={loading}
                 style={{
                   width: "100%",
-                  marginTop: 10,
                   padding: "8px",
                   background: "#4CAF50",
                   color: "white",
@@ -974,9 +1042,9 @@ const MainApp: React.FC = () => {
                   }
                 }}
               >
-                🚗 Nearest
+                🚗 Go to Nearest
               </button>
-            )}
+            </div>
           </>
         )}
 
