@@ -450,16 +450,16 @@ const MainApp: React.FC = () => {
     return matchesBrand && matchesPrice && matchesSearch;
   });
 
-  // Get route to station
-  const getRoute = async (station: Station) => {
+  // Get route to station or POI
+  const getRoute = async (location: Station | POI) => {
     if (!position) return;
 
-    setRoutingTo(station);
+    setRoutingTo(location);
     setLoading(true);
 
     try {
       const url = getApiUrl(
-        `/api/route?start=${position[0]},${position[1]}&end=${station.location.lat},${station.location.lng}`,
+        `/api/route?start=${position[0]},${position[1]}&end=${location.location.lat},${location.location.lng}`,
       );
       const response = await fetch(url);
       if (!response.ok) {
@@ -829,8 +829,23 @@ const MainApp: React.FC = () => {
               <div>
                 <b>{poi.name}</b>
                 <div style={{ marginTop: 4, color: "#666" }}>
-                  Type: {poi.type}
+                  Type: {poi.type.replace("_", " ")}
                 </div>
+                {poi.address && (
+                  <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
+                    📍 {poi.address}
+                  </div>
+                )}
+                {poi.phone && (
+                  <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
+                    📞 {poi.phone}
+                  </div>
+                )}
+                {poi.operating_hours && (
+                  <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
+                    🕐 {poi.operating_hours.open} - {poi.operating_hours.close}
+                  </div>
+                )}
                 <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
                   Distance:{" "}
                   {calculateDistance(
@@ -841,6 +856,63 @@ const MainApp: React.FC = () => {
                   ).toFixed(2)}{" "}
                   km
                 </div>
+
+                <div style={{ marginTop: 8 }}>
+                  {routingTo?.id === poi.id ? (
+                    <button
+                      onClick={clearRoute}
+                      style={{
+                        background: "#f44336",
+                        color: "white",
+                        border: "none",
+                        padding: "6px 12px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      ❌ Clear Route
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => getRoute(poi)}
+                      style={{
+                        background: "#4CAF50",
+                        color: "white",
+                        border: "none",
+                        padding: "6px 12px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      🗺️ Get Directions
+                    </button>
+                  )}
+                </div>
+
+                {routeData && routingTo?.id === poi.id && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: "8px",
+                      background: "#e8f5e8",
+                      borderRadius: 4,
+                      fontSize: 12,
+                    }}
+                  >
+                    <div>
+                      <strong>Distance:</strong>{" "}
+                      {(routeData.distance / 1000).toFixed(1)} km
+                    </div>
+                    <div>
+                      <strong>Duration:</strong>{" "}
+                      {Math.round(routeData.duration / 60)} min
+                    </div>
+                  </div>
+                )}
               </div>
             </Popup>
           </Marker>
