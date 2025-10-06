@@ -73,6 +73,9 @@ const {
   validateBase64Image,
 } = require("./services/imageService");
 
+// Import Supabase storage service
+const { verifySupabaseConnection } = require("./services/supabaseStorage");
+
 const app = express();
 const port = process.env.PORT || 3001;
 const OSRM_TIMEOUT_MS = parseInt(process.env.OSRM_TIMEOUT_MS || "15000", 10);
@@ -488,11 +491,14 @@ function transformPoiData(pois) {
 
 // API Routes
 
-// Health check endpoint with database connectivity test
+// Health check endpoint with database and Supabase connectivity test
 app.get("/api/health", async (req, res) => {
   try {
     await testConnection();
     const stats = await getDatabaseStats();
+    
+    // Check Supabase Storage connection
+    const supabaseStatus = await verifySupabaseConnection();
 
     res.json({
       status: "ok",
@@ -501,6 +507,12 @@ app.get("/api/health", async (req, res) => {
       database: {
         connected: true,
         total_stations: stats.total_stations?.[0]?.count || 0,
+      },
+      storage: {
+        type: supabaseStatus.connected ? "supabase" : "local",
+        connected: supabaseStatus.connected,
+        bucket: supabaseStatus.bucket,
+        message: supabaseStatus.message,
       },
     });
   } catch (err) {
