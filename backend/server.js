@@ -74,7 +74,11 @@ const {
 } = require("./services/imageService");
 
 // Import Supabase storage service
-const { verifySupabaseConnection } = require("./services/supabaseStorage");
+const { 
+  verifySupabaseConnection, 
+  getSupabaseImageUrl, 
+  isSupabaseStorageAvailable 
+} = require("./services/supabaseStorage");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -303,11 +307,25 @@ function transformStationData(stations) {
       lat: parseFloat(station.lat),
       lng: parseFloat(station.lng),
     },
-    images: (station.images || []).map((image) => ({
-      ...image,
-      url: `/api/images/stations/${image.filename}`,
-      thumbnailUrl: `/api/images/thumbnails/thumb_${image.filename}`,
-    })),
+    images: (station.images || []).map((image) => {
+      let imageUrl, thumbnailUrl;
+      
+      if (isSupabaseStorageAvailable()) {
+        // Use Supabase Storage URLs
+        imageUrl = getSupabaseImageUrl(`stations/${image.filename}`);
+        thumbnailUrl = getSupabaseImageUrl(`thumbnails/thumb_${image.filename}`);
+      } else {
+        // Fallback to local URLs
+        imageUrl = `/api/images/stations/${image.filename}`;
+        thumbnailUrl = `/api/images/thumbnails/thumb_${image.filename}`;
+      }
+      
+      return {
+        ...image,
+        url: imageUrl,
+        thumbnailUrl: thumbnailUrl,
+      };
+    }),
   }));
 }
 
