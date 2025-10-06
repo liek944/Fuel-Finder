@@ -4,6 +4,10 @@ const path = require("path");
 const fs = require("fs").promises;
 const { v4: uuidv4 } = require("uuid");
 const { pool } = require("../database/db");
+const {
+  processAndUploadImage,
+  deleteImageFiles,
+} = require("./supabaseStorage");
 
 // Configure multer for memory storage (we'll process and save manually)
 const upload = multer({
@@ -118,7 +122,7 @@ async function processAndSaveImage(
   }
 }
 
-// Save image metadata to database
+// Save image metadata to database (with Supabase URLs)
 async function saveImageToDatabase(
   imageData,
   stationId = null,
@@ -134,9 +138,10 @@ async function saveImageToDatabase(
       INSERT INTO images (
         filename, original_filename, mime_type, size, width, height,
         station_id, poi_id, display_order, is_primary, alt_text,
+        image_url, thumbnail_url, storage_path, thumbnail_storage_path,
         created_at, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW()
       ) RETURNING *
     `,
       [
@@ -151,6 +156,10 @@ async function saveImageToDatabase(
         displayOrder,
         isPrimary,
         altText,
+        imageData.imageUrl || null,
+        imageData.thumbnailUrl || null,
+        imageData.storagePath || null,
+        imageData.thumbnailStoragePath || null,
       ],
     );
 
@@ -175,8 +184,9 @@ async function getStationImages(stationId) {
 
     return result.rows.map((image) => ({
       ...image,
-      imageUrl: `/api/images/stations/${image.filename}`,
-      thumbnailUrl: `/api/images/thumbnails/thumb_${image.filename}`,
+      // Use Supabase URLs if available, fallback to local paths
+      imageUrl: image.image_url || `/api/images/stations/${image.filename}`,
+      thumbnailUrl: image.thumbnail_url || `/api/images/thumbnails/thumb_${image.filename}`,
     }));
   } finally {
     client.release();
@@ -198,8 +208,9 @@ async function getPoiImages(poiId) {
 
     return result.rows.map((image) => ({
       ...image,
-      imageUrl: `/api/images/pois/${image.filename}`,
-      thumbnailUrl: `/api/images/thumbnails/thumb_${image.filename}`,
+      // Use Supabase URLs if available, fallback to local paths
+      imageUrl: image.image_url || `/api/images/pois/${image.filename}`,
+      thumbnailUrl: image.thumbnail_url || `/api/images/thumbnails/thumb_${image.filename}`,
     }));
   } finally {
     client.release();
@@ -223,23 +234,32 @@ async function deleteImage(imageId) {
     // Delete from database
     await client.query("DELETE FROM images WHERE id = $1", [imageId]);
 
-    // Delete files
-    const targetType = image.station_id ? "station" : "poi";
-    const imagePath = path.join(
-      "uploads/images",
-      `${targetType}s`,
-      image.filename,
-    );
-    const thumbnailPath = path.join(
-      "uploads/images/thumbnails",
-      `thumb_${image.filename}`,
-    );
+    // Delete from Supabase Storage if storage paths exist
+    if (image.storage_path && image.thumbnail_storage_path) {
+      try {
+        await deleteImageFiles(image.storage_path, image.thumbnail_storage_path);
+      } catch (storageError) {
+        console.warn("Warning: Could not delete from Supabase Storage:", storageError.message);
+      }
+    } else {
+      // Fallback: Delete local files (for backward compatibility)
+      const targetType = image.station_id ? "station" : "poi";
+      const imagePath = path.join(
+        "uploads/images",
+        `${targetType}s`,
+        image.filename,
+      );
+      const thumbnailPath = path.join(
+        "uploads/images/thumbnails",
+        `thumb_${image.filename}`,
+      );
 
-    try {
-      await fs.unlink(imagePath);
-      await fs.unlink(thumbnailPath);
-    } catch (fileError) {
-      console.warn("Warning: Could not delete image files:", fileError.message);
+      try {
+        await fs.unlink(imagePath);
+        await fs.unlink(thumbnailPath);
+      } catch (fileError) {
+        console.warn("Warning: Could not delete local image files:", fileError.message);
+      }
     }
 
     return image;
@@ -314,7 +334,7 @@ async function updateImageOrder(imageId, displayOrder) {
   }
 }
 
-// Upload multiple images
+// Upload multiple images (multipart uploads)
 async function uploadImages(files, stationId = null, poiId = null) {
   const results = [];
   const errors = [];
@@ -322,12 +342,14 @@ async function uploadImages(files, stationId = null, poiId = null) {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     try {
-      const targetType = stationId ? "station" : "poi";
-      const imageData = await processAndSaveImage(
+      // Process and upload to Supabase
+      const imageData = await processAndUploadImage(
         file.buffer,
         file.originalname,
-        targetType,
+        stationId,
+        poiId,
       );
+      
       const savedImage = await saveImageToDatabase(
         imageData,
         stationId,
@@ -338,8 +360,8 @@ async function uploadImages(files, stationId = null, poiId = null) {
 
       results.push({
         ...savedImage,
-        imageUrl: `/api/images/${targetType}s/${savedImage.filename}`,
-        thumbnailUrl: `/api/images/thumbnails/thumb_${savedImage.filename}`,
+        imageUrl: savedImage.image_url || imageData.imageUrl,
+        thumbnailUrl: savedImage.thumbnail_url || imageData.thumbnailUrl,
       });
     } catch (error) {
       console.error(`Error processing file ${file.originalname}:`, error);
@@ -353,11 +375,12 @@ async function uploadImages(files, stationId = null, poiId = null) {
   return { results, errors };
 }
 
-// Process base64 encoded image
+// Process base64 encoded image (now uses Supabase Storage)
 async function processBase64Image(
   base64Data,
   originalFilename,
-  targetType = "station",
+  stationId = null,
+  poiId = null,
 ) {
   try {
     // Extract mime type and data from base64 string
@@ -393,8 +416,8 @@ async function processBase64Image(
     // Generate filename if not provided
     const filename = originalFilename || `image_${Date.now()}.jpg`;
 
-    // Process the image using existing function
-    return await processAndSaveImage(buffer, filename, targetType);
+    // Process and upload to Supabase Storage
+    return await processAndUploadImage(buffer, filename, stationId, poiId);
   } catch (error) {
     console.error("Error processing base64 image:", error);
     throw error;
@@ -453,15 +476,17 @@ async function uploadBase64Images(
     });
 
     try {
-      const targetType = stationId ? "station" : "poi";
       const filename = imageData.filename || `image_${Date.now()}_${i}.jpg`;
 
+      // Process and upload to Supabase
       const processedImage = await processBase64Image(
         imageData.base64,
         filename,
-        targetType,
+        stationId,
+        poiId,
       );
 
+      // Save to database with Supabase URLs
       const savedImage = await saveImageToDatabase(
         processedImage,
         stationId,
@@ -473,8 +498,8 @@ async function uploadBase64Images(
 
       results.push({
         ...savedImage,
-        imageUrl: `/api/images/${targetType}s/${savedImage.filename}`,
-        thumbnailUrl: `/api/images/thumbnails/thumb_${savedImage.filename}`,
+        imageUrl: savedImage.image_url || processedImage.imageUrl,
+        thumbnailUrl: savedImage.thumbnail_url || processedImage.thumbnailUrl,
       });
       console.log(
         `✅ Successfully processed image ${i + 1}: ${savedImage.filename}`,
@@ -482,7 +507,8 @@ async function uploadBase64Images(
           savedImageId: savedImage.id,
           displayOrder: savedImage.display_order,
           isPrimary: savedImage.is_primary,
-          imageUrl: `/api/images/${targetType}s/${savedImage.filename}`,
+          imageUrl: savedImage.image_url,
+          supabaseStorage: !!savedImage.storage_path,
         },
       );
     } catch (error) {
