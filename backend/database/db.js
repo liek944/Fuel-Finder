@@ -130,9 +130,29 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
 
 async function getAllPois() {
   const query = `
-    SELECT id, name, type, ST_X(geom) as lng, ST_Y(geom) as lat
-    FROM pois
-    ORDER BY created_at DESC;
+    SELECT
+        p.id,
+        p.name,
+        p.type,
+        ST_X(p.geom) as lng,
+        ST_Y(p.geom) as lat,
+        COALESCE(
+            JSON_AGG(
+                JSON_BUILD_OBJECT(
+                    'id', i.id,
+                    'filename', i.filename,
+                    'original_filename', i.original_filename,
+                    'display_order', i.display_order,
+                    'is_primary', i.is_primary,
+                    'alt_text', i.alt_text
+                ) ORDER BY i.display_order, i.id
+            ) FILTER (WHERE i.id IS NOT NULL),
+            '[]'::json
+        ) as images
+    FROM pois p
+    LEFT JOIN images i ON p.id = i.poi_id
+    GROUP BY p.id, p.name, p.type, p.geom
+    ORDER BY p.created_at DESC;
   `;
   const result = await pool.query(query);
   return result.rows;
@@ -140,10 +160,30 @@ async function getAllPois() {
 
 async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
   const query = `
-    SELECT id, name, type, ST_X(geom) as lng, ST_Y(geom) as lat,
-      ST_Distance(geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography) AS distance_meters
-    FROM pois
-    WHERE ST_DWithin(geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography, $3)
+    SELECT
+        p.id,
+        p.name,
+        p.type,
+        ST_X(p.geom) as lng,
+        ST_Y(p.geom) as lat,
+        ST_Distance(p.geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography) AS distance_meters,
+        COALESCE(
+            JSON_AGG(
+                JSON_BUILD_OBJECT(
+                    'id', i.id,
+                    'filename', i.filename,
+                    'original_filename', i.original_filename,
+                    'display_order', i.display_order,
+                    'is_primary', i.is_primary,
+                    'alt_text', i.alt_text
+                ) ORDER BY i.display_order, i.id
+            ) FILTER (WHERE i.id IS NOT NULL),
+            '[]'::json
+        ) as images
+    FROM pois p
+    LEFT JOIN images i ON p.id = i.poi_id
+    WHERE ST_DWithin(p.geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography, $3)
+    GROUP BY p.id, p.name, p.type, p.geom
     ORDER BY distance_meters ASC;
   `;
   const result = await pool.query(query, [latitude, longitude, radiusMeters]);

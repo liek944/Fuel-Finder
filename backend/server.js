@@ -504,6 +504,25 @@ function transformPoiData(pois) {
       lat: parseFloat(poi.lat),
       lng: parseFloat(poi.lng),
     },
+    images: (poi.images || []).map((image) => {
+      let imageUrl, thumbnailUrl;
+      
+      if (isSupabaseStorageAvailable()) {
+        // Use Supabase Storage URLs
+        imageUrl = getSupabaseImageUrl(`pois/${image.filename}`);
+        thumbnailUrl = getSupabaseImageUrl(`thumbnails/thumb_${image.filename}`);
+      } else {
+        // Fallback to local URLs
+        imageUrl = `/api/images/pois/${image.filename}`;
+        thumbnailUrl = `/api/images/thumbnails/thumb_${image.filename}`;
+      }
+      
+      return {
+        ...image,
+        url: imageUrl,
+        thumbnailUrl: thumbnailUrl,
+      };
+    }),
   }));
 }
 

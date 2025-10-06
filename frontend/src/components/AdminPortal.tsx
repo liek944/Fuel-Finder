@@ -1299,14 +1299,9 @@ const AdminPortal: React.FC = () => {
                       onClick={async () => {
                         if (window.confirm(`Delete "${poi.name}"?`)) {
                           try {
-                            const res = await fetch(
-                              `http://localhost:3001/api/pois/${poi.id}`,
-                              {
-                                method: "DELETE",
-                                headers: adminApiKey.trim()
-                                  ? { "x-api-key": adminApiKey.trim() }
-                                  : {},
-                              },
+                            const res = await apiDelete(
+                              `/api/pois/${poi.id}`,
+                              adminApiKey.trim(),
                             );
                             if (res.ok) {
                               fetchData();
