@@ -846,6 +846,15 @@ const MainApp: React.FC = () => {
                     🕐 {poi.operating_hours.open} - {poi.operating_hours.close}
                   </div>
                 )}
+
+                {/* POI Images */}
+                {poi.images && poi.images.length > 0 && (
+                  <ImageSlideshow
+                    images={poi.images}
+                    entityId={`poi-${poi.id}`}
+                  />
+                )}
+
                 <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
                   Distance:{" "}
                   {calculateDistance(
