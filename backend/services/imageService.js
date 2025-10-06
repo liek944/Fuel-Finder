@@ -5,9 +5,11 @@ const fs = require("fs").promises;
 const { v4: uuidv4 } = require("uuid");
 const { pool } = require("../database/db");
 const {
-  processAndUploadImage,
-  deleteImageFiles,
-} = require("./supabaseStorage");
+  uploadImageToSupabase,
+  deleteImageFromSupabase,
+  getSupabaseImageUrl,
+  isSupabaseStorageAvailable
+} = require('./supabaseStorage');
 
 // Configure multer for memory storage (we'll process and save manually)
 const upload = multer({
@@ -59,12 +61,6 @@ async function processAndSaveImage(
   const filename = `${uuidv4()}${fileExtension}`;
   const thumbnailFilename = `thumb_${filename}`;
 
-  const imagePath = path.join("uploads/images", `${targetType}s`, filename);
-  const thumbnailPath = path.join(
-    "uploads/images/thumbnails",
-    thumbnailFilename,
-  );
-
   try {
     // Process main image (optimize and resize if too large)
     const imageProcessor = sharp(fileBuffer);
@@ -80,49 +76,64 @@ async function processAndSaveImage(
       });
     }
 
-    // Optimize and save main image
-    await processedImage
+    // Optimize main image to buffer
+    const mainImageBuffer = await processedImage
       .jpeg({ quality: 85, progressive: true })
-      .toFile(imagePath);
+      .toBuffer();
 
-    // Create and save thumbnail (300px width, maintain aspect ratio)
-    await sharp(fileBuffer)
+    // Create thumbnail buffer (300px width, maintain aspect ratio)
+    const thumbnailBuffer = await sharp(fileBuffer)
       .resize(300, null, {
         withoutEnlargement: true,
         fit: "inside",
       })
       .jpeg({ quality: 80 })
-      .toFile(thumbnailPath);
+      .toBuffer();
 
-    // Get final image stats
-    const finalStats = await fs.stat(imagePath);
-    const processedMetadata = await sharp(imagePath).metadata();
+    let mainImageUrl, thumbnailUrl;
+
+    if (isSupabaseStorageAvailable()) {
+      // Upload to Supabase Storage
+      console.log(`📤 Uploading ${filename} to Supabase Storage`);
+      const mainUpload = await uploadImageToSupabase(mainImageBuffer, filename, `${targetType}s`);
+      const thumbnailUpload = await uploadImageToSupabase(thumbnailBuffer, thumbnailFilename, 'thumbnails');
+      
+      mainImageUrl = mainUpload.url;
+      thumbnailUrl = thumbnailUpload.url;
+    } else {
+      // Fallback to local storage
+      console.log(`💾 Saving ${filename} to local storage (Supabase not available)`);
+      const imagePath = path.join("uploads/images", `${targetType}s`, filename);
+      const thumbnailPath = path.join("uploads/images/thumbnails", thumbnailFilename);
+      
+      await fs.writeFile(imagePath, mainImageBuffer);
+      await fs.writeFile(thumbnailPath, thumbnailBuffer);
+      
+      mainImageUrl = `/api/images/${targetType}s/${filename}`;
+      thumbnailUrl = `/api/images/thumbnails/${thumbnailFilename}`;
+    }
+
+    // Get processed metadata
+    const processedMetadata = await sharp(mainImageBuffer).metadata();
 
     return {
       filename,
       originalFilename,
       mimetype: "image/jpeg", // We convert all to JPEG
-      size: finalStats.size,
+      size: mainImageBuffer.length,
       width: processedMetadata.width,
       height: processedMetadata.height,
       thumbnailFilename,
+      imageUrl: mainImageUrl,
+      thumbnailUrl: thumbnailUrl,
     };
   } catch (error) {
     console.error("Error processing image:", error);
-
-    // Clean up any partially created files
-    try {
-      await fs.unlink(imagePath).catch(() => {});
-      await fs.unlink(thumbnailPath).catch(() => {});
-    } catch (cleanupError) {
-      console.error("Error cleaning up files:", cleanupError);
-    }
-
     throw error;
   }
 }
 
-// Save image metadata to database (with Supabase URLs)
+// Save image metadata to database
 async function saveImageToDatabase(
   imageData,
   stationId = null,
@@ -138,10 +149,9 @@ async function saveImageToDatabase(
       INSERT INTO images (
         filename, original_filename, mime_type, size, width, height,
         station_id, poi_id, display_order, is_primary, alt_text,
-        image_url, thumbnail_url, storage_path, thumbnail_storage_path,
         created_at, updated_at
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()
       ) RETURNING *
     `,
       [
@@ -156,10 +166,6 @@ async function saveImageToDatabase(
         displayOrder,
         isPrimary,
         altText,
-        imageData.imageUrl || null,
-        imageData.thumbnailUrl || null,
-        imageData.storagePath || null,
-        imageData.thumbnailStoragePath || null,
       ],
     );
 
@@ -182,12 +188,25 @@ async function getStationImages(stationId) {
       [stationId],
     );
 
-    return result.rows.map((image) => ({
-      ...image,
-      // Use Supabase URLs if available, fallback to local paths
-      imageUrl: image.image_url || `/api/images/stations/${image.filename}`,
-      thumbnailUrl: image.thumbnail_url || `/api/images/thumbnails/thumb_${image.filename}`,
-    }));
+    return result.rows.map((image) => {
+      let imageUrl, thumbnailUrl;
+      
+      if (isSupabaseStorageAvailable()) {
+        // Use Supabase Storage URLs
+        imageUrl = getSupabaseImageUrl(`stations/${image.filename}`);
+        thumbnailUrl = getSupabaseImageUrl(`thumbnails/thumb_${image.filename}`);
+      } else {
+        // Fallback to local URLs
+        imageUrl = `/api/images/stations/${image.filename}`;
+        thumbnailUrl = `/api/images/thumbnails/thumb_${image.filename}`;
+      }
+      
+      return {
+        ...image,
+        imageUrl,
+        thumbnailUrl,
+      };
+    });
   } finally {
     client.release();
   }
@@ -206,12 +225,25 @@ async function getPoiImages(poiId) {
       [poiId],
     );
 
-    return result.rows.map((image) => ({
-      ...image,
-      // Use Supabase URLs if available, fallback to local paths
-      imageUrl: image.image_url || `/api/images/pois/${image.filename}`,
-      thumbnailUrl: image.thumbnail_url || `/api/images/thumbnails/thumb_${image.filename}`,
-    }));
+    return result.rows.map((image) => {
+      let imageUrl, thumbnailUrl;
+      
+      if (isSupabaseStorageAvailable()) {
+        // Use Supabase Storage URLs
+        imageUrl = getSupabaseImageUrl(`pois/${image.filename}`);
+        thumbnailUrl = getSupabaseImageUrl(`thumbnails/thumb_${image.filename}`);
+      } else {
+        // Fallback to local URLs
+        imageUrl = `/api/images/pois/${image.filename}`;
+        thumbnailUrl = `/api/images/thumbnails/thumb_${image.filename}`;
+      }
+      
+      return {
+        ...image,
+        imageUrl,
+        thumbnailUrl,
+      };
+    });
   } finally {
     client.release();
   }
@@ -234,32 +266,31 @@ async function deleteImage(imageId) {
     // Delete from database
     await client.query("DELETE FROM images WHERE id = $1", [imageId]);
 
-    // Delete from Supabase Storage if storage paths exist
-    if (image.storage_path && image.thumbnail_storage_path) {
-      try {
-        await deleteImageFiles(image.storage_path, image.thumbnail_storage_path);
-      } catch (storageError) {
-        console.warn("Warning: Could not delete from Supabase Storage:", storageError.message);
-      }
-    } else {
-      // Fallback: Delete local files (for backward compatibility)
-      const targetType = image.station_id ? "station" : "poi";
-      const imagePath = path.join(
-        "uploads/images",
-        `${targetType}s`,
-        image.filename,
-      );
-      const thumbnailPath = path.join(
-        "uploads/images/thumbnails",
-        `thumb_${image.filename}`,
-      );
-
-      try {
+    // Delete files
+    const targetType = image.station_id ? "station" : "poi";
+    
+    try {
+      if (isSupabaseStorageAvailable()) {
+        // Delete from Supabase Storage
+        await deleteImageFromSupabase(`${targetType}s/${image.filename}`);
+        await deleteImageFromSupabase(`thumbnails/thumb_${image.filename}`);
+      } else {
+        // Delete from local storage
+        const imagePath = path.join(
+          "uploads/images",
+          `${targetType}s`,
+          image.filename,
+        );
+        const thumbnailPath = path.join(
+          "uploads/images/thumbnails",
+          `thumb_${image.filename}`,
+        );
+        
         await fs.unlink(imagePath);
         await fs.unlink(thumbnailPath);
-      } catch (fileError) {
-        console.warn("Warning: Could not delete local image files:", fileError.message);
       }
+    } catch (fileError) {
+      console.warn("Warning: Could not delete image files:", fileError.message);
     }
 
     return image;
@@ -334,7 +365,7 @@ async function updateImageOrder(imageId, displayOrder) {
   }
 }
 
-// Upload multiple images (multipart uploads)
+// Upload multiple images
 async function uploadImages(files, stationId = null, poiId = null) {
   const results = [];
   const errors = [];
@@ -342,14 +373,12 @@ async function uploadImages(files, stationId = null, poiId = null) {
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
     try {
-      // Process and upload to Supabase
-      const imageData = await processAndUploadImage(
+      const targetType = stationId ? "station" : "poi";
+      const imageData = await processAndSaveImage(
         file.buffer,
         file.originalname,
-        stationId,
-        poiId,
+        targetType,
       );
-      
       const savedImage = await saveImageToDatabase(
         imageData,
         stationId,
@@ -360,8 +389,8 @@ async function uploadImages(files, stationId = null, poiId = null) {
 
       results.push({
         ...savedImage,
-        imageUrl: savedImage.image_url || imageData.imageUrl,
-        thumbnailUrl: savedImage.thumbnail_url || imageData.thumbnailUrl,
+        imageUrl: imageData.imageUrl,
+        thumbnailUrl: imageData.thumbnailUrl,
       });
     } catch (error) {
       console.error(`Error processing file ${file.originalname}:`, error);
@@ -375,12 +404,11 @@ async function uploadImages(files, stationId = null, poiId = null) {
   return { results, errors };
 }
 
-// Process base64 encoded image (now uses Supabase Storage)
+// Process base64 encoded image
 async function processBase64Image(
   base64Data,
   originalFilename,
-  stationId = null,
-  poiId = null,
+  targetType = "station",
 ) {
   try {
     // Extract mime type and data from base64 string
@@ -416,8 +444,8 @@ async function processBase64Image(
     // Generate filename if not provided
     const filename = originalFilename || `image_${Date.now()}.jpg`;
 
-    // Process and upload to Supabase Storage
-    return await processAndUploadImage(buffer, filename, stationId, poiId);
+    // Process the image using existing function
+    return await processAndSaveImage(buffer, filename, targetType);
   } catch (error) {
     console.error("Error processing base64 image:", error);
     throw error;
@@ -476,17 +504,15 @@ async function uploadBase64Images(
     });
 
     try {
+      const targetType = stationId ? "station" : "poi";
       const filename = imageData.filename || `image_${Date.now()}_${i}.jpg`;
 
-      // Process and upload to Supabase
       const processedImage = await processBase64Image(
         imageData.base64,
         filename,
-        stationId,
-        poiId,
+        targetType,
       );
 
-      // Save to database with Supabase URLs
       const savedImage = await saveImageToDatabase(
         processedImage,
         stationId,
@@ -498,8 +524,8 @@ async function uploadBase64Images(
 
       results.push({
         ...savedImage,
-        imageUrl: savedImage.image_url || processedImage.imageUrl,
-        thumbnailUrl: savedImage.thumbnail_url || processedImage.thumbnailUrl,
+        imageUrl: processedImage.imageUrl,
+        thumbnailUrl: processedImage.thumbnailUrl,
       });
       console.log(
         `✅ Successfully processed image ${i + 1}: ${savedImage.filename}`,
@@ -507,8 +533,7 @@ async function uploadBase64Images(
           savedImageId: savedImage.id,
           displayOrder: savedImage.display_order,
           isPrimary: savedImage.is_primary,
-          imageUrl: savedImage.image_url,
-          supabaseStorage: !!savedImage.storage_path,
+          imageUrl: processedImage.imageUrl,
         },
       );
     } catch (error) {

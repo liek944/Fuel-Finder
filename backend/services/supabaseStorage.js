@@ -1,313 +1,172 @@
-const { createClient } = require("@supabase/supabase-js");
-const sharp = require("sharp");
-const { v4: uuidv4 } = require("uuid");
+const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const bucketName = process.env.SUPABASE_STORAGE_BUCKET || "station-images";
+const storageBucket = process.env.SUPABASE_STORAGE_BUCKET || 'station-images';
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.warn(
-    "⚠️ Supabase credentials not configured. Image uploads will fail.",
-  );
-  console.warn("Please set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env");
-}
+let supabase = null;
 
-const supabase = supabaseUrl && supabaseServiceKey 
-  ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-  : null;
-
-/**
- * Process image: resize, optimize, and create thumbnail
- * Returns buffers for both main image and thumbnail
- */
-async function processImage(fileBuffer) {
-  try {
-    const imageProcessor = sharp(fileBuffer);
-    const metadata = await imageProcessor.metadata();
-
-    // Process main image (optimize and resize if too large)
-    let processedImage = imageProcessor;
-
-    // Resize if image is too large (max 1920px width, maintain aspect ratio)
-    if (metadata.width > 1920) {
-      processedImage = processedImage.resize(1920, null, {
-        withoutEnlargement: true,
-        fit: "inside",
-      });
-    }
-
-    // Convert to JPEG and optimize
-    const mainImageBuffer = await processedImage
-      .jpeg({ quality: 85, progressive: true })
-      .toBuffer();
-
-    // Create thumbnail (300px width, maintain aspect ratio)
-    const thumbnailBuffer = await sharp(fileBuffer)
-      .resize(300, null, {
-        withoutEnlargement: true,
-        fit: "inside",
-      })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-
-    // Get processed image metadata
-    const processedMetadata = await sharp(mainImageBuffer).metadata();
-
-    return {
-      mainImageBuffer,
-      thumbnailBuffer,
-      width: processedMetadata.width,
-      height: processedMetadata.height,
-      size: mainImageBuffer.length,
-    };
-  } catch (error) {
-    console.error("Error processing image:", error);
-    throw new Error(`Image processing failed: ${error.message}`);
-  }
+if (supabaseUrl && supabaseServiceKey) {
+  supabase = createClient(supabaseUrl, supabaseServiceKey);
+  console.log('🔗 Supabase Storage client initialized');
+} else {
+  console.warn('⚠️  Supabase Storage not configured - missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
 }
 
 /**
- * Upload image to Supabase Storage
- * @param {Buffer} imageBuffer - Image buffer to upload
- * @param {string} filePath - Path in bucket (e.g., "station-3/image-uuid.jpeg")
- * @param {string} contentType - MIME type (default: image/jpeg)
- * @returns {Promise<{publicUrl: string, filePath: string}>}
- */
-async function uploadToSupabase(
-  imageBuffer,
-  filePath,
-  contentType = "image/jpeg",
-) {
-  if (!supabase) {
-    throw new Error(
-      "Supabase client not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
-    );
-  }
-
-  try {
-    // Upload to Supabase Storage
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .upload(filePath, imageBuffer, {
-        contentType,
-        cacheControl: "3600",
-        upsert: false, // Don't overwrite existing files
-      });
-
-    if (error) {
-      console.error("Supabase upload error:", error);
-      throw new Error(`Supabase upload failed: ${error.message}`);
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(filePath);
-
-    if (!urlData || !urlData.publicUrl) {
-      throw new Error("Failed to get public URL from Supabase");
-    }
-
-    console.log(`✅ Uploaded to Supabase: ${filePath}`);
-
-    return {
-      publicUrl: urlData.publicUrl,
-      filePath: data.path,
-    };
-  } catch (error) {
-    console.error("Error uploading to Supabase:", error);
-    throw error;
-  }
-}
-
-/**
- * Delete image from Supabase Storage
- * @param {string} filePath - Path in bucket to delete
- * @returns {Promise<boolean>}
- */
-async function deleteFromSupabase(filePath) {
-  if (!supabase) {
-    console.warn("Supabase client not initialized. Cannot delete file.");
-    return false;
-  }
-
-  try {
-    const { error } = await supabase.storage
-      .from(bucketName)
-      .remove([filePath]);
-
-    if (error) {
-      console.error(`Failed to delete ${filePath}:`, error);
-      return false;
-    }
-
-    console.log(`🗑️ Deleted from Supabase: ${filePath}`);
-    return true;
-  } catch (error) {
-    console.error(`Error deleting from Supabase:`, error);
-    return false;
-  }
-}
-
-/**
- * Process and upload image to Supabase Storage
- * @param {Buffer} fileBuffer - Image buffer
- * @param {string} originalFilename - Original filename
- * @param {number} stationId - Station ID (for folder organization)
- * @param {number} poiId - POI ID (for folder organization)
- * @returns {Promise<Object>} Image metadata with Supabase URLs
- */
-async function processAndUploadImage(
-  fileBuffer,
-  originalFilename,
-  stationId = null,
-  poiId = null,
-) {
-  try {
-    // Process the image
-    const {
-      mainImageBuffer,
-      thumbnailBuffer,
-      width,
-      height,
-      size,
-    } = await processImage(fileBuffer);
-
-    // Generate unique filename
-    const fileExtension = ".jpeg"; // We always convert to JPEG
-    const uniqueId = uuidv4();
-    const filename = `${uniqueId}${fileExtension}`;
-    const thumbnailFilename = `thumb_${filename}`;
-
-    // Determine folder path based on entity type
-    let folderPath;
-    if (stationId) {
-      folderPath = `station-${stationId}`;
-    } else if (poiId) {
-      folderPath = `poi-${poiId}`;
-    } else {
-      folderPath = "misc"; // Fallback folder
-    }
-
-    // Upload main image
-    const mainImagePath = `${folderPath}/${filename}`;
-    const mainUploadResult = await uploadToSupabase(
-      mainImageBuffer,
-      mainImagePath,
-      "image/jpeg",
-    );
-
-    // Upload thumbnail
-    const thumbnailPath = `${folderPath}/${thumbnailFilename}`;
-    const thumbnailUploadResult = await uploadToSupabase(
-      thumbnailBuffer,
-      thumbnailPath,
-      "image/jpeg",
-    );
-
-    return {
-      filename,
-      originalFilename,
-      imageUrl: mainUploadResult.publicUrl,
-      thumbnailUrl: thumbnailUploadResult.publicUrl,
-      storagePath: mainImagePath,
-      thumbnailStoragePath: thumbnailPath,
-      mimetype: "image/jpeg",
-      size,
-      width,
-      height,
-    };
-  } catch (error) {
-    console.error("Error in processAndUploadImage:", error);
-    throw error;
-  }
-}
-
-/**
- * Delete image and thumbnail from Supabase Storage
- * @param {string} storagePath - Main image storage path
- * @param {string} thumbnailStoragePath - Thumbnail storage path
- * @returns {Promise<{success: boolean, errors: Array}>}
- */
-async function deleteImageFiles(storagePath, thumbnailStoragePath) {
-  const errors = [];
-
-  // Delete main image
-  const mainDeleted = await deleteFromSupabase(storagePath);
-  if (!mainDeleted) {
-    errors.push(`Failed to delete main image: ${storagePath}`);
-  }
-
-  // Delete thumbnail
-  const thumbDeleted = await deleteFromSupabase(thumbnailStoragePath);
-  if (!thumbDeleted) {
-    errors.push(`Failed to delete thumbnail: ${thumbnailStoragePath}`);
-  }
-
-  return {
-    success: errors.length === 0,
-    errors,
-  };
-}
-
-/**
- * Verify Supabase connection and bucket existence
- * @returns {Promise<{connected: boolean, bucket: boolean, message: string}>}
+ * Verify Supabase Storage connection
  */
 async function verifySupabaseConnection() {
   if (!supabase) {
     return {
       connected: false,
-      bucket: false,
-      message: "Supabase client not initialized",
+      bucket: null,
+      message: 'Supabase client not initialized - check environment variables'
     };
   }
 
   try {
     // Try to list buckets to verify connection
     const { data, error } = await supabase.storage.listBuckets();
-
+    
     if (error) {
+      console.error('❌ Supabase Storage connection failed:', error.message);
       return {
         connected: false,
-        bucket: false,
-        message: `Connection failed: ${error.message}`,
+        bucket: storageBucket,
+        message: `Connection failed: ${error.message}`
       };
     }
 
     // Check if our bucket exists
-    const bucketExists = data.some((bucket) => bucket.name === bucketName);
+    const bucketExists = data.some(bucket => bucket.name === storageBucket);
+    
+    if (!bucketExists) {
+      console.warn(`⚠️  Storage bucket '${storageBucket}' not found`);
+      return {
+        connected: true,
+        bucket: storageBucket,
+        message: `Bucket '${storageBucket}' not found`
+      };
+    }
 
+    console.log(`✅ Supabase Storage connected - bucket: ${storageBucket}`);
     return {
       connected: true,
-      bucket: bucketExists,
-      message: bucketExists
-        ? `Connected and bucket '${bucketName}' exists`
-        : `Connected but bucket '${bucketName}' not found`,
+      bucket: storageBucket,
+      message: 'Connected successfully'
     };
   } catch (error) {
+    console.error('❌ Error verifying Supabase Storage:', error);
     return {
       connected: false,
-      bucket: false,
-      message: `Error: ${error.message}`,
+      bucket: storageBucket,
+      message: `Verification failed: ${error.message}`
     };
   }
 }
 
+/**
+ * Upload image buffer to Supabase Storage
+ * @param {Buffer} buffer - Image buffer
+ * @param {string} filename - Filename for the image
+ * @param {string} folder - Folder path (e.g., 'stations', 'pois', 'thumbnails')
+ * @returns {Promise<{url: string, path: string}>}
+ */
+async function uploadImageToSupabase(buffer, filename, folder = 'stations') {
+  if (!supabase) {
+    throw new Error('Supabase Storage not configured');
+  }
+
+  const filePath = `${folder}/${filename}`;
+  
+  try {
+    const { data, error } = await supabase.storage
+      .from(storageBucket)
+      .upload(filePath, buffer, {
+        contentType: 'image/jpeg',
+        upsert: true // Allow overwriting existing files
+      });
+
+    if (error) {
+      console.error(`❌ Failed to upload ${filePath}:`, error);
+      throw new Error(`Upload failed: ${error.message}`);
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from(storageBucket)
+      .getPublicUrl(filePath);
+
+    console.log(`✅ Uploaded ${filePath} to Supabase Storage`);
+    
+    return {
+      url: urlData.publicUrl,
+      path: filePath
+    };
+  } catch (error) {
+    console.error(`❌ Error uploading ${filePath}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Delete image from Supabase Storage
+ * @param {string} filePath - Full path to the file in storage
+ */
+async function deleteImageFromSupabase(filePath) {
+  if (!supabase) {
+    throw new Error('Supabase Storage not configured');
+  }
+
+  try {
+    const { error } = await supabase.storage
+      .from(storageBucket)
+      .remove([filePath]);
+
+    if (error) {
+      console.error(`❌ Failed to delete ${filePath}:`, error);
+      throw new Error(`Delete failed: ${error.message}`);
+    }
+
+    console.log(`🗑️ Deleted ${filePath} from Supabase Storage`);
+  } catch (error) {
+    console.error(`❌ Error deleting ${filePath}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get public URL for a file in Supabase Storage
+ * @param {string} filePath - Path to the file
+ * @returns {string} Public URL
+ */
+function getSupabaseImageUrl(filePath) {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data } = supabase.storage
+    .from(storageBucket)
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
+}
+
+/**
+ * Check if Supabase Storage is configured and available
+ */
+function isSupabaseStorageAvailable() {
+  return !!supabase;
+}
+
 module.exports = {
-  processImage,
-  uploadToSupabase,
-  deleteFromSupabase,
-  processAndUploadImage,
-  deleteImageFiles,
   verifySupabaseConnection,
+  uploadImageToSupabase,
+  deleteImageFromSupabase,
+  getSupabaseImageUrl,
+  isSupabaseStorageAvailable,
   supabase,
-  bucketName,
+  storageBucket
 };
