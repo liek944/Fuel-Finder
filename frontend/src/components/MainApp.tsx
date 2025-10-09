@@ -200,6 +200,357 @@ const calculateDistance = (
   return distance;
 };
 
+// PriceReport interface
+interface PriceReport {
+  id: number;
+  fuel_type: string;
+  price: number;
+  is_verified: boolean;
+  verified_by?: string;
+  verified_at?: string;
+  notes?: string;
+  created_at: string;
+}
+
+// PriceReportWidget Component
+const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = ({
+  stationId,
+  stationName,
+}) => {
+  const [showForm, setShowForm] = useState(false);
+  const [fuelType, setFuelType] = useState("Regular");
+  const [price, setPrice] = useState("");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [recentReports, setRecentReports] = useState<PriceReport[]>([]);
+  const [showReports, setShowReports] = useState(false);
+
+  // Fetch recent reports
+  const fetchReports = async () => {
+    try {
+      const response = await fetch(getApiUrl(`/api/stations/${stationId}/price-reports?limit=5`));
+      if (response.ok) {
+        const data = await response.json();
+        setRecentReports(data.reports || []);
+      }
+    } catch (err) {
+      console.error("Error fetching reports:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (showReports) {
+      fetchReports();
+    }
+  }, [showReports, stationId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const priceNum = parseFloat(price);
+    if (isNaN(priceNum) || priceNum <= 0) {
+      setMessage({ type: "error", text: "Please enter a valid price" });
+      return;
+    }
+
+    if (priceNum < 30 || priceNum > 200) {
+      setMessage({ type: "error", text: "Price must be between ₱30 and ₱200" });
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(getApiUrl(`/api/stations/${stationId}/report-price`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fuel_type: fuelType,
+          price: priceNum,
+          notes: notes.trim() || null,
+        }),
+      });
+
+      if (response.ok) {
+        setMessage({ type: "success", text: "Price reported successfully! Thank you for contributing." });
+        setPrice("");
+        setNotes("");
+        setFuelType("Regular");
+        setTimeout(() => {
+          setShowForm(false);
+          setMessage(null);
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        setMessage({ type: "error", text: errorData.message || "Failed to submit report" });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Network error. Please try again." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+    return date.toLocaleDateString();
+  };
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e0e0e0" }}>
+      {!showForm && !showReports && (
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => setShowForm(true)}
+            style={{
+              background: "#FF9800",
+              color: "white",
+              border: "none",
+              padding: "6px 12px",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              flex: 1,
+            }}
+          >
+            💰 Report Price
+          </button>
+          <button
+            onClick={() => setShowReports(true)}
+            style={{
+              background: "#2196F3",
+              color: "white",
+              border: "none",
+              padding: "6px 12px",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            📊 View Reports
+          </button>
+        </div>
+      )}
+
+      {showForm && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <strong style={{ fontSize: 13 }}>Report Fuel Price</strong>
+            <button
+              onClick={() => {
+                setShowForm(false);
+                setMessage(null);
+              }}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 16,
+                color: "#666",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                Fuel Type:
+              </label>
+              <select
+                value={fuelType}
+                onChange={(e) => setFuelType(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  fontSize: 12,
+                }}
+              >
+                <option value="Regular">Regular</option>
+                <option value="Premium">Premium</option>
+                <option value="Diesel">Diesel</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                Price per Liter (₱):
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="e.g., 58.50"
+                required
+                style={{
+                  width: "100%",
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  fontSize: 12,
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>
+                Notes (optional):
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any additional info..."
+                maxLength={200}
+                style={{
+                  width: "100%",
+                  padding: "4px 8px",
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  fontSize: 12,
+                  resize: "vertical",
+                  minHeight: 50,
+                }}
+              />
+            </div>
+
+            {message && (
+              <div
+                style={{
+                  padding: "6px 8px",
+                  borderRadius: 4,
+                  marginBottom: 8,
+                  fontSize: 11,
+                  background: message.type === "success" ? "#e8f5e8" : "#ffebee",
+                  color: message.type === "success" ? "#2e7d32" : "#c62828",
+                }}
+              >
+                {message.text}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              style={{
+                width: "100%",
+                background: submitting ? "#ccc" : "#4CAF50",
+                color: "white",
+                border: "none",
+                padding: "8px 12px",
+                borderRadius: 4,
+                cursor: submitting ? "not-allowed" : "pointer",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {submitting ? "Submitting..." : "Submit Report"}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {showReports && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <strong style={{ fontSize: 13 }}>Recent Price Reports</strong>
+            <button
+              onClick={() => setShowReports(false)}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 16,
+                color: "#666",
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {recentReports.length === 0 ? (
+            <div style={{ fontSize: 12, color: "#666", padding: "8px 0" }}>
+              No price reports yet. Be the first to contribute!
+            </div>
+          ) : (
+            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+              {recentReports.map((report) => (
+                <div
+                  key={report.id}
+                  style={{
+                    padding: "6px 8px",
+                    marginBottom: 6,
+                    background: report.is_verified ? "#e8f5e8" : "#f5f5f5",
+                    borderRadius: 4,
+                    border: `1px solid ${report.is_verified ? "#81c784" : "#e0e0e0"}`,
+                    fontSize: 11,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                    <span style={{ fontWeight: 600 }}>
+                      {report.fuel_type}: ₱{report.price.toFixed(2)}
+                    </span>
+                    {report.is_verified && (
+                      <span style={{ color: "#2e7d32", fontSize: 10 }}>✓ Verified</span>
+                    )}
+                  </div>
+                  <div style={{ color: "#666", fontSize: 10 }}>
+                    {formatDate(report.created_at)}
+                  </div>
+                  {report.notes && (
+                    <div style={{ marginTop: 2, fontSize: 10, fontStyle: "italic" }}>
+                      "{report.notes}"
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={() => {
+              setShowReports(false);
+              setShowForm(true);
+            }}
+            style={{
+              width: "100%",
+              background: "#FF9800",
+              color: "white",
+              border: "none",
+              padding: "6px 12px",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 600,
+              marginTop: 8,
+            }}
+          >
+            + Add New Report
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ImageSlideshow component
 interface ImageSlideshowProps {
   images: Array<{
@@ -812,6 +1163,12 @@ const MainApp: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Community Price Reporting Widget */}
+                  <PriceReportWidget
+                    stationId={station.id}
+                    stationName={station.name}
+                  />
                 </div>
               </Popup>
             </Marker>

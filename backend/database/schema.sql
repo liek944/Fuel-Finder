@@ -55,3 +55,30 @@ $$ language 'plpgsql';
 -- Create trigger to automatically update updated_at
 CREATE TRIGGER update_stations_updated_at BEFORE UPDATE ON stations
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Create fuel_price_reports table for community price reporting
+CREATE TABLE IF NOT EXISTS fuel_price_reports (
+    id SERIAL PRIMARY KEY,
+    station_id INTEGER NOT NULL REFERENCES stations(id) ON DELETE CASCADE,
+    fuel_type VARCHAR(50) DEFAULT 'Regular', -- Regular, Premium, Diesel, etc.
+    price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    reporter_ip VARCHAR(45), -- IPv4 or IPv6 address
+    reporter_identifier VARCHAR(255), -- Optional: browser fingerprint or user ID
+    is_verified BOOLEAN DEFAULT FALSE,
+    verified_by VARCHAR(255), -- Admin who verified
+    verified_at TIMESTAMP,
+    notes TEXT, -- Optional notes from reporter
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create indexes for efficient queries
+CREATE INDEX IF NOT EXISTS idx_price_reports_station ON fuel_price_reports(station_id);
+CREATE INDEX IF NOT EXISTS idx_price_reports_created ON fuel_price_reports(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_price_reports_verified ON fuel_price_reports(is_verified);
+
+-- Add price_updated_at column to stations table to track last official price update
+ALTER TABLE stations ADD COLUMN IF NOT EXISTS price_updated_at TIMESTAMP;
+ALTER TABLE stations ADD COLUMN IF NOT EXISTS price_updated_by VARCHAR(255); -- 'admin' or 'community'
+
+-- Update existing stations to set price_updated_at to created_at
+UPDATE stations SET price_updated_at = created_at WHERE price_updated_at IS NULL AND fuel_price IS NOT NULL;
