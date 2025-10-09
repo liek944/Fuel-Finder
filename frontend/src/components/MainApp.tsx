@@ -247,10 +247,11 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
   }, [showReports, stationId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     const priceNum = parseFloat(price);
     if (isNaN(priceNum) || priceNum <= 0) {
       setMessage({ type: "error", text: "Please enter a valid price" });
-    } else if (priceNum < 30 || priceNum > 200) {
       return;
     }
 
