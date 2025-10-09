@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { apiGet, apiDelete, apiPost } from "../utils/api";
 
 // Types
@@ -50,7 +50,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   const reportsPerPage = 20;
 
   // Fetch pending reports
-  const fetchPendingReports = async () => {
+  const fetchPendingReports = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -74,10 +74,10 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminApiKey, currentPage]);
 
   // Fetch all reports with filtering
-  const fetchAllReports = async () => {
+  const fetchAllReports = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -104,10 +104,10 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminApiKey, currentPage, selectedFilter]);
 
   // Fetch statistics
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -126,7 +126,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [adminApiKey]);
 
   // Verify a price report
   const verifyReport = async (reportId: number) => {
@@ -220,7 +220,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     } else if (activeTab === "stats") {
       fetchStats();
     }
-  }, [activeTab, currentPage, selectedFilter]);
+  }, [activeTab, currentPage, selectedFilter, fetchPendingReports, fetchAllReports, fetchStats]);
 
   // Reset page when changing tabs or filters
   useEffect(() => {
