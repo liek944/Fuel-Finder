@@ -616,6 +616,118 @@ async function getPriceReportStats(stationId) {
   return result.rows[0];
 }
 
+// ============================================================================
+// ADMIN PRICE REPORT MANAGEMENT FUNCTIONS
+// ============================================================================
+
+// Get all pending (unverified) price reports with station details
+async function getAllPendingPriceReports(limit = 50, offset = 0) {
+  const query = `
+    SELECT 
+      fpr.*,
+      s.name as station_name,
+      s.brand as station_brand,
+      COUNT(*) OVER() as total_count
+    FROM fuel_price_reports fpr
+    JOIN stations s ON fpr.station_id = s.id
+    WHERE fpr.is_verified = false
+    ORDER BY fpr.created_at DESC
+    LIMIT $1 OFFSET $2;
+  `;
+
+  const result = await pool.query(query, [limit, offset]);
+  return result.rows;
+}
+
+// Get all price reports with filtering options
+async function getAllPriceReportsAdmin(options = {}) {
+  const { limit = 50, offset = 0, verified = null, stationId = null } = options;
+  
+  let whereConditions = [];
+  let queryParams = [];
+  let paramIndex = 1;
+
+  // Add filtering conditions
+  if (verified !== null) {
+    whereConditions.push(`fpr.is_verified = $${paramIndex}`);
+    queryParams.push(verified);
+    paramIndex++;
+  }
+
+  if (stationId) {
+    whereConditions.push(`fpr.station_id = $${paramIndex}`);
+    queryParams.push(stationId);
+    paramIndex++;
+  }
+
+  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+  const query = `
+    SELECT 
+      fpr.*,
+      s.name as station_name,
+      s.brand as station_brand,
+      COUNT(*) OVER() as total_count
+    FROM fuel_price_reports fpr
+    JOIN stations s ON fpr.station_id = s.id
+    ${whereClause}
+    ORDER BY fpr.created_at DESC
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1};
+  `;
+
+  queryParams.push(limit, offset);
+  const result = await pool.query(query, queryParams);
+  return result.rows;
+}
+
+// Delete a price report
+async function deletePriceReport(reportId) {
+  const query = `
+    DELETE FROM fuel_price_reports
+    WHERE id = $1
+    RETURNING *;
+  `;
+
+  const result = await pool.query(query, [reportId]);
+  return result.rows[0];
+}
+
+// Get comprehensive price reporting statistics
+async function getPriceReportingStats() {
+  const query = `
+    WITH report_stats AS (
+      SELECT 
+        COUNT(*) as total_reports,
+        COUNT(CASE WHEN is_verified THEN 1 END) as verified_reports,
+        COUNT(CASE WHEN NOT is_verified THEN 1 END) as pending_reports,
+        COUNT(CASE WHEN created_at >= CURRENT_DATE THEN 1 END) as reports_today,
+        COUNT(DISTINCT station_id) as unique_stations_reported,
+        AVG(price) as avg_price_all,
+        MAX(created_at) as last_report_date
+      FROM fuel_price_reports
+    ),
+    most_reported AS (
+      SELECT 
+        s.name as station_name,
+        COUNT(*) as report_count
+      FROM fuel_price_reports fpr
+      JOIN stations s ON fpr.station_id = s.id
+      GROUP BY fpr.station_id, s.name
+      ORDER BY COUNT(*) DESC
+      LIMIT 1
+    )
+    SELECT 
+      rs.*,
+      mr.station_name as most_reported_station,
+      mr.report_count as most_reported_station_count
+    FROM report_stats rs
+    LEFT JOIN most_reported mr ON true;
+  `;
+
+  const result = await pool.query(query);
+  return result.rows[0];
+}
+
 // Graceful shutdown
 async function closePool() {
   try {
@@ -655,6 +767,11 @@ module.exports = {
   verifyPriceReport,
   cleanupOldReports,
   getPriceReportStats,
+  // Admin Price Report Management
+  getAllPendingPriceReports,
+  getAllPriceReportsAdmin,
+  deletePriceReport,
+  getPriceReportingStats,
   getDatabaseStats,
   closePool,
 };
