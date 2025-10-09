@@ -1625,6 +1625,226 @@ app.patch("/api/price-reports/:id/verify", rateLimit, async (req, res) => {
   }
 });
 
+// ============================================================================
+// ADMIN PRICE REPORT MANAGEMENT ENDPOINTS
+// ============================================================================
+
+// Get all pending (unverified) price reports (admin only)
+app.get("/api/admin/price-reports/pending", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const limit = parseInt(req.query.limit || "50");
+    const offset = parseInt(req.query.offset || "0");
+
+    if (limit < 1 || limit > 100) {
+      return res.status(400).json({
+        error: "Invalid limit",
+        message: "Limit must be between 1 and 100",
+      });
+    }
+
+    // Get pending reports with station details
+    const { getAllPendingPriceReports } = require("./database/db");
+    const reports = await getAllPendingPriceReports(limit, offset);
+
+    res.json({
+      reports: reports.map(r => ({
+        id: r.id,
+        station_id: r.station_id,
+        station_name: r.station_name,
+        station_brand: r.station_brand,
+        fuel_type: r.fuel_type,
+        price: parseFloat(r.price),
+        reporter_ip: r.reporter_ip,
+        notes: r.notes,
+        created_at: r.created_at,
+        is_verified: r.is_verified
+      })),
+      pagination: {
+        limit,
+        offset,
+        total: reports.length > 0 ? parseInt(reports[0].total_count || reports.length) : 0
+      }
+    });
+  } catch (err) {
+    console.error("❌ Error fetching pending price reports:", err);
+    res.status(500).json({
+      error: "Failed to fetch pending reports",
+      message: err.message,
+    });
+  }
+});
+
+// Get all price reports with filtering (admin only)
+app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const limit = parseInt(req.query.limit || "50");
+    const offset = parseInt(req.query.offset || "0");
+    const verified = req.query.verified; // 'true', 'false', or undefined for all
+    const stationId = req.query.station_id ? parseInt(req.query.station_id) : null;
+
+    if (limit < 1 || limit > 100) {
+      return res.status(400).json({
+        error: "Invalid limit",
+        message: "Limit must be between 1 and 100",
+      });
+    }
+
+    // Get reports with filtering
+    const { getAllPriceReportsAdmin } = require("./database/db");
+    const reports = await getAllPriceReportsAdmin({
+      limit,
+      offset,
+      verified: verified === 'true' ? true : verified === 'false' ? false : null,
+      stationId
+    });
+
+    res.json({
+      reports: reports.map(r => ({
+        id: r.id,
+        station_id: r.station_id,
+        station_name: r.station_name,
+        station_brand: r.station_brand,
+        fuel_type: r.fuel_type,
+        price: parseFloat(r.price),
+        reporter_ip: r.reporter_ip,
+        notes: r.notes,
+        is_verified: r.is_verified,
+        verified_by: r.verified_by,
+        verified_at: r.verified_at,
+        created_at: r.created_at
+      })),
+      pagination: {
+        limit,
+        offset,
+        total: reports.length > 0 ? parseInt(reports[0].total_count || reports.length) : 0
+      }
+    });
+  } catch (err) {
+    console.error("❌ Error fetching price reports:", err);
+    res.status(500).json({
+      error: "Failed to fetch price reports",
+      message: err.message,
+    });
+  }
+});
+
+// Delete a price report (admin only)
+app.delete("/api/admin/price-reports/:id", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const reportId = parseInt(req.params.id);
+    if (!reportId || isNaN(reportId)) {
+      return res.status(400).json({
+        error: "Invalid report ID",
+        message: "Report ID must be a valid number",
+      });
+    }
+
+    const { deletePriceReport } = require("./database/db");
+    const deletedReport = await deletePriceReport(reportId);
+
+    if (!deletedReport) {
+      return res.status(404).json({
+        error: "Report not found",
+        message: "No price report found with the specified ID",
+      });
+    }
+
+    console.log(`🗑️ Price report ${reportId} deleted by admin`);
+
+    // Clear cache
+    cache.clear();
+
+    res.json({
+      message: "Price report deleted successfully",
+      report: {
+        id: deletedReport.id,
+        station_id: deletedReport.station_id,
+        price: parseFloat(deletedReport.price),
+        fuel_type: deletedReport.fuel_type
+      }
+    });
+  } catch (err) {
+    console.error("❌ Error deleting price report:", err);
+    res.status(500).json({
+      error: "Failed to delete price report",
+      message: err.message,
+    });
+  }
+});
+
+// Get price reporting statistics (admin only)
+app.get("/api/admin/price-reports/stats", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const { getPriceReportingStats } = require("./database/db");
+    const stats = await getPriceReportingStats();
+
+    res.json({
+      total_reports: parseInt(stats.total_reports) || 0,
+      verified_reports: parseInt(stats.verified_reports) || 0,
+      pending_reports: parseInt(stats.pending_reports) || 0,
+      reports_today: parseInt(stats.reports_today) || 0,
+      unique_stations_reported: parseInt(stats.unique_stations_reported) || 0,
+      avg_price_all: stats.avg_price_all ? parseFloat(stats.avg_price_all).toFixed(2) : null,
+      most_reported_station: stats.most_reported_station || null,
+      most_reported_station_count: parseInt(stats.most_reported_station_count) || 0,
+      last_report_date: stats.last_report_date,
+      verification_rate: stats.total_reports > 0 
+        ? ((stats.verified_reports / stats.total_reports) * 100).toFixed(1) + '%'
+        : '0%'
+    });
+  } catch (err) {
+    console.error("❌ Error fetching price reporting stats:", err);
+    res.status(500).json({
+      error: "Failed to fetch statistics",
+      message: err.message,
+    });
+  }
+});
+
 // 404 handler for API routes
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {
@@ -1747,6 +1967,18 @@ app.listen(port, () => {
   );
   console.log(
     `   🔹 PATCH /api/price-reports/:id/verify        - Verify price report (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 GET  /api/admin/price-reports/pending      - Get pending price reports (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 GET  /api/admin/price-reports              - Get all price reports with filtering (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 DELETE /api/admin/price-reports/:id        - Delete price report (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 GET  /api/admin/price-reports/stats        - Get price reporting statistics (x-api-key protected)`,
   );
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("🗄️  Database: PostgreSQL + PostGIS");

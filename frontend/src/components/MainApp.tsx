@@ -227,30 +227,30 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
   const [showReports, setShowReports] = useState(false);
 
   // Fetch recent reports
-  const fetchReports = useCallback(async () => {
-    try {
-      const response = await fetch(getApiUrl(`/api/stations/${stationId}/price-reports?limit=5`));
-      if (response.ok) {
-        const data = await response.json();
-        setRecentReports(data.reports || []);
-      }
-    } catch (err) {
-      console.error("Error fetching reports:", err);
-    }
-  }, [stationId]);
-
   useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const response = await fetch(getApiUrl(`/api/stations/${stationId}/price-reports?limit=5`));
+        if (response.ok) {
+          const data = await response.json();
+          setRecentReports(data.reports || []);
+        }
+      } catch (err) {
+        console.error("Error fetching reports:", err);
+        setMessage({ type: "error", text: "Failed to fetch recent reports" });
+      }
+    };
+
     if (showReports) {
       fetchReports();
     }
-  }, [showReports, fetchReports]);
+  }, [showReports, stationId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
     const priceNum = parseFloat(price);
     if (isNaN(priceNum) || priceNum <= 0) {
       setMessage({ type: "error", text: "Please enter a valid price" });
+    } else if (priceNum < 30 || priceNum > 200) {
       return;
     }
 
@@ -310,11 +310,17 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
   };
 
   return (
-    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e0e0e0" }}>
+    <div 
+      style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e0e0e0" }}
+      onClick={(e) => e.stopPropagation()}
+    >
       {!showForm && !showReports && (
         <div style={{ display: "flex", gap: 8 }}>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowForm(true);
+            }}
             style={{
               background: "#FF9800",
               color: "white",
@@ -330,7 +336,10 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
             💰 Report Price
           </button>
           <button
-            onClick={() => setShowReports(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowReports(true);
+            }}
             style={{
               background: "#2196F3",
               color: "white",
@@ -352,7 +361,8 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <strong style={{ fontSize: 13 }}>Report Fuel Price</strong>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setShowForm(false);
                 setMessage(null);
               }}
@@ -368,7 +378,11 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
             </button>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSubmit(e);
+          }}>
             <div style={{ marginBottom: 8 }}>
               <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>
                 Fuel Type:
@@ -473,7 +487,10 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
             <strong style={{ fontSize: 13 }}>Recent Price Reports</strong>
             <button
-              onClick={() => setShowReports(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowReports(false);
+              }}
               style={{
                 background: "transparent",
                 border: "none",
@@ -526,7 +543,8 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
           )}
 
           <button
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setShowReports(false);
               setShowForm(true);
             }}

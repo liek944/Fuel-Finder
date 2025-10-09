@@ -15,6 +15,7 @@ import {
   apiPostBase64Images,
   getImageUrl,
 } from "../utils/api";
+import PriceReportsManagement from "./PriceReportsManagement";
 
 // Fix Leaflet's default icon issues
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
@@ -395,6 +396,9 @@ const AdminPortal: React.FC = () => {
   const [stations, setStations] = useState<Station[]>([]);
   const [pois, setPois] = useState<POI[]>([]);
   const [customMarkers, setCustomMarkers] = useState<CustomMarker[]>([]);
+  
+  // Admin view management
+  const [currentAdminView, setCurrentAdminView] = useState<"map" | "price-reports">("map");
 
   // Form states - unified for all POI types
   const [addingMode, setAddingMode] = useState<boolean>(false);
@@ -967,6 +971,42 @@ const AdminPortal: React.FC = () => {
         >
           🛠️ Admin Portal
         </h1>
+        
+        {/* View Switcher */}
+        {isAdminEnabled && (
+          <div style={{ display: "flex", gap: 8, marginRight: 16 }}>
+            <button
+              onClick={() => setCurrentAdminView("map")}
+              style={{
+                padding: "6px 12px",
+                background: currentAdminView === "map" ? "#2196F3" : "#f5f5f5",
+                color: currentAdminView === "map" ? "white" : "#666",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              🗺️ Map View
+            </button>
+            <button
+              onClick={() => setCurrentAdminView("price-reports")}
+              style={{
+                padding: "6px 12px",
+                background: currentAdminView === "price-reports" ? "#2196F3" : "#f5f5f5",
+                color: currentAdminView === "price-reports" ? "white" : "#666",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              💰 Price Reports
+            </button>
+          </div>
+        )}
         <div
           style={{
             fontSize: "14px",
@@ -978,12 +1018,19 @@ const AdminPortal: React.FC = () => {
         </div>
       </div>
 
-      {/* Map */}
-      <MapContainer
-        center={position}
-        zoom={12}
-        style={{ height: "100%", width: "100%" }}
-      >
+      {/* Conditional Content Based on Current View */}
+      {currentAdminView === "price-reports" ? (
+        <div style={{ height: "100%", padding: "20px", overflow: "auto" }}>
+          <PriceReportsManagement adminApiKey={adminApiKey} />
+        </div>
+      ) : (
+        <>
+          {/* Map */}
+          <MapContainer
+            center={position}
+            zoom={12}
+            style={{ height: "100%", width: "100%" }}
+          >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -1365,9 +1412,12 @@ const AdminPortal: React.FC = () => {
             </Popup>
           </Marker>
         ))}
-      </MapContainer>
+          </MapContainer>
+        </>
+      )}
 
-      {/* Admin Controls Panel */}
+      {/* Admin Controls Panel - Only show in map view */}
+      {currentAdminView === "map" && (
       <div
         style={{
           position: "absolute",
@@ -1700,6 +1750,7 @@ const AdminPortal: React.FC = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* POI Form Overlay */}
       {isAdminEnabled && addingMode && pendingLatLng && (
