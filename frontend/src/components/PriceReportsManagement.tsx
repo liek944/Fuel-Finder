@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { apiGet, apiDelete, apiPost } from "../utils/api";
+import { apiGet, apiDelete, apiPost, apiPatch } from "../utils/api";
 
 // Types
 interface PriceReport {
@@ -131,7 +131,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   // Verify a price report
   const verifyReport = async (reportId: number) => {
     try {
-      const response = await apiPost(
+      const response = await apiPatch(
         `/api/price-reports/${reportId}/verify`,
         { verified_by: "admin" },
         adminApiKey
