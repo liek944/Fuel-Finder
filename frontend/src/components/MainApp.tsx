@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -227,7 +227,7 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
   const [showReports, setShowReports] = useState(false);
 
   // Fetch recent reports
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       const response = await fetch(getApiUrl(`/api/stations/${stationId}/price-reports?limit=5`));
       if (response.ok) {
@@ -237,13 +237,13 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
     } catch (err) {
       console.error("Error fetching reports:", err);
     }
-  };
+  }, [stationId]);
 
   useEffect(() => {
     if (showReports) {
       fetchReports();
     }
-  }, [showReports, stationId]);
+  }, [showReports, fetchReports]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
