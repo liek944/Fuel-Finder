@@ -442,6 +442,180 @@ async function getDatabaseStats() {
   return stats;
 }
 
+// ============================================================================
+// PRICE REPORTING FUNCTIONS
+// ============================================================================
+
+// Submit a new price report
+async function submitPriceReport(reportData) {
+  const {
+    station_id,
+    fuel_type = "Regular",
+    price,
+    reporter_ip,
+    reporter_identifier,
+    notes,
+  } = reportData;
+
+  const query = `
+    INSERT INTO fuel_price_reports 
+      (station_id, fuel_type, price, reporter_ip, reporter_identifier, notes)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING 
+      id, station_id, fuel_type, price, reporter_ip, 
+      is_verified, notes, created_at;
+  `;
+
+  const result = await pool.query(query, [
+    station_id,
+    fuel_type,
+    price,
+    reporter_ip,
+    reporter_identifier,
+    notes,
+  ]);
+
+  return result.rows[0];
+}
+
+// Get recent price reports for a station
+async function getPriceReports(stationId, limit = 10) {
+  const query = `
+    SELECT 
+      id, station_id, fuel_type, price, 
+      is_verified, verified_by, verified_at,
+      notes, created_at
+    FROM fuel_price_reports
+    WHERE station_id = $1
+    ORDER BY created_at DESC
+    LIMIT $2;
+  `;
+
+  const result = await pool.query(query, [stationId, limit]);
+  return result.rows;
+}
+
+// Get latest verified price report for a station
+async function getLatestVerifiedPrice(stationId) {
+  const query = `
+    SELECT 
+      id, station_id, fuel_type, price, 
+      verified_by, verified_at, created_at
+    FROM fuel_price_reports
+    WHERE station_id = $1 AND is_verified = true
+    ORDER BY verified_at DESC
+    LIMIT 1;
+  `;
+
+  const result = await pool.query(query, [stationId]);
+  return result.rows[0] || null;
+}
+
+// Get average price from recent reports (last 7 days)
+async function getAveragePriceFromReports(stationId, days = 7) {
+  const query = `
+    SELECT 
+      fuel_type,
+      AVG(price) as avg_price,
+      COUNT(*) as report_count,
+      MIN(price) as min_price,
+      MAX(price) as max_price
+    FROM fuel_price_reports
+    WHERE station_id = $1 
+      AND created_at >= NOW() - INTERVAL '${days} days'
+    GROUP BY fuel_type;
+  `;
+
+  const result = await pool.query(query, [stationId]);
+  return result.rows;
+}
+
+// Verify a price report and update station price (admin only)
+async function verifyPriceReport(reportId, verifiedBy) {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Mark report as verified
+    const verifyQuery = `
+      UPDATE fuel_price_reports
+      SET is_verified = true,
+          verified_by = $2,
+          verified_at = NOW()
+      WHERE id = $1
+      RETURNING station_id, price, fuel_type;
+    `;
+
+    const verifyResult = await client.query(verifyQuery, [reportId, verifiedBy]);
+
+    if (verifyResult.rows.length === 0) {
+      throw new Error("Price report not found");
+    }
+
+    const { station_id, price } = verifyResult.rows[0];
+
+    // Update station's official price
+    const updateStationQuery = `
+      UPDATE stations
+      SET fuel_price = $2,
+          price_updated_at = NOW(),
+          price_updated_by = 'community'
+      WHERE id = $1
+      RETURNING id, name, fuel_price, price_updated_at;
+    `;
+
+    const stationResult = await client.query(updateStationQuery, [
+      station_id,
+      price,
+    ]);
+
+    await client.query("COMMIT");
+
+    return {
+      report: verifyResult.rows[0],
+      station: stationResult.rows[0],
+    };
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+// Delete old unverified reports (cleanup function)
+async function cleanupOldReports(daysOld = 30) {
+  const query = `
+    DELETE FROM fuel_price_reports
+    WHERE is_verified = false 
+      AND created_at < NOW() - INTERVAL '${daysOld} days'
+    RETURNING id;
+  `;
+
+  const result = await pool.query(query);
+  return result.rows.length;
+}
+
+// Get price report statistics for a station
+async function getPriceReportStats(stationId) {
+  const query = `
+    SELECT 
+      COUNT(*) as total_reports,
+      COUNT(CASE WHEN is_verified THEN 1 END) as verified_reports,
+      AVG(price) as avg_price,
+      MIN(price) as min_price,
+      MAX(price) as max_price,
+      MAX(created_at) as last_report_date
+    FROM fuel_price_reports
+    WHERE station_id = $1
+      AND created_at >= NOW() - INTERVAL '30 days';
+  `;
+
+  const result = await pool.query(query, [stationId]);
+  return result.rows[0];
+}
+
 // Graceful shutdown
 async function closePool() {
   try {
@@ -473,6 +647,14 @@ module.exports = {
   getNearbyPois,
   addPoi,
   deletePoi,
+  // Price Reporting
+  submitPriceReport,
+  getPriceReports,
+  getLatestVerifiedPrice,
+  getAveragePriceFromReports,
+  verifyPriceReport,
+  cleanupOldReports,
+  getPriceReportStats,
   getDatabaseStats,
   closePool,
 };

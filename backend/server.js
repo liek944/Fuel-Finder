@@ -61,6 +61,13 @@ const {
   getNearbyPois,
   addPoi,
   deletePoi,
+  // Price Reporting
+  submitPriceReport,
+  getPriceReports,
+  getLatestVerifiedPrice,
+  getAveragePriceFromReports,
+  verifyPriceReport,
+  getPriceReportStats,
 } = require("./database/db");
 
 // Import image service
@@ -1368,6 +1375,256 @@ app.get("/api/debug/images", async (req, res) => {
   }
 });
 
+// ============================================================================
+// PRICE REPORTING ENDPOINTS
+// ============================================================================
+
+// Submit a fuel price report (public endpoint with rate limiting)
+app.post("/api/stations/:id/report-price", rateLimit, async (req, res) => {
+  try {
+    const stationId = parseInt(req.params.id);
+    
+    if (!stationId || isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    // Check if station exists
+    const station = await getStationById(stationId);
+    if (!station) {
+      return res.status(404).json({
+        error: "Station not found",
+        message: `No station found with ID ${stationId}`,
+      });
+    }
+
+    const { fuel_type = "Regular", price, notes } = req.body;
+
+    // Validate price
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+      return res.status(400).json({
+        error: "Invalid price",
+        message: "Price must be a positive number",
+      });
+    }
+
+    // Validate price range (reasonable limits for Philippine fuel prices)
+    const priceNum = parseFloat(price);
+    if (priceNum < 30 || priceNum > 200) {
+      return res.status(400).json({
+        error: "Invalid price range",
+        message: "Price must be between ₱30 and ₱200 per liter",
+      });
+    }
+
+    // Get reporter IP
+    const reporter_ip =
+      req.ip ||
+      req.headers["x-forwarded-for"] ||
+      req.connection.remoteAddress ||
+      "unknown";
+
+    // Create a simple browser fingerprint (optional)
+    const reporter_identifier = req.headers["user-agent"]
+      ? Buffer.from(req.headers["user-agent"]).toString("base64").substring(0, 100)
+      : null;
+
+    // Submit report
+    const report = await submitPriceReport({
+      station_id: stationId,
+      fuel_type,
+      price: priceNum,
+      reporter_ip,
+      reporter_identifier,
+      notes: notes ? String(notes).trim() : null,
+    });
+
+    console.log(
+      `💰 Price report submitted: Station ${stationId}, ₱${priceNum} from ${reporter_ip}`,
+    );
+
+    // Clear cache to reflect new reports
+    cache.clear();
+
+    res.status(201).json({
+      message: "Price report submitted successfully",
+      report: {
+        id: report.id,
+        station_id: report.station_id,
+        fuel_type: report.fuel_type,
+        price: report.price,
+        created_at: report.created_at,
+        is_verified: report.is_verified,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error submitting price report:", err);
+    res.status(500).json({
+      error: "Failed to submit price report",
+      message: err.message,
+    });
+  }
+});
+
+// Get price reports for a station (public)
+app.get("/api/stations/:id/price-reports", async (req, res) => {
+  try {
+    const stationId = parseInt(req.params.id);
+    const limit = parseInt(req.query.limit || "10");
+
+    if (!stationId || isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    if (limit < 1 || limit > 50) {
+      return res.status(400).json({
+        error: "Invalid limit",
+        message: "Limit must be between 1 and 50",
+      });
+    }
+
+    const reports = await getPriceReports(stationId, limit);
+
+    // Also get statistics
+    const stats = await getPriceReportStats(stationId);
+
+    res.json({
+      station_id: stationId,
+      reports: reports.map((r) => ({
+        id: r.id,
+        fuel_type: r.fuel_type,
+        price: parseFloat(r.price),
+        is_verified: r.is_verified,
+        verified_by: r.verified_by,
+        verified_at: r.verified_at,
+        notes: r.notes,
+        created_at: r.created_at,
+      })),
+      statistics: {
+        total_reports: parseInt(stats.total_reports) || 0,
+        verified_reports: parseInt(stats.verified_reports) || 0,
+        avg_price: stats.avg_price ? parseFloat(stats.avg_price).toFixed(2) : null,
+        min_price: stats.min_price ? parseFloat(stats.min_price).toFixed(2) : null,
+        max_price: stats.max_price ? parseFloat(stats.max_price).toFixed(2) : null,
+        last_report_date: stats.last_report_date,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error fetching price reports:", err);
+    res.status(500).json({
+      error: "Failed to fetch price reports",
+      message: err.message,
+    });
+  }
+});
+
+// Get average price from recent reports (public)
+app.get("/api/stations/:id/average-price", async (req, res) => {
+  try {
+    const stationId = parseInt(req.params.id);
+    const days = parseInt(req.query.days || "7");
+
+    if (!stationId || isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    if (days < 1 || days > 90) {
+      return res.status(400).json({
+        error: "Invalid days range",
+        message: "Days must be between 1 and 90",
+      });
+    }
+
+    const avgData = await getAveragePriceFromReports(stationId, days);
+
+    res.json({
+      station_id: stationId,
+      days_analyzed: days,
+      fuel_types: avgData.map((d) => ({
+        fuel_type: d.fuel_type,
+        avg_price: parseFloat(d.avg_price).toFixed(2),
+        report_count: parseInt(d.report_count),
+        min_price: parseFloat(d.min_price).toFixed(2),
+        max_price: parseFloat(d.max_price).toFixed(2),
+      })),
+    });
+  } catch (err) {
+    console.error("❌ Error calculating average price:", err);
+    res.status(500).json({
+      error: "Failed to calculate average price",
+      message: err.message,
+    });
+  }
+});
+
+// Verify a price report (admin only)
+app.patch("/api/price-reports/:id/verify", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const reportId = parseInt(req.params.id);
+    if (!reportId || isNaN(reportId)) {
+      return res.status(400).json({
+        error: "Invalid report ID",
+        message: "Report ID must be a valid number",
+      });
+    }
+
+    const verifiedBy = req.body.verified_by || "admin";
+
+    const result = await verifyPriceReport(reportId, verifiedBy);
+
+    console.log(
+      `✅ Price report ${reportId} verified. Station ${result.station.id} price updated to ₱${result.station.fuel_price}`,
+    );
+
+    // Clear cache
+    cache.clear();
+
+    res.json({
+      message: "Price report verified and station price updated",
+      report: result.report,
+      station: {
+        id: result.station.id,
+        name: result.station.name,
+        fuel_price: parseFloat(result.station.fuel_price),
+        price_updated_at: result.station.price_updated_at,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error verifying price report:", err);
+    
+    if (err.message === "Price report not found") {
+      return res.status(404).json({
+        error: "Report not found",
+        message: "No price report found with the specified ID",
+      });
+    }
+
+    res.status(500).json({
+      error: "Failed to verify price report",
+      message: err.message,
+    });
+  }
+});
+
 // 404 handler for API routes
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {
@@ -1479,10 +1736,23 @@ app.listen(port, () => {
     `   🔹 GET  /api/route?start=lat,lng&end=lat,lng  - OSRM routing`,
   );
   console.log(`   🔹 POST /api/cache/clear                      - Clear cache`);
+  console.log(
+    `   🔹 POST /api/stations/:id/report-price        - Submit fuel price report (public with rate limit)`,
+  );
+  console.log(
+    `   🔹 GET  /api/stations/:id/price-reports       - Get price reports for station`,
+  );
+  console.log(
+    `   🔹 GET  /api/stations/:id/average-price       - Get average price from recent reports`,
+  );
+  console.log(
+    `   🔹 PATCH /api/price-reports/:id/verify        - Verify price report (x-api-key protected)`,
+  );
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("🗄️  Database: PostgreSQL + PostGIS");
   console.log("⚡ Cache: In-memory with " + CACHE_TTL_MS / 1000 + "s TTL");
   console.log("🌐 CORS: Enabled for frontend origins");
+  console.log("💰 Community Price Reporting: Enabled");
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("🎉 Server ready to accept connections!");
 });
