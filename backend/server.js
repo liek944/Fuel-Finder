@@ -81,10 +81,10 @@ const {
 } = require("./services/imageService");
 
 // Import Supabase storage service
-const { 
-  verifySupabaseConnection, 
-  getSupabaseImageUrl, 
-  isSupabaseStorageAvailable 
+const {
+  verifySupabaseConnection,
+  getSupabaseImageUrl,
+  isSupabaseStorageAvailable,
 } = require("./services/supabaseStorage");
 
 const app = express();
@@ -316,17 +316,19 @@ function transformStationData(stations) {
     },
     images: (station.images || []).map((image) => {
       let imageUrl, thumbnailUrl;
-      
+
       if (isSupabaseStorageAvailable()) {
         // Use Supabase Storage URLs
         imageUrl = getSupabaseImageUrl(`stations/${image.filename}`);
-        thumbnailUrl = getSupabaseImageUrl(`thumbnails/thumb_${image.filename}`);
+        thumbnailUrl = getSupabaseImageUrl(
+          `thumbnails/thumb_${image.filename}`,
+        );
       } else {
         // Fallback to local URLs
         imageUrl = `/api/images/stations/${image.filename}`;
         thumbnailUrl = `/api/images/thumbnails/thumb_${image.filename}`;
       }
-      
+
       return {
         ...image,
         url: imageUrl,
@@ -421,11 +423,18 @@ app.post("/api/pois", rateLimit, async (req, res) => {
         message: "'name' must be at least 2 characters",
       });
     }
-    const allowed = new Set(["gas", "convenience", "repair", "car_wash", "motor_shop"]);
+    const allowed = new Set([
+      "gas",
+      "convenience",
+      "repair",
+      "car_wash",
+      "motor_shop",
+    ]);
     if (!type || typeof type !== "string" || !allowed.has(type)) {
       return res.status(400).json({
         error: "Invalid type",
-        message: "type must be one of: gas, convenience, repair, car_wash, motor_shop",
+        message:
+          "type must be one of: gas, convenience, repair, car_wash, motor_shop",
       });
     }
     if (!isFinite(parseFloat(lat)) || !isFinite(parseFloat(lng))) {
@@ -513,17 +522,19 @@ function transformPoiData(pois) {
     },
     images: (poi.images || []).map((image) => {
       let imageUrl, thumbnailUrl;
-      
+
       if (isSupabaseStorageAvailable()) {
         // Use Supabase Storage URLs
         imageUrl = getSupabaseImageUrl(`pois/${image.filename}`);
-        thumbnailUrl = getSupabaseImageUrl(`thumbnails/thumb_${image.filename}`);
+        thumbnailUrl = getSupabaseImageUrl(
+          `thumbnails/thumb_${image.filename}`,
+        );
       } else {
         // Fallback to local URLs
         imageUrl = `/api/images/pois/${image.filename}`;
         thumbnailUrl = `/api/images/thumbnails/thumb_${image.filename}`;
       }
-      
+
       return {
         ...image,
         url: imageUrl,
@@ -540,7 +551,7 @@ app.get("/api/health", async (req, res) => {
   try {
     await testConnection();
     const stats = await getDatabaseStats();
-    
+
     // Check Supabase Storage connection
     const supabaseStatus = await verifySupabaseConnection();
 
@@ -1383,7 +1394,7 @@ app.get("/api/debug/images", async (req, res) => {
 app.post("/api/stations/:id/report-price", rateLimit, async (req, res) => {
   try {
     const stationId = parseInt(req.params.id);
-    
+
     if (!stationId || isNaN(stationId)) {
       return res.status(400).json({
         error: "Invalid station ID",
@@ -1428,7 +1439,9 @@ app.post("/api/stations/:id/report-price", rateLimit, async (req, res) => {
 
     // Create a simple browser fingerprint (optional)
     const reporter_identifier = req.headers["user-agent"]
-      ? Buffer.from(req.headers["user-agent"]).toString("base64").substring(0, 100)
+      ? Buffer.from(req.headers["user-agent"])
+          .toString("base64")
+          .substring(0, 100)
       : null;
 
     // Submit report
@@ -1508,9 +1521,15 @@ app.get("/api/stations/:id/price-reports", async (req, res) => {
       statistics: {
         total_reports: parseInt(stats.total_reports) || 0,
         verified_reports: parseInt(stats.verified_reports) || 0,
-        avg_price: stats.avg_price ? parseFloat(stats.avg_price).toFixed(2) : null,
-        min_price: stats.min_price ? parseFloat(stats.min_price).toFixed(2) : null,
-        max_price: stats.max_price ? parseFloat(stats.max_price).toFixed(2) : null,
+        avg_price: stats.avg_price
+          ? parseFloat(stats.avg_price).toFixed(2)
+          : null,
+        min_price: stats.min_price
+          ? parseFloat(stats.min_price).toFixed(2)
+          : null,
+        max_price: stats.max_price
+          ? parseFloat(stats.max_price).toFixed(2)
+          : null,
         last_report_date: stats.last_report_date,
       },
     });
@@ -1610,7 +1629,7 @@ app.patch("/api/price-reports/:id/verify", rateLimit, async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error verifying price report:", err);
-    
+
     if (err.message === "Price report not found") {
       return res.status(404).json({
         error: "Report not found",
@@ -1658,7 +1677,7 @@ app.get("/api/admin/price-reports/pending", rateLimit, async (req, res) => {
     const reports = await getAllPendingPriceReports(limit, offset);
 
     res.json({
-      reports: reports.map(r => ({
+      reports: reports.map((r) => ({
         id: r.id,
         station_id: r.station_id,
         station_name: r.station_name,
@@ -1668,13 +1687,16 @@ app.get("/api/admin/price-reports/pending", rateLimit, async (req, res) => {
         reporter_ip: r.reporter_ip,
         notes: r.notes,
         created_at: r.created_at,
-        is_verified: r.is_verified
+        is_verified: r.is_verified,
       })),
       pagination: {
         limit,
         offset,
-        total: reports.length > 0 ? parseInt(reports[0].total_count || reports.length) : 0
-      }
+        total:
+          reports.length > 0
+            ? parseInt(reports[0].total_count || reports.length)
+            : 0,
+      },
     });
   } catch (err) {
     console.error("❌ Error fetching pending price reports:", err);
@@ -1702,7 +1724,9 @@ app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
     const limit = parseInt(req.query.limit || "50");
     const offset = parseInt(req.query.offset || "0");
     const verified = req.query.verified; // 'true', 'false', or undefined for all
-    const stationId = req.query.station_id ? parseInt(req.query.station_id) : null;
+    const stationId = req.query.station_id
+      ? parseInt(req.query.station_id)
+      : null;
 
     if (limit < 1 || limit > 100) {
       return res.status(400).json({
@@ -1716,12 +1740,13 @@ app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
     const reports = await getAllPriceReportsAdmin({
       limit,
       offset,
-      verified: verified === 'true' ? true : verified === 'false' ? false : null,
-      stationId
+      verified:
+        verified === "true" ? true : verified === "false" ? false : null,
+      stationId,
     });
 
     res.json({
-      reports: reports.map(r => ({
+      reports: reports.map((r) => ({
         id: r.id,
         station_id: r.station_id,
         station_name: r.station_name,
@@ -1733,13 +1758,16 @@ app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
         is_verified: r.is_verified,
         verified_by: r.verified_by,
         verified_at: r.verified_at,
-        created_at: r.created_at
+        created_at: r.created_at,
       })),
       pagination: {
         limit,
         offset,
-        total: reports.length > 0 ? parseInt(reports[0].total_count || reports.length) : 0
-      }
+        total:
+          reports.length > 0
+            ? parseInt(reports[0].total_count || reports.length)
+            : 0,
+      },
     });
   } catch (err) {
     console.error("❌ Error fetching price reports:", err);
@@ -1793,8 +1821,8 @@ app.delete("/api/admin/price-reports/:id", rateLimit, async (req, res) => {
         id: deletedReport.id,
         station_id: deletedReport.station_id,
         price: parseFloat(deletedReport.price),
-        fuel_type: deletedReport.fuel_type
-      }
+        fuel_type: deletedReport.fuel_type,
+      },
     });
   } catch (err) {
     console.error("❌ Error deleting price report:", err);
@@ -1828,13 +1856,18 @@ app.get("/api/admin/price-reports/stats", rateLimit, async (req, res) => {
       pending_reports: parseInt(stats.pending_reports) || 0,
       reports_today: parseInt(stats.reports_today) || 0,
       unique_stations_reported: parseInt(stats.unique_stations_reported) || 0,
-      avg_price_all: stats.avg_price_all ? parseFloat(stats.avg_price_all).toFixed(2) : null,
+      avg_price_all: stats.avg_price_all
+        ? parseFloat(stats.avg_price_all).toFixed(2)
+        : null,
       most_reported_station: stats.most_reported_station || null,
-      most_reported_station_count: parseInt(stats.most_reported_station_count) || 0,
+      most_reported_station_count:
+        parseInt(stats.most_reported_station_count) || 0,
       last_report_date: stats.last_report_date,
-      verification_rate: stats.total_reports > 0 
-        ? ((stats.verified_reports / stats.total_reports) * 100).toFixed(1) + '%'
-        : '0%'
+      verification_rate:
+        stats.total_reports > 0
+          ? ((stats.verified_reports / stats.total_reports) * 100).toFixed(1) +
+            "%"
+          : "0%",
     });
   } catch (err) {
     console.error("❌ Error fetching price reporting stats:", err);
@@ -1882,8 +1915,8 @@ process.on("SIGTERM", async () => {
 });
 
 // Start the server
-app.listen(port, () => {
-  console.log(`✅ Fuel Finder backend running at http://localhost:${port}`);
+app.listen(port, "0.0.0.0", () => {
+  console.log(`✅ Fuel Finder backend running at http://0.0.0.0:${port}`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("🔌 API Endpoints:");
   console.log(
