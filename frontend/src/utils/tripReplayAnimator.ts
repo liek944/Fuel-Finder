@@ -204,8 +204,8 @@ export class TripReplayAnimator {
         timestamp: lastPoint.timestamp,
         progress: 1,
         segmentIndex: this.interpolatedPoints.length - 1,
-        heading: lastPoint.heading,
-        speed: lastPoint.speed || undefined
+        heading: lastPoint.heading ?? undefined,
+        speed: lastPoint.speed ?? undefined
       };
     }
 
@@ -352,8 +352,8 @@ export class TripReplayAnimator {
       timestamp: finalPoint.timestamp,
       progress: 1,
       segmentIndex: this.interpolatedPoints.length - 1,
-      heading: finalPoint.heading,
-      speed: finalPoint.speed || undefined
+      heading: finalPoint.heading ?? undefined,
+      speed: finalPoint.speed ?? undefined
     }, 'completed');
   }
 
@@ -442,8 +442,8 @@ export class TripReplayAnimator {
         timestamp: firstPoint.timestamp,
         progress: 0,
         segmentIndex: 0,
-        heading: firstPoint.heading,
-        speed: firstPoint.speed || undefined
+        heading: firstPoint.heading ?? undefined,
+        speed: firstPoint.speed ?? undefined
       } : null;
     }
 
