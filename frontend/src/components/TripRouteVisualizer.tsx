@@ -161,7 +161,6 @@ const TripRouteVisualizer: React.FC<TripRouteVisualizerProps> = ({
             color: segment.color,
             weight: opts.weight,
             opacity: opts.opacity,
-            smoothFactor: opts.smoothFactor,
             lineCap: 'round',
             lineJoin: 'round'
           }}

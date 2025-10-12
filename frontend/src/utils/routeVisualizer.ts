@@ -28,7 +28,6 @@ export interface RouteVisualizationOptions {
   gradient?: ColorGradient;
   weight?: number;
   opacity?: number;
-  smoothFactor?: number;
   showStartMarker?: boolean;
   showEndMarker?: boolean;
   fitBounds?: boolean;
@@ -46,7 +45,6 @@ export const DEFAULT_ROUTE_OPTIONS: Required<RouteVisualizationOptions> = {
   },
   weight: 4,
   opacity: 0.8,
-  smoothFactor: 1.5,
   showStartMarker: true,
   showEndMarker: true,
   fitBounds: true,
@@ -253,7 +251,7 @@ export function simplifyRoute(points: GPSPoint[], tolerance: number = 0.0001): G
   
   // Use Leaflet's built-in simplification
   const simplified = L.LineUtil.simplify(
-    latLngs.map(ll => ({ x: ll.lat, y: ll.lng })),
+    latLngs.map(ll => L.point(ll.lat, ll.lng)),
     tolerance
   );
 
