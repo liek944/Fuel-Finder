@@ -1,0 +1,585 @@
+/**
+ * Trip Summary Card Styles
+ * 
+ * Comprehensive styling for trip analytics display.
+ * Features:
+ * - Modern card design
+ * - Responsive grid layout
+ * - Metric highlighting
+ * - Configuration form
+ * - Mobile-optimized
+ * - Dark mode support
+ * 
+ * @version 6.0.0
+ * @since Phase 6
+ */
+
+/* ===========================
+   Card Container
+   =========================== */
+
+.trip-summary-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.trip-summary-card:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* ===========================
+   Header
+   =========================== */
+
+.summary-header {
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 16px;
+}
+
+.summary-title {
+  margin: 0 0 8px 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary-title::before {
+  content: '📊';
+  font-size: 28px;
+}
+
+.summary-subtitle {
+  font-size: 16px;
+  color: #666;
+  font-weight: 500;
+}
+
+/* ===========================
+   Metrics Grid
+   =========================== */
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.primary-metrics {
+  margin-bottom: 24px;
+}
+
+.detailed-metrics {
+  padding-top: 16px;
+  border-top: 1px solid #e0e0e0;
+}
+
+/* ===========================
+   Metric Item
+   =========================== */
+
+.trip-metric {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.trip-metric:hover {
+  border-color: #2196F3;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.1);
+  transform: translateY(-2px);
+}
+
+.trip-metric.highlight {
+  background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+  border-color: #1976D2;
+  color: #ffffff;
+}
+
+.trip-metric.highlight .metric-label {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.trip-metric.highlight .metric-value {
+  color: #ffffff;
+}
+
+.metric-icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.trip-metric.highlight .metric-icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.metric-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.metric-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.metric-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ===========================
+   Fuel Configuration Section
+   =========================== */
+
+.fuel-config-section {
+  margin-top: 24px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+}
+
+.config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.config-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.btn-edit-config {
+  padding: 6px 16px;
+  background: #2196F3;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-edit-config:hover {
+  background: #1976D2;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-edit-config:active {
+  transform: translateY(0);
+}
+
+/* ===========================
+   Configuration Form
+   =========================== */
+
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.form-input {
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  background: #ffffff;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.btn-save,
+.btn-cancel {
+  flex: 1;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-save {
+  background: #4CAF50;
+  color: #ffffff;
+}
+
+.btn-save:hover {
+  background: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn-cancel {
+  background: #f44336;
+  color: #ffffff;
+}
+
+.btn-cancel:hover {
+  background: #da190b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+}
+
+/* ===========================
+   Configuration Display
+   =========================== */
+
+.config-display {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.config-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.config-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
+.config-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* ===========================
+   Trip Info
+   =========================== */
+
+.trip-info {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.info-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.info-value {
+  font-size: 14px;
+  color: #1a1a1a;
+  text-align: right;
+}
+
+/* ===========================
+   Responsive Design
+   =========================== */
+
+/* Tablet */
+@media (max-width: 768px) {
+  .trip-summary-card {
+    padding: 20px;
+  }
+
+  .summary-title {
+    font-size: 22px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+  }
+
+  .trip-metric {
+    padding: 12px;
+  }
+
+  .metric-icon {
+    font-size: 28px;
+  }
+
+  .metric-value {
+    font-size: 18px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .trip-summary-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .summary-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .summary-title {
+    font-size: 20px;
+  }
+
+  .summary-subtitle {
+    font-size: 14px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .trip-metric {
+    padding: 14px;
+  }
+
+  .metric-icon {
+    font-size: 32px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+  }
+
+  .metric-value {
+    font-size: 20px;
+  }
+
+  .fuel-config-section {
+    padding: 16px;
+  }
+
+  .config-display {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .info-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .info-value {
+    text-align: left;
+  }
+}
+
+/* ===========================
+   Dark Mode Support
+   =========================== */
+
+@media (prefers-color-scheme: dark) {
+  .trip-summary-card {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .summary-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .summary-title {
+    color: #ffffff;
+  }
+
+  .summary-subtitle {
+    color: #b0b0b0;
+  }
+
+  .trip-metric {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .trip-metric:hover {
+    border-color: #2196F3;
+  }
+
+  .metric-label {
+    color: #b0b0b0;
+  }
+
+  .metric-value {
+    color: #ffffff;
+  }
+
+  .detailed-metrics {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .fuel-config-section {
+    background: #2a2a2a;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .config-title {
+    color: #ffffff;
+  }
+
+  .config-label {
+    color: #b0b0b0;
+  }
+
+  .config-value {
+    color: #ffffff;
+  }
+
+  .form-group label {
+    color: #e0e0e0;
+  }
+
+  .form-input {
+    background: #1e1e1e;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+
+  .trip-info {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .info-label {
+    color: #b0b0b0;
+  }
+
+  .info-value {
+    color: #ffffff;
+  }
+}
+
+/* ===========================
+   Print Styles
+   =========================== */
+
+@media print {
+  .trip-summary-card {
+    box-shadow: none;
+    border: 1px solid #000;
+    page-break-inside: avoid;
+  }
+
+  .trip-metric:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-edit-config,
+  .form-actions {
+    display: none;
+  }
+}
+
+/* ===========================
+   Accessibility
+   =========================== */
+
+.btn-edit-config:focus,
+.btn-save:focus,
+.btn-cancel:focus {
+  outline: 3px solid #2196F3;
+  outline-offset: 2px;
+}
+
+.form-input:focus {
+  outline: none;
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .trip-summary-card {
+    border: 2px solid #000;
+  }
+
+  .trip-metric {
+    border: 2px solid #000;
+  }
+
+  .trip-metric.highlight {
+    border: 2px solid #fff;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .trip-summary-card,
+  .trip-metric,
+  .btn-edit-config,
+  .btn-save,
+  .btn-cancel {
+    transition: none;
+  }
+
+  .trip-summary-card:hover,
+  .trip-metric:hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,654 @@
+/**
+ * Trip Replay Visualizer Styles
+ * 
+ * Comprehensive styling for trip replay animation components.
+ * Includes:
+ * - Playback controls
+ * - Progress bar
+ * - Speed controls
+ * - Vehicle marker
+ * - State indicators
+ * - Mobile-responsive design
+ * 
+ * @version 4.0.0
+ * @since Phase 4
+ */
+
+/* ===========================
+   Container & Layout
+   =========================== */
+
+.trip-replay-visualizer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.trip-replay-error {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 20px 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  z-index: 1000;
+}
+
+.trip-replay-error p {
+  margin: 0;
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+/* ===========================
+   Controls Container
+   =========================== */
+
+.trip-replay-controls-container {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  min-width: 320px;
+  max-width: 90vw;
+  backdrop-filter: blur(10px);
+}
+
+@media (max-width: 768px) {
+  .trip-replay-controls-container {
+    bottom: 10px;
+    min-width: 280px;
+    padding: 12px 16px;
+  }
+}
+
+/* ===========================
+   Trip Summary Container (Phase 6)
+   =========================== */
+
+.trip-summary-container {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  max-width: 450px;
+  width: 90vw;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  z-index: 1000;
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(33, 150, 243, 0.5) rgba(0, 0, 0, 0.1);
+}
+
+.trip-summary-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.trip-summary-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.trip-summary-container::-webkit-scrollbar-thumb {
+  background: rgba(33, 150, 243, 0.5);
+  border-radius: 3px;
+}
+
+.trip-summary-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(33, 150, 243, 0.7);
+}
+
+@media (max-width: 1024px) {
+  .trip-summary-container {
+    top: 10px;
+    right: 10px;
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .trip-summary-container {
+    position: relative;
+    top: 0;
+    right: 0;
+    max-width: 100%;
+    width: 100%;
+    margin-top: 16px;
+    max-height: none;
+    overflow-y: visible;
+  }
+}
+
+/* ===========================
+   Controller Component
+   =========================== */
+
+.trip-replay-controller {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ===========================
+   Progress Bar
+   =========================== */
+
+.replay-progress-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.replay-progress-bar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: visible;
+  transition: height 0.2s ease;
+}
+
+.replay-progress-bar:hover {
+  height: 10px;
+}
+
+.replay-progress-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #2196F3, #1976D2);
+  border-radius: 4px;
+  transition: width 0.1s linear;
+}
+
+.replay-progress-handle {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  background: #2196F3;
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+  transition: transform 0.2s ease;
+}
+
+.replay-progress-handle:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+.replay-progress-handle:active {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.3);
+}
+
+/* ===========================
+   Time Display
+   =========================== */
+
+.replay-time-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #424242;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.replay-current-time {
+  color: #2196F3;
+}
+
+.replay-time-separator {
+  color: #9e9e9e;
+}
+
+.replay-total-time {
+  color: #757575;
+}
+
+/* ===========================
+   Control Buttons
+   =========================== */
+
+.replay-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.replay-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  color: #424242;
+}
+
+.replay-btn:hover {
+  background: #f5f5f5;
+  border-color: #2196F3;
+  color: #2196F3;
+  transform: scale(1.05);
+}
+
+.replay-btn:active {
+  transform: scale(0.95);
+}
+
+.replay-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Restart Button */
+.replay-btn-restart {
+  width: 40px;
+  height: 40px;
+}
+
+/* Play/Pause Button */
+.replay-btn-play-pause {
+  width: 56px;
+  height: 56px;
+  background: #2196F3;
+  border-color: #2196F3;
+  color: white;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+.replay-btn-play-pause:hover {
+  background: #1976D2;
+  border-color: #1976D2;
+  color: white;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+}
+
+.replay-btn-play-pause.playing {
+  background: #FF9800;
+  border-color: #FF9800;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.replay-btn-play-pause.playing:hover {
+  background: #F57C00;
+  border-color: #F57C00;
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+}
+
+/* ===========================
+   Speed Controls
+   =========================== */
+
+.replay-speed-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: #f5f5f5;
+  border-radius: 20px;
+}
+
+.replay-speed-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #757575;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.replay-speed-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.replay-speed-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #757575;
+  min-width: 36px;
+}
+
+.replay-speed-btn:hover {
+  background: #f5f5f5;
+  border-color: #2196F3;
+  color: #2196F3;
+}
+
+.replay-speed-btn.active {
+  background: #2196F3;
+  border-color: #2196F3;
+  color: white;
+  box-shadow: 0 2px 4px rgba(33, 150, 243, 0.3);
+}
+
+/* ===========================
+   State Indicator
+   =========================== */
+
+.replay-state-indicator {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.replay-state-indicator.replay-state-playing,
+.replay-state-indicator.replay-state-paused {
+  opacity: 1;
+}
+
+.replay-state-indicator.replay-state-completed {
+  opacity: 1;
+  background: rgba(76, 175, 80, 0.9);
+}
+
+/* ===========================
+   Vehicle Marker
+   =========================== */
+
+.vehicle-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.vehicle-marker {
+  position: relative;
+  transition: transform 0.3s ease-out;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3));
+}
+
+/* Pulsing animation for vehicle marker */
+@keyframes vehicle-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.vehicle-marker.pulsing {
+  animation: vehicle-pulse 2s ease-in-out infinite;
+}
+
+/* ===========================
+   Traveled Path Styling
+   =========================== */
+
+.leaflet-pane .leaflet-overlay-pane path.traveled-path {
+  stroke-dasharray: 10, 5;
+  animation: dash-animation 1s linear infinite;
+}
+
+@keyframes dash-animation {
+  to {
+    stroke-dashoffset: -15;
+  }
+}
+
+/* ===========================
+   Mobile Optimizations
+   =========================== */
+
+@media (max-width: 768px) {
+  .trip-replay-controller {
+    gap: 10px;
+  }
+
+  .replay-controls {
+    gap: 8px;
+  }
+
+  .replay-btn-restart {
+    width: 36px;
+    height: 36px;
+  }
+
+  .replay-btn-play-pause {
+    width: 48px;
+    height: 48px;
+  }
+
+  .replay-speed-controls {
+    padding: 4px 8px;
+    gap: 6px;
+  }
+
+  .replay-speed-btn {
+    padding: 4px 8px;
+    min-width: 32px;
+    font-size: 11px;
+  }
+
+  .replay-time-display {
+    font-size: 12px;
+  }
+
+  .replay-state-indicator {
+    font-size: 11px;
+    padding: 5px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .trip-replay-controls-container {
+    min-width: 260px;
+    padding: 10px 12px;
+  }
+
+  .replay-speed-controls {
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .replay-speed-label {
+    font-size: 11px;
+  }
+
+  .replay-speed-buttons {
+    gap: 3px;
+  }
+
+  .replay-speed-btn {
+    padding: 3px 6px;
+    min-width: 28px;
+    font-size: 10px;
+  }
+}
+
+/* ===========================
+   Accessibility
+   =========================== */
+
+.replay-btn:focus-visible,
+.replay-speed-btn:focus-visible {
+  outline: 3px solid #2196F3;
+  outline-offset: 2px;
+}
+
+.replay-progress-bar:focus-visible {
+  outline: 2px solid #2196F3;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .trip-replay-controls-container {
+    border: 2px solid #000;
+  }
+
+  .replay-btn {
+    border-width: 3px;
+  }
+
+  .replay-progress-bar {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .vehicle-marker,
+  .replay-btn,
+  .replay-progress-handle,
+  .replay-state-indicator {
+    transition: none;
+    animation: none;
+  }
+
+  .replay-progress-bar:hover {
+    height: 8px;
+  }
+}
+
+/* ===========================
+   Dark Mode Support
+   =========================== */
+
+@media (prefers-color-scheme: dark) {
+  .trip-replay-controls-container {
+    background: rgba(33, 33, 33, 0.98);
+  }
+
+  .replay-btn {
+    background: #424242;
+    border-color: #616161;
+    color: #e0e0e0;
+  }
+
+  .replay-btn:hover {
+    background: #616161;
+    border-color: #2196F3;
+    color: #2196F3;
+  }
+
+  .replay-progress-bar {
+    background: #424242;
+  }
+
+  .replay-speed-controls {
+    background: #424242;
+  }
+
+  .replay-speed-btn {
+    background: #616161;
+    border-color: #757575;
+    color: #e0e0e0;
+  }
+
+  .replay-speed-btn:hover {
+    background: #757575;
+    border-color: #2196F3;
+    color: #2196F3;
+  }
+
+  .replay-time-display {
+    color: #e0e0e0;
+  }
+
+  .replay-current-time {
+    color: #64B5F6;
+  }
+
+  .replay-total-time {
+    color: #bdbdbd;
+  }
+}
+
+/* ===========================
+   Print Styles
+   =========================== */
+
+@media print {
+  .trip-replay-controls-container,
+  .replay-state-indicator {
+    display: none;
+  }
+}
+
+/* ===========================
+   Animation Performance
+   =========================== */
+
+.vehicle-marker,
+.replay-progress-fill,
+.replay-progress-handle {
+  will-change: transform;
+}
+
+/* Force GPU acceleration */
+.vehicle-marker {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ===========================
+   Phase 7 - Simplification Metrics
+   =========================== */
+
+.trip-simplification-metrics {
+  position: absolute;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #4CAF50;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  z-index: 999;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .trip-simplification-metrics {
+    bottom: 70px;
+    font-size: 10px;
+    padding: 5px 10px;
+  }
+}

@@ -1,0 +1,359 @@
+/**
+ * Trip Recorder Component Styles
+ * Modern, responsive design for the trip recording UI
+ */
+
+.trip-recorder {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-width: 400px;
+  width: calc(100vw - 40px);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.trip-recorder.expanded {
+  max-height: 600px;
+}
+
+/* Header */
+.trip-recorder-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  user-select: none;
+}
+
+.trip-recorder-header:hover {
+  opacity: 0.95;
+}
+
+.status-indicator {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0;
+}
+
+.pulse.active {
+  animation: pulse-animation 2s ease-out infinite;
+}
+
+@keyframes pulse-animation {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+  }
+}
+
+.header-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.status-text {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.points-count {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.expand-toggle {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: transform 0.3s ease;
+}
+
+.expand-toggle:hover {
+  transform: scale(1.1);
+}
+
+/* Content */
+.trip-recorder-content {
+  padding: 20px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+/* Start Section */
+.start-section {
+  text-align: center;
+}
+
+.start-section h3 {
+  margin: 0 0 16px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.trip-name-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  transition: border-color 0.3s ease;
+}
+
+.trip-name-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.help-text {
+  margin: 12px 0 0 0;
+  font-size: 12px;
+  color: #666;
+}
+
+/* Recording Section */
+.recording-section h3 {
+  margin: 0 0 16px 0;
+  color: #333;
+  font-size: 18px;
+  text-align: center;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  background: #f5f5f5;
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.last-point-info {
+  background: #f9f9f9;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border-left: 3px solid #667eea;
+}
+
+.coordinates {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  color: #333;
+  font-family: monospace;
+}
+
+.timestamp {
+  margin: 0;
+  font-size: 11px;
+  color: #666;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.btn:last-child {
+  margin-bottom: 0;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-icon {
+  font-size: 16px;
+}
+
+.btn-start {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.btn-pause {
+  background: #FF9800;
+  color: white;
+}
+
+.btn-resume {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-stop {
+  background: #F44336;
+  color: white;
+}
+
+.btn-retry {
+  background: #2196F3;
+  color: white;
+}
+
+.control-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Error Section */
+.error-section {
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.error-section h3 {
+  margin: 0 0 12px 0;
+  color: #F44336;
+  font-size: 18px;
+}
+
+.error-message {
+  margin: 0 0 16px 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .trip-recorder {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    width: auto;
+    max-width: none;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .trip-recorder-content {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-item {
+    padding: 10px;
+  }
+
+  .btn {
+    padding: 10px 20px;
+    font-size: 13px;
+  }
+}
+
+/* Scrollbar Styling */
+.trip-recorder-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.trip-recorder-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.trip-recorder-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.trip-recorder-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Animation for content expansion */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.trip-recorder-content {
+  animation: slideDown 0.3s ease;
+}
