@@ -10,6 +10,8 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { getImageUrl, getApiUrl } from "../utils/api";
+import TripRecorder from "./TripRecorder";
+import { Trip } from "../utils/indexedDB";
 
 // Fix Leaflet's default icon issues
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
@@ -1523,6 +1525,17 @@ const MainApp: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Trip Recorder Component */}
+      <TripRecorder
+        onTripComplete={(trip: Trip) => {
+          console.log('Trip completed:', trip);
+          alert(`Trip "${trip.name}" saved with ${trip.coordinates.length} points!`);
+        }}
+        onRecordingStateChange={(isRecording: boolean) => {
+          console.log('Recording state changed:', isRecording);
+        }}
+      />
 
     </div>
   );

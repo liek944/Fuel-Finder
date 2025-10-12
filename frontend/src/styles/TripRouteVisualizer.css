@@ -1,0 +1,316 @@
+/**
+ * Trip Route Visualizer Styles
+ * 
+ * Styling for trip route visualization components including
+ * markers, popups, and interactive elements.
+ * 
+ * @version 3.0.0
+ * @since Phase 3
+ */
+
+/* ============================================
+   Route Marker Icons
+   ============================================ */
+
+.route-marker-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.route-marker {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: markerPulse 2s ease-in-out infinite;
+}
+
+.route-marker:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Start marker specific styles */
+.route-marker-start {
+  background-color: #00ff00 !important;
+  animation: startPulse 2s ease-in-out infinite;
+}
+
+/* End marker specific styles */
+.route-marker-end {
+  background-color: #ff0000 !important;
+  animation: endPulse 2s ease-in-out infinite;
+}
+
+/* ============================================
+   Marker Animations
+   ============================================ */
+
+@keyframes markerPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes startPulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(0, 255, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 16px rgba(0, 255, 0, 0.6);
+  }
+}
+
+@keyframes endPulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(255, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 16px rgba(255, 0, 0, 0.6);
+  }
+}
+
+/* ============================================
+   Route Marker Popups
+   ============================================ */
+
+.route-marker-popup {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  min-width: 200px;
+}
+
+.route-marker-popup h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 4px;
+}
+
+.route-marker-popup div {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #555;
+}
+
+.route-marker-popup strong {
+  color: #333;
+  font-weight: 600;
+}
+
+/* ============================================
+   Polyline Styles (via Leaflet)
+   ============================================ */
+
+/* Hover effect for route polylines */
+.leaflet-interactive:hover {
+  stroke-width: 6 !important;
+  cursor: pointer;
+}
+
+/* ============================================
+   Trip Route Visualizer Container
+   ============================================ */
+
+.trip-route-visualizer {
+  position: relative;
+  z-index: 400;
+}
+
+/* ============================================
+   Route Legend (Optional)
+   ============================================ */
+
+.route-legend {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  background: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+.route-legend h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+}
+
+.route-legend-item {
+  display: flex;
+  align-items: center;
+  margin: 6px 0;
+  font-size: 12px;
+  color: #555;
+}
+
+.route-legend-color {
+  width: 20px;
+  height: 4px;
+  margin-right: 8px;
+  border-radius: 2px;
+}
+
+.route-legend-marker {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-right: 8px;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================
+   Loading State
+   ============================================ */
+
+.route-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  text-align: center;
+}
+
+.route-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #0066ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 12px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.route-loading-text {
+  font-size: 14px;
+  color: #555;
+  font-weight: 500;
+}
+
+/* ============================================
+   Error State
+   ============================================ */
+
+.route-error {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px 20px;
+  border-radius: 8px;
+  border: 1px solid #ef5350;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  font-size: 14px;
+  max-width: 400px;
+  text-align: center;
+}
+
+.route-error-icon {
+  font-size: 20px;
+  margin-right: 8px;
+}
+
+/* ============================================
+   Mobile Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+  .route-marker {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 16px !important;
+  }
+
+  .route-legend {
+    bottom: 10px;
+    right: 10px;
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+
+  .route-marker-popup {
+    min-width: 150px;
+  }
+
+  .route-marker-popup h3 {
+    font-size: 12px;
+  }
+
+  .route-marker-popup div {
+    font-size: 11px;
+  }
+}
+
+/* ============================================
+   Accessibility
+   ============================================ */
+
+.route-marker:focus {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+
+.route-marker:focus-visible {
+  outline: 2px solid #0066ff;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .route-marker {
+    border-width: 4px !important;
+  }
+
+  .route-marker-popup {
+    border: 2px solid #000;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .route-marker,
+  .route-marker-start,
+  .route-marker-end {
+    animation: none !important;
+  }
+
+  .route-loading-spinner {
+    animation: none !important;
+    border-top-color: transparent;
+  }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+  .route-legend {
+    position: static;
+    page-break-inside: avoid;
+  }
+
+  .route-marker {
+    animation: none !important;
+  }
+}
