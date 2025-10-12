@@ -143,7 +143,7 @@ export class TripReplayAnimator {
           longitude: start.longitude + (end.longitude - start.longitude) * factor,
           timestamp: start.timestamp + (end.timestamp - start.timestamp) * factor,
           accuracy: start.accuracy,
-          altitude: start.altitude !== null && end.altitude !== null
+          altitude: start.altitude != null && end.altitude != null
             ? start.altitude + (end.altitude - start.altitude) * factor
             : null,
           heading: this.calculateHeading(start, end),
