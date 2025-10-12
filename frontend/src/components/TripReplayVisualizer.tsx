@@ -350,7 +350,6 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
             color: segment.color,
             weight: opts.weight,
             opacity: opts.opacity * 0.4, // Dimmed
-            smoothFactor: opts.smoothFactor,
             lineCap: 'round',
             lineJoin: 'round'
           }}
@@ -365,7 +364,6 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
             color: '#2196F3',
             weight: opts.weight + 2,
             opacity: 0.8,
-            smoothFactor: opts.smoothFactor,
             lineCap: 'round',
             lineJoin: 'round'
           }}
