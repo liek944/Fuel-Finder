@@ -348,6 +348,9 @@
 @media (max-width: 768px) {
   .trip-summary-card {
     padding: 20px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
   }
 
   .summary-title {
@@ -375,51 +378,71 @@
 /* Mobile */
 @media (max-width: 480px) {
   .trip-summary-card {
-    padding: 16px;
+    padding: 12px;
     border-radius: 12px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   }
 
   .summary-header {
-    margin-bottom: 16px;
-    padding-bottom: 12px;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
   }
 
   .summary-title {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .summary-subtitle {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .metrics-grid {
-    grid-template-columns: 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .primary-metrics {
+    margin-bottom: 12px;
   }
 
   .trip-metric {
-    padding: 14px;
+    padding: 8px 6px;
+    gap: 6px;
   }
 
   .metric-icon {
-    font-size: 32px;
-  }
-
-  .metric-label {
-    font-size: 11px;
-  }
-
-  .metric-value {
     font-size: 20px;
   }
 
+  .metric-label {
+    font-size: 10px;
+  }
+
+  .metric-value {
+    font-size: 14px;
+  }
+
+  .detailed-metrics {
+    padding-top: 12px;
+  }
+
   .fuel-config-section {
-    padding: 16px;
+    padding: 12px;
+    margin-top: 12px;
   }
 
   .config-display {
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
+  }
+
+  .trip-info {
+    margin-top: 12px;
+    padding-top: 12px;
+    gap: 8px;
   }
 
   .info-item {
@@ -428,8 +451,13 @@
     gap: 4px;
   }
 
+  .info-label {
+    font-size: 12px;
+  }
+
   .info-value {
     text-align: left;
+    font-size: 12px;
   }
 }
 

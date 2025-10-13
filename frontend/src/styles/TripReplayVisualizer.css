@@ -65,7 +65,11 @@
 @media (max-width: 768px) {
   .trip-replay-controls-container {
     bottom: 10px;
-    min-width: 280px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+    min-width: auto;
+    max-width: calc(100vw - 20px);
     padding: 12px 16px;
   }
 }
@@ -117,14 +121,15 @@
 
 @media (max-width: 768px) {
   .trip-summary-container {
-    position: relative;
-    top: 0;
-    right: 0;
-    max-width: 100%;
-    width: 100%;
-    margin-top: 16px;
-    max-height: none;
-    overflow-y: visible;
+    position: absolute;
+    top: 80px;
+    left: 10px;
+    right: 10px;
+    max-width: calc(100vw - 20px);
+    width: auto;
+    margin-top: 0;
+    max-height: calc(100vh - 240px);
+    overflow-y: auto;
   }
 }
 
@@ -474,8 +479,18 @@
 
 @media (max-width: 480px) {
   .trip-replay-controls-container {
-    min-width: 260px;
+    min-width: auto;
     padding: 10px 12px;
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+  }
+
+  .trip-summary-container {
+    top: 70px;
+    left: 10px;
+    right: 10px;
+    max-height: calc(100vh - 200px);
   }
 
   .replay-speed-controls {
