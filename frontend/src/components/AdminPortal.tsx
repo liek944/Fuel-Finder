@@ -409,7 +409,12 @@ const AdminPortal: React.FC = () => {
   const [formName, setFormName] = useState<string>("");
   const [formType, setFormType] = useState<string>("gas");
   const [formBrand, setFormBrand] = useState<string>("Local");
-  const [formPrice, setFormPrice] = useState<string>("60.00");
+  const [formPrice, setFormPrice] = useState<string>("60.00"); // Legacy field
+  const [formFuelPrices, setFormFuelPrices] = useState<{[key: string]: string}>({
+    Regular: "58.00",
+    Diesel: "55.00",
+    Premium: "62.00"
+  });
   const [formAddress, setFormAddress] = useState<string>("");
   const [formPhone, setFormPhone] = useState<string>("");
   const [formServices, setFormServices] = useState<string[]>([]);
@@ -806,7 +811,14 @@ const AdminPortal: React.FC = () => {
 
       if (isGasStation) {
         payload.brand = formBrand;
-        payload.fuel_price = parseFloat(formPrice);
+        payload.fuel_price = parseFloat(formPrice); // Legacy field for backward compatibility
+        // Add fuel prices array with only non-zero prices
+        payload.fuel_prices = Object.entries(formFuelPrices)
+          .filter(([_, price]) => parseFloat(price) > 0)
+          .map(([fuel_type, price]) => ({
+            fuel_type,
+            price: parseFloat(price)
+          }));
         payload.services = formServices;
         payload.address = formAddress;
         payload.phone = formPhone;
@@ -877,6 +889,11 @@ const AdminPortal: React.FC = () => {
         setFormType("gas");
         setFormBrand("Local");
         setFormPrice("60.00");
+        setFormFuelPrices({
+          Regular: "58.00",
+          Diesel: "55.00",
+          Premium: "62.00"
+        });
         setFormAddress("");
         setFormPhone("");
         setFormServices([]);
@@ -1942,27 +1959,49 @@ const AdminPortal: React.FC = () => {
                   <label
                     style={{
                       display: "block",
-                      marginBottom: 5,
+                      marginBottom: 8,
                       fontWeight: 600,
                       color: "#555",
                     }}
                   >
-                    Fuel Price (₱/L)
+                    ⛽ Fuel Prices (₱/L)
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #ddd",
-                      borderRadius: 4,
-                      fontSize: "14px",
-                    }}
-                  />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    {Object.entries(formFuelPrices).map(([fuelType, price]) => (
+                      <div key={fuelType}>
+                        <label
+                          style={{
+                            display: "block",
+                            marginBottom: 4,
+                            fontSize: "12px",
+                            color: "#666",
+                          }}
+                        >
+                          {fuelType}
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={price}
+                          onChange={(e) => setFormFuelPrices(prev => ({
+                            ...prev,
+                            [fuelType]: e.target.value
+                          }))}
+                          style={{
+                            width: "100%",
+                            padding: "8px",
+                            border: "1px solid #ddd",
+                            borderRadius: 4,
+                            fontSize: "14px",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: "11px", color: "#666" }}>
+                    💡 Leave at 0 if fuel type is not available
+                  </div>
                 </div>
               </>
             )}

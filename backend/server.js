@@ -186,6 +186,7 @@ app.post("/api/stations", rateLimit, async (req, res) => {
       name,
       brand,
       fuel_price,
+      fuel_prices, // Array of {fuel_type, price}
       services,
       address,
       phone,
@@ -239,8 +240,26 @@ app.post("/api/stations", rateLimit, async (req, res) => {
     };
 
     // Persist
-    const { addStation } = require("./database/db");
+    const { addStation, updateStationFuelPrice } = require("./database/db");
     const created = await addStation(payload);
+
+    // Add fuel prices if provided
+    if (fuel_prices && Array.isArray(fuel_prices) && fuel_prices.length > 0) {
+      for (const fp of fuel_prices) {
+        if (fp.fuel_type && fp.price && parseFloat(fp.price) > 0) {
+          try {
+            await updateStationFuelPrice(
+              created.id,
+              fp.fuel_type,
+              parseFloat(fp.price),
+              'admin'
+            );
+          } catch (fpErr) {
+            console.error(`Failed to add ${fp.fuel_type} price:`, fpErr.message);
+          }
+        }
+      }
+    }
 
     // Reuse transformer to keep response consistent with other endpoints
     const transformed = transformStationData([created])[0];
