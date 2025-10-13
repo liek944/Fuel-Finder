@@ -68,6 +68,10 @@ const {
   getAveragePriceFromReports,
   verifyPriceReport,
   getPriceReportStats,
+  // Fuel Prices Management
+  getStationFuelPrices,
+  updateStationFuelPrice,
+  deleteStationFuelPrice,
 } = require("./database/db");
 
 // Import image service
@@ -1873,6 +1877,147 @@ app.get("/api/admin/price-reports/stats", rateLimit, async (req, res) => {
     console.error("❌ Error fetching price reporting stats:", err);
     res.status(500).json({
       error: "Failed to fetch statistics",
+      message: err.message,
+    });
+  }
+});
+
+// ============================================================================
+// FUEL PRICES MANAGEMENT ENDPOINTS
+// ============================================================================
+
+// Get all fuel prices for a station (public)
+app.get("/api/stations/:id/fuel-prices", async (req, res) => {
+  try {
+    const stationId = parseInt(req.params.id);
+
+    if (isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+      });
+    }
+
+    const fuelPrices = await getStationFuelPrices(stationId);
+
+    res.json({
+      station_id: stationId,
+      fuel_prices: fuelPrices,
+      count: fuelPrices.length,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching fuel prices:", err);
+    res.status(500).json({
+      error: "Failed to fetch fuel prices",
+      message: err.message,
+    });
+  }
+});
+
+// Update or add a fuel price for a station (admin only)
+app.put("/api/stations/:id/fuel-prices/:fuelType", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const apiKey = req.headers["x-api-key"];
+      if (!apiKey || apiKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Valid API key required for this operation",
+        });
+      }
+    }
+
+    const stationId = parseInt(req.params.id);
+    const fuelType = req.params.fuelType;
+    const { price, updated_by } = req.body;
+
+    if (isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+      });
+    }
+
+    if (!price || isNaN(price) || price <= 0) {
+      return res.status(400).json({
+        error: "Invalid price",
+        message: "Price must be a positive number",
+      });
+    }
+
+    // Validate fuel type
+    const validFuelTypes = ['Regular', 'Premium', 'Diesel', 'Premium Diesel', 'E85', 'LPG'];
+    if (!validFuelTypes.includes(fuelType)) {
+      return res.status(400).json({
+        error: "Invalid fuel type",
+        message: `Fuel type must be one of: ${validFuelTypes.join(', ')}`,
+      });
+    }
+
+    const updatedPrice = await updateStationFuelPrice(
+      stationId,
+      fuelType,
+      price,
+      updated_by || 'admin'
+    );
+
+    // Clear cache
+    cache.flushAll();
+
+    res.json({
+      message: "Fuel price updated successfully",
+      fuel_price: updatedPrice,
+    });
+  } catch (err) {
+    console.error("❌ Error updating fuel price:", err);
+    res.status(500).json({
+      error: "Failed to update fuel price",
+      message: err.message,
+    });
+  }
+});
+
+// Delete a fuel price entry (admin only)
+app.delete("/api/stations/:id/fuel-prices/:fuelType", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const apiKey = req.headers["x-api-key"];
+      if (!apiKey || apiKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Valid API key required for this operation",
+        });
+      }
+    }
+
+    const stationId = parseInt(req.params.id);
+    const fuelType = req.params.fuelType;
+
+    if (isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+      });
+    }
+
+    const deletedPrice = await deleteStationFuelPrice(stationId, fuelType);
+
+    if (!deletedPrice) {
+      return res.status(404).json({
+        error: "Fuel price not found",
+      });
+    }
+
+    // Clear cache
+    cache.flushAll();
+
+    res.json({
+      message: "Fuel price deleted successfully",
+      deleted: deletedPrice,
+    });
+  } catch (err) {
+    console.error("❌ Error deleting fuel price:", err);
+    res.status(500).json({
+      error: "Failed to delete fuel price",
       message: err.message,
     });
   }

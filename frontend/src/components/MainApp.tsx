@@ -21,11 +21,19 @@ import markerIconPng from "leaflet/dist/images/marker-icon.png";
 import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
 
 // Types
+interface FuelPrice {
+  fuel_type: string;
+  price: number;
+  price_updated_at?: string;
+  price_updated_by?: string;
+}
+
 interface Station {
   id: number;
   name: string;
   brand: string;
-  fuel_price: number;
+  fuel_price: number; // Legacy field - kept for backward compatibility
+  fuel_prices?: FuelPrice[]; // New field for multiple fuel types
   services: string[];
   address: string;
   phone?: string;
@@ -816,7 +824,12 @@ const MainApp: React.FC = () => {
   const filteredStations = stations.filter((station) => {
     const matchesBrand =
       selectedBrand === "All" || station.brand === selectedBrand;
-    const matchesPrice = station.fuel_price <= maxPrice;
+    
+    // Check if any fuel type matches the price filter
+    const matchesPrice = station.fuel_prices && station.fuel_prices.length > 0
+      ? station.fuel_prices.some(fp => fp.price <= maxPrice)
+      : station.fuel_price <= maxPrice; // Fallback to legacy price
+    
     const matchesSearch =
       searchQuery === "" ||
       (station.name &&
@@ -1142,8 +1155,23 @@ const MainApp: React.FC = () => {
                   <div style={{ marginBottom: 4 }}>
                     <strong>Brand:</strong> {station.brand}
                   </div>
+                  {/* Display fuel prices */}
                   <div style={{ marginBottom: 4 }}>
-                    <strong>Price:</strong> ₱{station.fuel_price}/L
+                    <strong>Fuel Prices:</strong>
+                    {station.fuel_prices && station.fuel_prices.length > 0 ? (
+                      <div style={{ marginLeft: 8, marginTop: 4 }}>
+                        {station.fuel_prices.map((fp) => (
+                          <div key={fp.fuel_type} style={{ fontSize: 12, marginBottom: 2 }}>
+                            <span style={{ fontWeight: 500 }}>{fp.fuel_type}:</span> ₱{fp.price.toFixed(2)}/L
+                            {fp.price_updated_by === 'community' && (
+                              <span style={{ fontSize: 10, color: '#666', marginLeft: 4 }}>(community)</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <span> ₱{station.fuel_price}/L</span>
+                    )}
                   </div>
                   <div style={{ marginBottom: 4 }}>
                     <strong>Distance:</strong> {distance.toFixed(2)} km
