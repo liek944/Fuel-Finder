@@ -35,6 +35,62 @@ function rateLimit(req, res, next) {
     next();
   }
 }
+
+// Request deduplication middleware for image uploads
+// Prevents duplicate uploads from load balancers/reverse proxies
+const crypto = require('crypto');
+const pendingRequests = new Map(); // requestHash -> { timestamp, promise }
+const DEDUP_WINDOW_MS = 5000; // 5 seconds window for deduplication
+
+function createRequestHash(req) {
+  // Create a hash based on: method + path + body content + IP
+  const ip = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress || "unknown";
+  const bodyStr = JSON.stringify(req.body || {});
+  const hashInput = `${req.method}:${req.path}:${bodyStr}:${ip}`;
+  return crypto.createHash('md5').update(hashInput).digest('hex');
+}
+
+function requestDeduplication(req, res, next) {
+  // Only apply to POST/PUT/PATCH requests with body content
+  if (!['POST', 'PUT', 'PATCH'].includes(req.method) || !req.body) {
+    return next();
+  }
+
+  const requestHash = createRequestHash(req);
+  const now = Date.now();
+  
+  // Clean up old entries
+  for (const [hash, entry] of pendingRequests.entries()) {
+    if (now - entry.timestamp > DEDUP_WINDOW_MS) {
+      pendingRequests.delete(hash);
+    }
+  }
+
+  // Check if this is a duplicate request
+  const existing = pendingRequests.get(requestHash);
+  if (existing) {
+    console.log(`⚠️  Duplicate request detected and blocked: ${req.method} ${req.path}`);
+    // Return 202 Accepted to indicate the request is being processed
+    return res.status(202).json({
+      message: "Request already being processed",
+      note: "This is a duplicate request that was automatically deduplicated"
+    });
+  }
+
+  // Mark this request as pending
+  pendingRequests.set(requestHash, { timestamp: now });
+
+  // Clean up after response is sent
+  const cleanup = () => {
+    pendingRequests.delete(requestHash);
+  };
+
+  res.on('finish', cleanup);
+  res.on('close', cleanup);
+  res.on('error', cleanup);
+
+  next();
+}
 const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
@@ -185,7 +241,7 @@ app.use((req, res, next) => {
 });
 
 // Create a new station (protected by optional API key)
-app.post("/api/stations", rateLimit, async (req, res) => {
+app.post("/api/stations", requestDeduplication, rateLimit, async (req, res) => {
   try {
     // If ADMIN_API_KEY is configured, require matching x-api-key header
     if (ADMIN_API_KEY) {
@@ -437,7 +493,7 @@ app.get("/api/admin/debug", (req, res) => {
 });
 
 // Create a new POI (protected by optional API key)
-app.post("/api/pois", rateLimit, async (req, res) => {
+app.post("/api/pois", requestDeduplication, rateLimit, async (req, res) => {
   try {
     if (ADMIN_API_KEY) {
       const headerKey = req.header("x-api-key");
@@ -1081,7 +1137,7 @@ app.post("/api/cache/clear", (req, res) => {
 // ============================================================================
 
 // Upload images for a station (base64)
-app.post("/api/stations/:id/images", rateLimit, async (req, res) => {
+app.post("/api/stations/:id/images", requestDeduplication, rateLimit, async (req, res) => {
   try {
     // Check API key if configured
     if (ADMIN_API_KEY) {
@@ -1204,7 +1260,7 @@ app.get("/api/stations/:id/images", async (req, res) => {
 });
 
 // Upload images for a POI (base64)
-app.post("/api/pois/:id/images", rateLimit, async (req, res) => {
+app.post("/api/pois/:id/images", requestDeduplication, rateLimit, async (req, res) => {
   try {
     // Check API key if configured
     if (ADMIN_API_KEY) {
