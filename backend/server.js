@@ -92,6 +92,11 @@ const {
 } = require("./services/supabaseStorage");
 
 const app = express();
+
+// Trust proxy - REQUIRED for AWS EC2 behind reverse proxy/load balancer
+// This allows Express to correctly read X-Forwarded-* headers
+app.set('trust proxy', true);
+
 const port = process.env.PORT || 3001;
 const OSRM_TIMEOUT_MS = parseInt(process.env.OSRM_TIMEOUT_MS || "15000", 10);
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || "";
@@ -154,6 +159,17 @@ app.use(
   "/api/images/thumbnails",
   express.static(path.join(__dirname, "uploads/images/thumbnails")),
 );
+
+// Security headers for production
+if (process.env.NODE_ENV === 'production') {
+  app.use((req, res, next) => {
+    res.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    res.header('X-Content-Type-Options', 'nosniff');
+    res.header('X-Frame-Options', 'DENY');
+    res.header('X-XSS-Protection', '1; mode=block');
+    next();
+  });
+}
 
 // Request logging middleware
 app.use((req, res, next) => {

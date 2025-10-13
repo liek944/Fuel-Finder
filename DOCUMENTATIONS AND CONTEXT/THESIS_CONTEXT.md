@@ -18,28 +18,31 @@
 
 ### System Overview
 ```
-Internet → [Frontend (Vercel)] → [Backend API (Render)] → [PostgreSQL+PostGIS (Render)]
-                                      ↓
-                              [OSRM Routing Engine (AWS EC2)]
+Internet → [Frontend (Netlify)] → [Backend API (AWS EC2)] → [PostgreSQL+PostGIS (Supabase)]
+                                         ↓                         ↓
+                              [OSRM Routing Engine (AWS EC2)]  [Supabase Storage]
 ```
 
 ### Technology Stack
 
 #### Frontend
-- **Platform**: Vercel
+- **Platform**: Netlify
 - **Technologies**: HTML, CSS, JavaScript
 - **Map Library**: Leaflet.js with OpenStreetMap tiles
-- **Deployment URL**: https://fuel-finder.vercel.app (example)
+- **Deployment URL**: https://fuelfinderths.netlify.app
 
 #### Backend
-- **Platform**: Render
+- **Platform**: AWS EC2 (Ubuntu)
 - **Runtime**: Node.js with Express.js
-- **Deployment URL**: https://fuel-finder-backend-iw23.onrender.com
+- **Reverse Proxy**: Nginx with SSL/TLS (Let's Encrypt)
+- **Process Manager**: PM2 for production process management
+- **Deployment URL**: https://fuelfinder.duckdns.org
 - **API Documentation**: RESTful API with comprehensive endpoints
 
 #### Database
 - **Type**: PostgreSQL with PostGIS extension
-- **Provider**: Render Managed PostgreSQL
+- **Provider**: Supabase Managed PostgreSQL
+- **Connection**: Pooler connection with SSL
 - **Capabilities**: Spatial queries, geospatial indexing, distance calculations
 
 #### Routing Engine
@@ -301,9 +304,10 @@ CREATE TABLE images (
 ## 📞 Contact & Resources
 
 ### Deployment URLs
-- **Frontend**: https://fuel-finder.vercel.app
-- **Backend**: https://fuel-finder-backend-iw23.onrender.com
-- **Health Check**: https://fuel-finder-backend-iw23.onrender.com/api/health
+- **Frontend**: https://fuelfinderths.netlify.app
+- **Backend**: https://fuelfinder.duckdns.org
+- **Health Check**: https://fuelfinder.duckdns.org/api/health
+- **Database**: Supabase (aws-1-ap-southeast-1.pooler.supabase.com)
 
 ### Documentation References
 - **OSRM Documentation**: http://project-osrm.org/docs/
