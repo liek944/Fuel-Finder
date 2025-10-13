@@ -960,17 +960,33 @@ const AdminPortal: React.FC = () => {
         >
           ← Back to Map
         </a>
-        <h1
+        <div
           style={{
-            margin: 0,
-            fontSize: "20px",
-            fontWeight: 700,
-            color: "#333",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
             flex: 1,
           }}
         >
-          🛠️ Admin Portal
-        </h1>
+          <img 
+            src="/logo.jpeg" 
+            alt="Fuel Finder Logo" 
+            style={{
+              height: "32px",
+              width: "auto",
+            }}
+          />
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "#333",
+            }}
+          >
+            Admin Portal
+          </h1>
+        </div>
         
         {/* View Switcher */}
         {isAdminEnabled && (
