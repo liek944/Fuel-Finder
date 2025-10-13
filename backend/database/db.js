@@ -104,19 +104,43 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
             ST_Distance(s.geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,
             COALESCE(
                 JSON_AGG(
-                    JSON_BUILD_OBJECT(
+                    DISTINCT JSON_BUILD_OBJECT(
                         'id', i.id,
                         'filename', i.filename,
                         'original_filename', i.original_filename,
                         'display_order', i.display_order,
                         'is_primary', i.is_primary,
                         'alt_text', i.alt_text
-                    ) ORDER BY i.display_order, i.id
+                    ) ORDER BY JSON_BUILD_OBJECT(
+                        'id', i.id,
+                        'filename', i.filename,
+                        'original_filename', i.original_filename,
+                        'display_order', i.display_order,
+                        'is_primary', i.is_primary,
+                        'alt_text', i.alt_text
+                    )
                 ) FILTER (WHERE i.id IS NOT NULL),
                 '[]'::json
-            ) as images
+            ) as images,
+            COALESCE(
+                JSON_AGG(
+                    DISTINCT JSON_BUILD_OBJECT(
+                        'fuel_type', fp.fuel_type,
+                        'price', fp.price,
+                        'price_updated_at', fp.price_updated_at,
+                        'price_updated_by', fp.price_updated_by
+                    ) ORDER BY JSON_BUILD_OBJECT(
+                        'fuel_type', fp.fuel_type,
+                        'price', fp.price,
+                        'price_updated_at', fp.price_updated_at,
+                        'price_updated_by', fp.price_updated_by
+                    )
+                ) FILTER (WHERE fp.id IS NOT NULL),
+                '[]'::json
+            ) as fuel_prices
         FROM stations s
         LEFT JOIN images i ON s.id = i.station_id
+        LEFT JOIN fuel_prices fp ON s.id = fp.station_id
         WHERE ST_DWithin(s.geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
         GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom
         ORDER BY distance_meters ASC;
@@ -222,19 +246,43 @@ async function getAllStations() {
             ST_Y(s.geom) as lat,
             COALESCE(
                 JSON_AGG(
-                    JSON_BUILD_OBJECT(
+                    DISTINCT JSON_BUILD_OBJECT(
                         'id', i.id,
                         'filename', i.filename,
                         'original_filename', i.original_filename,
                         'display_order', i.display_order,
                         'is_primary', i.is_primary,
                         'alt_text', i.alt_text
-                    ) ORDER BY i.display_order, i.id
+                    ) ORDER BY JSON_BUILD_OBJECT(
+                        'id', i.id,
+                        'filename', i.filename,
+                        'original_filename', i.original_filename,
+                        'display_order', i.display_order,
+                        'is_primary', i.is_primary,
+                        'alt_text', i.alt_text
+                    )
                 ) FILTER (WHERE i.id IS NOT NULL),
                 '[]'::json
-            ) as images
+            ) as images,
+            COALESCE(
+                JSON_AGG(
+                    DISTINCT JSON_BUILD_OBJECT(
+                        'fuel_type', fp.fuel_type,
+                        'price', fp.price,
+                        'price_updated_at', fp.price_updated_at,
+                        'price_updated_by', fp.price_updated_by
+                    ) ORDER BY JSON_BUILD_OBJECT(
+                        'fuel_type', fp.fuel_type,
+                        'price', fp.price,
+                        'price_updated_at', fp.price_updated_at,
+                        'price_updated_by', fp.price_updated_by
+                    )
+                ) FILTER (WHERE fp.id IS NOT NULL),
+                '[]'::json
+            ) as fuel_prices
         FROM stations s
         LEFT JOIN images i ON s.id = i.station_id
+        LEFT JOIN fuel_prices fp ON s.id = fp.station_id
         GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom
         ORDER BY s.name ASC;
     `;
@@ -553,27 +601,46 @@ async function verifyPriceReport(reportId, verifiedBy) {
       throw new Error("Price report not found");
     }
 
-    const { station_id, price } = verifyResult.rows[0];
+    const { station_id, price, fuel_type } = verifyResult.rows[0];
 
-    // Update station's official price
+    // Update or insert the fuel price for this specific fuel type
+    const updateFuelPriceQuery = `
+      INSERT INTO fuel_prices (station_id, fuel_type, price, price_updated_at, price_updated_by)
+      VALUES ($1, $2, $3, NOW(), 'community')
+      ON CONFLICT (station_id, fuel_type) 
+      DO UPDATE SET 
+        price = $3,
+        price_updated_at = NOW(),
+        price_updated_by = 'community'
+      RETURNING station_id, fuel_type, price, price_updated_at;
+    `;
+
+    const fuelPriceResult = await client.query(updateFuelPriceQuery, [
+      station_id,
+      fuel_type,
+      price,
+    ]);
+
+    // Also update the legacy fuel_price column in stations table for backward compatibility
+    // Set it to the cheapest available fuel price
     const updateStationQuery = `
       UPDATE stations
-      SET fuel_price = $2,
-          price_updated_at = NOW(),
-          price_updated_by = 'community'
+      SET fuel_price = (
+        SELECT MIN(price) FROM fuel_prices WHERE station_id = $1
+      ),
+      price_updated_at = NOW(),
+      price_updated_by = 'community'
       WHERE id = $1
       RETURNING id, name, fuel_price, price_updated_at;
     `;
 
-    const stationResult = await client.query(updateStationQuery, [
-      station_id,
-      price,
-    ]);
+    const stationResult = await client.query(updateStationQuery, [station_id]);
 
     await client.query("COMMIT");
 
     return {
       report: verifyResult.rows[0],
+      fuel_price: fuelPriceResult.rows[0],
       station: stationResult.rows[0],
     };
   } catch (err) {
@@ -692,6 +759,77 @@ async function deletePriceReport(reportId) {
   return result.rows[0];
 }
 
+// ============================================================================
+// FUEL PRICES MANAGEMENT FUNCTIONS
+// ============================================================================
+
+// Get all fuel prices for a station
+async function getStationFuelPrices(stationId) {
+  const query = `
+    SELECT 
+      id,
+      station_id,
+      fuel_type,
+      price,
+      price_updated_at,
+      price_updated_by,
+      created_at
+    FROM fuel_prices
+    WHERE station_id = $1
+    ORDER BY fuel_type;
+  `;
+
+  const result = await pool.query(query, [stationId]);
+  return result.rows;
+}
+
+// Update or add a fuel price for a station
+async function updateStationFuelPrice(stationId, fuelType, price, updatedBy = 'admin') {
+  const query = `
+    INSERT INTO fuel_prices (station_id, fuel_type, price, price_updated_at, price_updated_by)
+    VALUES ($1, $2, $3, NOW(), $4)
+    ON CONFLICT (station_id, fuel_type) 
+    DO UPDATE SET 
+      price = $3,
+      price_updated_at = NOW(),
+      price_updated_by = $4
+    RETURNING *;
+  `;
+
+  const result = await pool.query(query, [stationId, fuelType, price, updatedBy]);
+  
+  // Update the legacy fuel_price column in stations table
+  await pool.query(`
+    UPDATE stations
+    SET fuel_price = (SELECT MIN(price) FROM fuel_prices WHERE station_id = $1),
+        price_updated_at = NOW(),
+        price_updated_by = $2
+    WHERE id = $1
+  `, [stationId, updatedBy]);
+  
+  return result.rows[0];
+}
+
+// Delete a fuel price entry
+async function deleteStationFuelPrice(stationId, fuelType) {
+  const query = `
+    DELETE FROM fuel_prices
+    WHERE station_id = $1 AND fuel_type = $2
+    RETURNING *;
+  `;
+
+  const result = await pool.query(query, [stationId, fuelType]);
+  
+  // Update the legacy fuel_price column
+  await pool.query(`
+    UPDATE stations
+    SET fuel_price = (SELECT MIN(price) FROM fuel_prices WHERE station_id = $1)
+    WHERE id = $1
+  `, [stationId]);
+  
+  return result.rows[0];
+}
+
 // Get comprehensive price reporting statistics
 async function getPriceReportingStats() {
   const query = `
@@ -773,5 +911,9 @@ module.exports = {
   deletePriceReport,
   getPriceReportingStats,
   getDatabaseStats,
+  // Fuel Prices Management
+  getStationFuelPrices,
+  updateStationFuelPrice,
+  deleteStationFuelPrice,
   closePool,
 };
