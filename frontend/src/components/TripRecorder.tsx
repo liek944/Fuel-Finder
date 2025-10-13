@@ -108,7 +108,7 @@ const TripRecorder: React.FC<TripRecorderProps> = ({
       case 'error':
         return 'Error';
       default:
-        return 'Ready';
+        return '⏺ Record';
     }
   };
 
