@@ -241,19 +241,12 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
     simplifiedCount: number;
     reductionPercent: number;
   } | null>(null);
+  
   // Merge with default options
   const opts = { ...DEFAULT_ROUTE_OPTIONS, ...routeOptions };
 
-  // Validate route points
+  // Validate route points (do validation but don't return early yet)
   const validation = validateRoutePoints(trip.coordinates);
-  if (!validation.valid) {
-    console.error('Invalid route points:', validation.errors);
-    return (
-      <div className="trip-replay-error">
-        <p>Cannot replay trip: Invalid route data</p>
-      </div>
-    );
-  }
 
   // Apply geometry simplification (Phase 7)
   const processedCoordinates = useMemo(() => {
@@ -338,6 +331,16 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
   const vehicleIcon = currentPosition
     ? createVehicleIcon(currentPosition.heading || 0, vehicleIconHtml, vehicleIconSize)
     : createVehicleIcon(0, vehicleIconHtml, vehicleIconSize);
+
+  // Now check validation after all hooks are called
+  if (!validation.valid) {
+    console.error('Invalid route points:', validation.errors);
+    return (
+      <div className="trip-replay-error">
+        <p>Cannot replay trip: Invalid route data</p>
+      </div>
+    );
+  }
 
   return (
     <div className={`trip-replay-visualizer ${className}`}>

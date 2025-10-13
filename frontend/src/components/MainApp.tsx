@@ -11,7 +11,10 @@ import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { getImageUrl, getApiUrl } from "../utils/api";
 import TripRecorder from "./TripRecorder";
+import TripHistoryPanel from "./TripHistoryPanel";
+import TripReplayVisualizer from "./TripReplayVisualizer";
 import { Trip } from "../utils/indexedDB";
+import "../styles/TripReplayVisualizer.css";
 
 // Fix Leaflet's default icon issues
 import markerIconPng from "leaflet/dist/images/marker-icon.png";
@@ -744,6 +747,10 @@ const MainApp: React.FC = () => {
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] =
     useState<boolean>(false);
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
+  
+  // Trip replay states
+  const [showTripHistory, setShowTripHistory] = useState<boolean>(false);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
 
   // Get user location
   useEffect(() => {
@@ -968,6 +975,27 @@ const MainApp: React.FC = () => {
         >
           ⛽ Fuel Finder
         </h1>
+        
+        {/* Trip History Button */}
+        <button
+          onClick={() => setShowTripHistory(!showTripHistory)}
+          style={{
+            background: showTripHistory ? "#667eea" : "white",
+            color: showTripHistory ? "white" : "#667eea",
+            border: "2px solid #667eea",
+            padding: "8px 16px",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontSize: "14px",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            transition: "all 0.2s",
+          }}
+        >
+          📍 Trip History
+        </button>
       </div>
 
       {/* Map */}
@@ -1536,6 +1564,63 @@ const MainApp: React.FC = () => {
           console.log('Recording state changed:', isRecording);
         }}
       />
+
+      {/* Trip History Panel */}
+      {showTripHistory && (
+        <TripHistoryPanel
+          onSelectTrip={(trip: Trip) => {
+            setSelectedTrip(trip);
+            setShowTripHistory(false);
+          }}
+          onClose={() => setShowTripHistory(false)}
+        />
+      )}
+
+      {/* Trip Replay Visualizer */}
+      {selectedTrip && (
+        <TripReplayVisualizer
+          trip={selectedTrip}
+          animationConfig={{
+            speed: 2,
+            interpolate: true,
+            interpolationSteps: 10,
+          }}
+          autoFollow={true}
+          showControls={true}
+          showRoute={true}
+          showTraveledPath={true}
+          onStateChange={(state) => {
+            console.log('Replay state:', state);
+            if (state === 'completed') {
+              console.log('Replay completed!');
+            }
+          }}
+        />
+      )}
+
+      {/* Close Replay Button */}
+      {selectedTrip && (
+        <button
+          onClick={() => setSelectedTrip(null)}
+          style={{
+            position: "fixed",
+            top: 80,
+            right: 20,
+            zIndex: 1001,
+            background: "#ff5252",
+            color: "white",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: 8,
+            cursor: "pointer",
+            fontSize: "14px",
+            fontWeight: 600,
+            boxShadow: "0 4px 12px rgba(255, 82, 82, 0.3)",
+          }}
+        >
+          ✕ Close Replay
+        </button>
+      )}
 
     </div>
   );
