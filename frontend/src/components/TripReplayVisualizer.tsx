@@ -18,7 +18,7 @@
  * @since Phase 4, Enhanced in Phase 6, Optimized in Phase 7
  */
 
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Marker, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Trip } from '../utils/indexedDB';
@@ -44,7 +44,7 @@ import {
   autoSimplifyCoordinates,
   SimplificationConfig
 } from '../utils/geometryOptimizer';
-import { throttle, rafThrottle, PerformanceMonitor } from '../utils/performanceUtils';
+import { throttle, PerformanceMonitor } from '../utils/performanceUtils';
 import '../styles/TripReplayOverlay.css';
 
 /**

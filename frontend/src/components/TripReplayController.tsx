@@ -71,7 +71,6 @@ const TripReplayController: React.FC<TripReplayControllerProps> = ({
   const [state, setState] = useState<AnimationState>(animator.getState());
   const [progress, setProgress] = useState<number>(0);
   const [speed, setSpeed] = useState<PlaybackSpeed>(animator.getSpeed());
-  const [currentPosition, setCurrentPosition] = useState<AnimationPosition | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // Subscribe to animator updates
@@ -81,7 +80,6 @@ const TripReplayController: React.FC<TripReplayControllerProps> = ({
         setProgress(position.progress);
       }
       setState(animState);
-      setCurrentPosition(position);
 
       // Notify parent
       if (onStateChange && animState !== state) {
