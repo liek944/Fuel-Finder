@@ -57,8 +57,8 @@ async function processAndSaveImage(
   originalFilename,
   targetType = "station",
 ) {
-  const fileExtension = path.extname(originalFilename).toLowerCase();
-  const filename = `${uuidv4()}${fileExtension}`;
+  // Always use .jpeg extension since we convert all images to JPEG
+  const filename = `${uuidv4()}.jpeg`;
   const thumbnailFilename = `thumb_${filename}`;
 
   try {
