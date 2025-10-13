@@ -326,6 +326,7 @@ function transformStationData(stations) {
     name: station.name,
     brand: station.brand,
     fuel_price: station.fuel_price,
+    fuel_prices: station.fuel_prices || [], // Include fuel_prices array
     services: station.services || [],
     address: station.address,
     phone: station.phone,
