@@ -104,37 +104,25 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
             ST_Distance(s.geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,
             COALESCE(
                 JSON_AGG(
-                    DISTINCT JSON_BUILD_OBJECT(
+                    JSON_BUILD_OBJECT(
                         'id', i.id,
                         'filename', i.filename,
                         'original_filename', i.original_filename,
                         'display_order', i.display_order,
                         'is_primary', i.is_primary,
                         'alt_text', i.alt_text
-                    ) ORDER BY JSON_BUILD_OBJECT(
-                        'id', i.id,
-                        'filename', i.filename,
-                        'original_filename', i.original_filename,
-                        'display_order', i.display_order,
-                        'is_primary', i.is_primary,
-                        'alt_text', i.alt_text
-                    )
+                    ) ORDER BY i.display_order, i.id
                 ) FILTER (WHERE i.id IS NOT NULL),
                 '[]'::json
             ) as images,
             COALESCE(
                 JSON_AGG(
-                    DISTINCT JSON_BUILD_OBJECT(
+                    JSON_BUILD_OBJECT(
                         'fuel_type', fp.fuel_type,
                         'price', fp.price,
                         'price_updated_at', fp.price_updated_at,
                         'price_updated_by', fp.price_updated_by
-                    ) ORDER BY JSON_BUILD_OBJECT(
-                        'fuel_type', fp.fuel_type,
-                        'price', fp.price,
-                        'price_updated_at', fp.price_updated_at,
-                        'price_updated_by', fp.price_updated_by
-                    )
+                    ) ORDER BY fp.fuel_type
                 ) FILTER (WHERE fp.id IS NOT NULL),
                 '[]'::json
             ) as fuel_prices
@@ -246,37 +234,25 @@ async function getAllStations() {
             ST_Y(s.geom) as lat,
             COALESCE(
                 JSON_AGG(
-                    DISTINCT JSON_BUILD_OBJECT(
+                    JSON_BUILD_OBJECT(
                         'id', i.id,
                         'filename', i.filename,
                         'original_filename', i.original_filename,
                         'display_order', i.display_order,
                         'is_primary', i.is_primary,
                         'alt_text', i.alt_text
-                    ) ORDER BY JSON_BUILD_OBJECT(
-                        'id', i.id,
-                        'filename', i.filename,
-                        'original_filename', i.original_filename,
-                        'display_order', i.display_order,
-                        'is_primary', i.is_primary,
-                        'alt_text', i.alt_text
-                    )
+                    ) ORDER BY i.display_order, i.id
                 ) FILTER (WHERE i.id IS NOT NULL),
                 '[]'::json
             ) as images,
             COALESCE(
                 JSON_AGG(
-                    DISTINCT JSON_BUILD_OBJECT(
+                    JSON_BUILD_OBJECT(
                         'fuel_type', fp.fuel_type,
                         'price', fp.price,
                         'price_updated_at', fp.price_updated_at,
                         'price_updated_by', fp.price_updated_by
-                    ) ORDER BY JSON_BUILD_OBJECT(
-                        'fuel_type', fp.fuel_type,
-                        'price', fp.price,
-                        'price_updated_at', fp.price_updated_at,
-                        'price_updated_by', fp.price_updated_by
-                    )
+                    ) ORDER BY fp.fuel_type
                 ) FILTER (WHERE fp.id IS NOT NULL),
                 '[]'::json
             ) as fuel_prices
