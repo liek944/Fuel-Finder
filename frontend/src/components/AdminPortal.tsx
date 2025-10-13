@@ -686,6 +686,12 @@ const AdminPortal: React.FC = () => {
       return;
     }
 
+    // Prevent multiple simultaneous uploads
+    if (uploadingStationImages[stationKey]) {
+      console.log("Upload already in progress for station", stationId);
+      return;
+    }
+
     setUploadingStationImages((prev) => ({
       ...prev,
       [stationKey]: true,
@@ -850,7 +856,7 @@ const AdminPortal: React.FC = () => {
         let imageUploadSuccess = true;
 
         // Upload images if any are selected
-        if (selectedImages.length > 0) {
+        if (selectedImages.length > 0 && !uploadingImages) {
           setUploadingImages(true);
 
           try {
