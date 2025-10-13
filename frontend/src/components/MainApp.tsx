@@ -976,7 +976,7 @@ const MainApp: React.FC = () => {
             src="/logo.jpeg" 
             alt="Fuel Finder Logo" 
             style={{
-              height: "32px",
+              height: "48px",
               width: "auto",
             }}
           />
