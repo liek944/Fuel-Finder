@@ -1348,6 +1348,28 @@ const MainApp: React.FC = () => {
             </Popup>
           </Marker>
         ))}
+
+        {/* Trip Replay Visualizer - MUST be inside MapContainer */}
+        {selectedTrip && (
+          <TripReplayVisualizer
+            trip={selectedTrip}
+            animationConfig={{
+              speed: 2,
+              interpolate: true,
+              interpolationSteps: 10,
+            }}
+            autoFollow={true}
+            showControls={true}
+            showRoute={true}
+            showTraveledPath={true}
+            onStateChange={(state) => {
+              console.log('Replay state:', state);
+              if (state === 'completed') {
+                console.log('Replay completed!');
+              }
+            }}
+          />
+        )}
       </MapContainer>
 
       {/* Search Controls */}
@@ -1589,28 +1611,6 @@ const MainApp: React.FC = () => {
             setShowTripHistory(false);
           }}
           onClose={() => setShowTripHistory(false)}
-        />
-      )}
-
-      {/* Trip Replay Visualizer */}
-      {selectedTrip && (
-        <TripReplayVisualizer
-          trip={selectedTrip}
-          animationConfig={{
-            speed: 2,
-            interpolate: true,
-            interpolationSteps: 10,
-          }}
-          autoFollow={true}
-          showControls={true}
-          showRoute={true}
-          showTraveledPath={true}
-          onStateChange={(state) => {
-            console.log('Replay state:', state);
-            if (state === 'completed') {
-              console.log('Replay completed!');
-            }
-          }}
         />
       )}
 
