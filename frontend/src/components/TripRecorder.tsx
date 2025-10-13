@@ -50,7 +50,11 @@ const TripRecorder: React.FC<TripRecorderProps> = ({
     }
   };
 
-  const handleStopRecording = async () => {
+  const handleStopRecording = async (e?: React.MouseEvent) => {
+    // Prevent event from bubbling to parent header click handler
+    if (e) {
+      e.stopPropagation();
+    }
     const trip = await locationRecorder.stopRecording();
     if (trip && onTripComplete) {
       onTripComplete(trip);
@@ -123,7 +127,7 @@ const TripRecorder: React.FC<TripRecorderProps> = ({
           <span className="status-text">{getStatusText()}</span>
           {recorderState.status === 'recording' && recorderState.currentTrip && (
             <span className="points-count">
-              {recorderState.pointsRecorded} points
+              {recorderState.pointsRecorded} waypoints
             </span>
           )}
         </div>
@@ -183,7 +187,7 @@ const TripRecorder: React.FC<TripRecorderProps> = ({
                   </span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Points</span>
+                  <span className="stat-label">Waypoints</span>
                   <span className="stat-value">{recorderState.pointsRecorded}</span>
                 </div>
                 <div className="stat-item">
@@ -235,7 +239,7 @@ const TripRecorder: React.FC<TripRecorderProps> = ({
                 )}
                 <button
                   className="btn btn-stop"
-                  onClick={handleStopRecording}
+                  onClick={(e) => handleStopRecording(e)}
                 >
                   <span className="btn-icon">⏹</span>
                   Stop & Save
