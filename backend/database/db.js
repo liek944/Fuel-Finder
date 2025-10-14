@@ -103,34 +103,39 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
             ST_Y(s.geom) as lat,
             ST_Distance(s.geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,
             COALESCE(
-                JSON_AGG(
-                    JSON_BUILD_OBJECT(
-                        'id', i.id,
-                        'filename', i.filename,
-                        'original_filename', i.original_filename,
-                        'display_order', i.display_order,
-                        'is_primary', i.is_primary,
-                        'alt_text', i.alt_text
-                    ) ORDER BY i.display_order, i.id
-                ) FILTER (WHERE i.id IS NOT NULL),
+                (
+                    SELECT JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', i.id,
+                            'filename', i.filename,
+                            'original_filename', i.original_filename,
+                            'display_order', i.display_order,
+                            'is_primary', i.is_primary,
+                            'alt_text', i.alt_text
+                        ) ORDER BY i.display_order, i.id
+                    )
+                    FROM images i
+                    WHERE i.station_id = s.id
+                ),
                 '[]'::json
             ) as images,
             COALESCE(
-                JSON_AGG(
-                    JSON_BUILD_OBJECT(
-                        'fuel_type', fp.fuel_type,
-                        'price', fp.price,
-                        'price_updated_at', fp.price_updated_at,
-                        'price_updated_by', fp.price_updated_by
-                    ) ORDER BY fp.fuel_type
-                ) FILTER (WHERE fp.id IS NOT NULL),
+                (
+                    SELECT JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'fuel_type', fp.fuel_type,
+                            'price', fp.price,
+                            'price_updated_at', fp.price_updated_at,
+                            'price_updated_by', fp.price_updated_by
+                        ) ORDER BY fp.fuel_type
+                    )
+                    FROM fuel_prices fp
+                    WHERE fp.station_id = s.id
+                ),
                 '[]'::json
             ) as fuel_prices
         FROM stations s
-        LEFT JOIN images i ON s.id = i.station_id
-        LEFT JOIN fuel_prices fp ON s.id = fp.station_id
         WHERE ST_DWithin(s.geom, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
-        GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom
         ORDER BY distance_meters ASC;
     `;
 
@@ -149,21 +154,23 @@ async function getAllPois() {
         ST_X(p.geom) as lng,
         ST_Y(p.geom) as lat,
         COALESCE(
-            JSON_AGG(
-                JSON_BUILD_OBJECT(
-                    'id', i.id,
-                    'filename', i.filename,
-                    'original_filename', i.original_filename,
-                    'display_order', i.display_order,
-                    'is_primary', i.is_primary,
-                    'alt_text', i.alt_text
-                ) ORDER BY i.display_order, i.id
-            ) FILTER (WHERE i.id IS NOT NULL),
+            (
+                SELECT JSON_AGG(
+                    JSON_BUILD_OBJECT(
+                        'id', i.id,
+                        'filename', i.filename,
+                        'original_filename', i.original_filename,
+                        'display_order', i.display_order,
+                        'is_primary', i.is_primary,
+                        'alt_text', i.alt_text
+                    ) ORDER BY i.display_order, i.id
+                )
+                FROM images i
+                WHERE i.poi_id = p.id
+            ),
             '[]'::json
         ) as images
     FROM pois p
-    LEFT JOIN images i ON p.id = i.poi_id
-    GROUP BY p.id, p.name, p.type, p.geom
     ORDER BY p.created_at DESC;
   `;
   const result = await pool.query(query);
@@ -180,22 +187,24 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
         ST_Y(p.geom) as lat,
         ST_Distance(p.geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography) AS distance_meters,
         COALESCE(
-            JSON_AGG(
-                JSON_BUILD_OBJECT(
-                    'id', i.id,
-                    'filename', i.filename,
-                    'original_filename', i.original_filename,
-                    'display_order', i.display_order,
-                    'is_primary', i.is_primary,
-                    'alt_text', i.alt_text
-                ) ORDER BY i.display_order, i.id
-            ) FILTER (WHERE i.id IS NOT NULL),
+            (
+                SELECT JSON_AGG(
+                    JSON_BUILD_OBJECT(
+                        'id', i.id,
+                        'filename', i.filename,
+                        'original_filename', i.original_filename,
+                        'display_order', i.display_order,
+                        'is_primary', i.is_primary,
+                        'alt_text', i.alt_text
+                    ) ORDER BY i.display_order, i.id
+                )
+                FROM images i
+                WHERE i.poi_id = p.id
+            ),
             '[]'::json
         ) as images
     FROM pois p
-    LEFT JOIN images i ON p.id = i.poi_id
     WHERE ST_DWithin(p.geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography, $3)
-    GROUP BY p.id, p.name, p.type, p.geom
     ORDER BY distance_meters ASC;
   `;
   const result = await pool.query(query, [latitude, longitude, radiusMeters]);
@@ -233,33 +242,38 @@ async function getAllStations() {
             ST_X(s.geom) as lng,
             ST_Y(s.geom) as lat,
             COALESCE(
-                JSON_AGG(
-                    JSON_BUILD_OBJECT(
-                        'id', i.id,
-                        'filename', i.filename,
-                        'original_filename', i.original_filename,
-                        'display_order', i.display_order,
-                        'is_primary', i.is_primary,
-                        'alt_text', i.alt_text
-                    ) ORDER BY i.display_order, i.id
-                ) FILTER (WHERE i.id IS NOT NULL),
+                (
+                    SELECT JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'id', i.id,
+                            'filename', i.filename,
+                            'original_filename', i.original_filename,
+                            'display_order', i.display_order,
+                            'is_primary', i.is_primary,
+                            'alt_text', i.alt_text
+                        ) ORDER BY i.display_order, i.id
+                    )
+                    FROM images i
+                    WHERE i.station_id = s.id
+                ),
                 '[]'::json
             ) as images,
             COALESCE(
-                JSON_AGG(
-                    JSON_BUILD_OBJECT(
-                        'fuel_type', fp.fuel_type,
-                        'price', fp.price,
-                        'price_updated_at', fp.price_updated_at,
-                        'price_updated_by', fp.price_updated_by
-                    ) ORDER BY fp.fuel_type
-                ) FILTER (WHERE fp.id IS NOT NULL),
+                (
+                    SELECT JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'fuel_type', fp.fuel_type,
+                            'price', fp.price,
+                            'price_updated_at', fp.price_updated_at,
+                            'price_updated_by', fp.price_updated_by
+                        ) ORDER BY fp.fuel_type
+                    )
+                    FROM fuel_prices fp
+                    WHERE fp.station_id = s.id
+                ),
                 '[]'::json
             ) as fuel_prices
         FROM stations s
-        LEFT JOIN images i ON s.id = i.station_id
-        LEFT JOIN fuel_prices fp ON s.id = fp.station_id
-        GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom
         ORDER BY s.name ASC;
     `;
 
