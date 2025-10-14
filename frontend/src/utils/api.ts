@@ -2,6 +2,15 @@
 // This file handles environment-specific API configuration and provides
 // utility functions for making API calls across development and production
 
+// Global request deduplication to prevent multiple identical requests
+const pendingRequests = new Map<string, Promise<Response>>();
+const REQUEST_DEDUP_WINDOW_MS = 3000; // 3 seconds
+
+function createRequestKey(url: string, method: string, body?: any): string {
+  const bodyStr = body ? JSON.stringify(body) : '';
+  return `${method}:${url}:${bodyStr}`;
+}
+
 /**
  * Get the API base URL from environment variables
  * Falls back to localhost for development if not set
@@ -84,6 +93,47 @@ export const apiCall = async (
     },
   };
 
+  const method = mergedOptions.method || 'GET';
+  const body = mergedOptions.body;
+
+  // Only apply deduplication to POST/PUT/PATCH requests
+  if (['POST', 'PUT', 'PATCH'].includes(method)) {
+    const requestKey = createRequestKey(url, method, body);
+    
+    // Check if an identical request is already in progress
+    if (pendingRequests.has(requestKey)) {
+      console.warn(`⚠️ [API DEDUP] Duplicate ${method} request blocked:`, url);
+      console.warn('   Returning existing pending request instead of making a new one');
+      return pendingRequests.get(requestKey)!;
+    }
+
+    // Create the request promise
+    const requestPromise = (async () => {
+      try {
+        console.log(`📤 [API] Making ${method} request to:`, url);
+        const response = await fetch(url, mergedOptions);
+        console.log(`📥 [API] Response received (${response.status}) from:`, url);
+        return response;
+      } catch (error) {
+        console.error(`❌ [API] ${method} request failed:`, error);
+        throw error;
+      } finally {
+        // Clean up after a delay to allow for deduplication window
+        setTimeout(() => {
+          pendingRequests.delete(requestKey);
+          console.log(`🧹 [API DEDUP] Cleared request key from pending:`, requestKey.substring(0, 50) + '...');
+        }, REQUEST_DEDUP_WINDOW_MS);
+      }
+    })();
+
+    // Store the promise
+    pendingRequests.set(requestKey, requestPromise);
+    console.log(`🔒 [API DEDUP] Request locked:`, requestKey.substring(0, 50) + '...');
+    
+    return requestPromise;
+  }
+
+  // For GET requests, proceed normally without deduplication
   try {
     const response = await fetch(url, mergedOptions);
     return response;

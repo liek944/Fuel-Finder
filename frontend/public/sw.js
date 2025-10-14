@@ -55,8 +55,12 @@ self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // Only handle GET requests
-  if (req.method !== 'GET') return;
+  // CRITICAL: Never intercept POST/PUT/PATCH requests
+  // This prevents the Service Worker from duplicating upload requests
+  if (req.method !== 'GET') {
+    console.log('[SW] Ignoring non-GET request:', req.method, req.url);
+    return;
+  }
 
   // App navigation requests: try network, fall back to cache, then offline page
   if (req.mode === 'navigate') {

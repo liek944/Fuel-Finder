@@ -681,8 +681,12 @@ const AdminPortal: React.FC = () => {
 
   // Upload images for existing station
   const uploadStationImages = async (stationId: number) => {
+    // Generate unique upload ID for tracking
+    const uploadId = crypto.randomUUID ? crypto.randomUUID().substring(0, 8) : Date.now().toString(36);
     const stationKey = stationId.toString();
     const images = stationImageUploads[stationKey];
+
+    console.log(`🆔 [${uploadId}] Upload function called for station ${stationId}`);
 
     if (!images || images.length === 0) {
       alert("Please select images to upload first.");
@@ -691,32 +695,37 @@ const AdminPortal: React.FC = () => {
 
     // CRITICAL: Check synchronous lock first (prevents race conditions)
     if (uploadLocksRef.current.has(stationKey)) {
-      console.warn("⚠️ Upload already in progress for station", stationId, "- BLOCKED by sync lock");
+      console.warn(`⚠️ [${uploadId}] Upload already in progress for station ${stationId} - BLOCKED by sync lock`);
+      console.warn(`   Current locks:`, Array.from(uploadLocksRef.current));
       return;
     }
 
     // CRITICAL: Check async state second (UI consistency)
     if (uploadingStationImages[stationKey]) {
-      console.warn("⚠️ Upload already in progress for station", stationId, "- BLOCKED by state check");
+      console.warn(`⚠️ [${uploadId}] Upload already in progress for station ${stationId} - BLOCKED by state check`);
       return;
     }
 
     // Set BOTH locks immediately
     uploadLocksRef.current.add(stationKey);
-    console.log("🚀 Starting upload for station", stationId, "with", images.length, "images");
+    console.log(`🚀 [${uploadId}] Starting upload for station ${stationId} with ${images.length} images`);
+    console.log(`   Lock set:`, Array.from(uploadLocksRef.current));
     setUploadingStationImages((prev) => ({
       ...prev,
       [stationKey]: true,
     }));
 
     try {
+      console.log(`📡 [${uploadId}] Making API call to upload images`);
       const imageRes = await apiPostBase64Images(
         `/api/stations/${stationId}/images`,
         images,
         adminApiKey.trim(),
       );
+      console.log(`📥 [${uploadId}] API call completed with status:`, imageRes.status);
 
       if (imageRes.ok) {
+        console.log(`✅ [${uploadId}] Upload successful`);
         alert(`Successfully uploaded ${images.length} image(s)!`);
 
         // Clear the images for this station
@@ -741,6 +750,7 @@ const AdminPortal: React.FC = () => {
         // Refresh data to show new images
         fetchData();
       } else {
+        console.error(`❌ [${uploadId}] Upload failed with status:`, imageRes.status);
         const errorData = await imageRes
           .json()
           .catch(() => ({ error: "Upload failed" }));
@@ -749,7 +759,7 @@ const AdminPortal: React.FC = () => {
         );
       }
     } catch (error) {
-      console.error("Error uploading images:", error);
+      console.error(`❌ [${uploadId}] Error uploading images:`, error);
       alert("Error uploading images. Please try again.");
     } finally {
       // Clear BOTH locks
@@ -758,7 +768,8 @@ const AdminPortal: React.FC = () => {
         ...prev,
         [stationKey]: false,
       }));
-      console.log("✅ Upload complete for station", stationId, "- locks released");
+      console.log(`✅ [${uploadId}] Upload complete for station ${stationId} - locks released`);
+      console.log(`   Remaining locks:`, Array.from(uploadLocksRef.current));
     }
   };
 
@@ -1267,7 +1278,13 @@ const AdminPortal: React.FC = () => {
                               .length === 0 ||
                             uploadingStationImages[station.id.toString()]
                           }
-                          onClick={() => uploadStationImages(station.id)}
+                          onClick={(e) => {
+                            // CRITICAL: Prevent event bubbling and default behavior
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log("🖱️ Upload button clicked for station", station.id);
+                            uploadStationImages(station.id);
+                          }}
                         >
                           {uploadingStationImages[station.id.toString()]
                             ? "⏳ Uploading..."

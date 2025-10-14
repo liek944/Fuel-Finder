@@ -1,0 +1,112 @@
+=====================================================
+  EC2 TRIPLE UPLOAD FIX - COPY & PASTE THESE COMMANDS
+=====================================================
+
+STEP 1: SSH into your EC2 instance
+-----------------------------------
+ssh ubuntu@fuelfinder.duckdns.org
+
+
+STEP 2: Navigate to fuel_finder directory
+------------------------------------------
+cd ~/fuel_finder
+
+
+STEP 3: Download the fix script (if not already there)
+-------------------------------------------------------
+# If you have git:
+git pull origin main
+
+# OR manually create the script:
+cat > ec2-fix.sh << 'EOF'
+#!/bin/bash
+pm2 delete all
+pkill -f "node.*server.js"
+sleep 3
+cd ~/fuel_finder/backend
+pm2 start ecosystem.config.js
+pm2 save
+echo ""
+echo "Verification:"
+pm2 list
+echo ""
+ps aux | grep "node.*server.js" | grep -v grep | wc -l
+echo "^ Should show: 1"
+EOF
+
+chmod +x ec2-fix.sh
+
+
+STEP 4: Run the fix
+-------------------
+./ec2-fix.sh
+
+
+STEP 5: Verify it worked
+------------------------
+ps aux | grep "node.*server.js" | grep -v grep | wc -l
+
+# Should output: 1
+
+pm2 list
+
+# Should show: 1 instance, fork mode
+
+
+STEP 6: Test upload
+-------------------
+# Go to your admin portal and upload 1 image
+# Check database - should have only 1 image
+
+
+=====================================================
+  ONE-LINE FIX (if you're confident)
+=====================================================
+
+pm2 delete all && pkill -f "node.*server.js" && sleep 3 && cd ~/fuel_finder/backend && pm2 start ecosystem.config.js && pm2 save && echo "" && echo "Node process count:" && ps aux | grep "node.*server.js" | grep -v grep | wc -l && echo "" && pm2 list
+
+
+=====================================================
+  IF STILL BROKEN AFTER THIS
+=====================================================
+
+Check AWS Console:
+1. EC2 → Instances → Count how many "fuel-finder" instances are running
+   Should be: 1
+
+2. EC2 → Auto Scaling Groups → Check Desired/Min/Max capacity
+   Should all be: 1
+
+3. EC2 → Load Balancers → Target Groups → Healthy targets
+   Should be: 1
+
+If you have 3 EC2 instances or 3 healthy targets,
+that's why you're getting triple uploads!
+
+Reduce Auto-Scaling Group to 1 instance.
+
+
+=====================================================
+  VERIFICATION CHECKLIST
+=====================================================
+
+[✓] pm2 list shows 1 instance in fork mode
+[✓] ps aux | grep node shows exactly 1 process
+[✓] Test upload creates only 1 image in database
+[✓] AWS Console shows 1 EC2 instance running
+[✓] Load Balancer shows 1 healthy target
+
+
+=====================================================
+
+Questions? Provide this output:
+-------------------------------
+pm2 list
+pm2 show fuel-finder
+ps aux | grep node
+cat ~/fuel_finder/backend/ecosystem.config.js
+
+And from AWS Console:
+- Number of EC2 instances
+- Auto-Scaling Group settings
+- Load Balancer target count
