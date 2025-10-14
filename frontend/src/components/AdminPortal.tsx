@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -450,6 +450,9 @@ const AdminPortal: React.FC = () => {
   const [uploadingStationImages, setUploadingStationImages] = useState<{
     [key: string]: boolean;
   }>({});
+  
+  // Synchronous upload lock to prevent race conditions from async state updates
+  const uploadLocksRef = useRef<Set<string>>(new Set());
 
   // Load admin API key from localStorage and validate it
   useEffect(() => {
@@ -686,12 +689,21 @@ const AdminPortal: React.FC = () => {
       return;
     }
 
-    // Prevent multiple simultaneous uploads
-    if (uploadingStationImages[stationKey]) {
-      console.log("Upload already in progress for station", stationId);
+    // CRITICAL: Check synchronous lock first (prevents race conditions)
+    if (uploadLocksRef.current.has(stationKey)) {
+      console.warn("⚠️ Upload already in progress for station", stationId, "- BLOCKED by sync lock");
       return;
     }
 
+    // CRITICAL: Check async state second (UI consistency)
+    if (uploadingStationImages[stationKey]) {
+      console.warn("⚠️ Upload already in progress for station", stationId, "- BLOCKED by state check");
+      return;
+    }
+
+    // Set BOTH locks immediately
+    uploadLocksRef.current.add(stationKey);
+    console.log("🚀 Starting upload for station", stationId, "with", images.length, "images");
     setUploadingStationImages((prev) => ({
       ...prev,
       [stationKey]: true,
@@ -740,10 +752,13 @@ const AdminPortal: React.FC = () => {
       console.error("Error uploading images:", error);
       alert("Error uploading images. Please try again.");
     } finally {
+      // Clear BOTH locks
+      uploadLocksRef.current.delete(stationKey);
       setUploadingStationImages((prev) => ({
         ...prev,
         [stationKey]: false,
       }));
+      console.log("✅ Upload complete for station", stationId, "- locks released");
     }
   };
 

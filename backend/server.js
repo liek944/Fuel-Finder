@@ -69,11 +69,16 @@ function requestDeduplication(req, res, next) {
   // Check if this is a duplicate request
   const existing = pendingRequests.get(requestHash);
   if (existing) {
-    console.log(`⚠️  Duplicate request detected and blocked: ${req.method} ${req.path}`);
+    const timeSinceOriginal = now - existing.timestamp;
+    console.log(`⚠️  DUPLICATE REQUEST BLOCKED: ${req.method} ${req.path}`);
+    console.log(`   Hash: ${requestHash.substring(0, 12)}...`);
+    console.log(`   Time since original: ${timeSinceOriginal}ms`);
+    console.log(`   IP: ${req.ip || 'unknown'}`);
     // Return 202 Accepted to indicate the request is being processed
     return res.status(202).json({
       message: "Request already being processed",
-      note: "This is a duplicate request that was automatically deduplicated"
+      note: "This is a duplicate request that was automatically deduplicated",
+      timeSinceOriginal: `${timeSinceOriginal}ms`
     });
   }
 
@@ -1138,11 +1143,18 @@ app.post("/api/cache/clear", (req, res) => {
 
 // Upload images for a station (base64)
 app.post("/api/stations/:id/images", requestDeduplication, rateLimit, async (req, res) => {
+  // Generate unique request ID for tracking
+  const requestId = crypto.randomBytes(8).toString('hex');
+  const timestamp = new Date().toISOString();
+  
   try {
+    console.log(`\n🆔 [${requestId}] ${timestamp} - Image upload request started`);
+    
     // Check API key if configured
     if (ADMIN_API_KEY) {
       const headerKey = req.header("x-api-key");
       if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        console.log(`🆔 [${requestId}] ❌ Unauthorized - Invalid API key`);
         return res.status(401).json({
           error: "Unauthorized",
           message: "Invalid or missing API key",
@@ -1152,22 +1164,26 @@ app.post("/api/stations/:id/images", requestDeduplication, rateLimit, async (req
 
     const stationId = parseInt(req.params.id);
     if (!stationId || isNaN(stationId)) {
+      console.log(`🆔 [${requestId}] ❌ Invalid station ID`);
       return res.status(400).json({
         error: "Invalid station ID",
         message: "Station ID must be a valid number",
       });
     }
 
+    console.log(`🆔 [${requestId}] Processing upload for station ${stationId}`);
+
     // Check if station exists
     const station = await getStationById(stationId);
     if (!station) {
+      console.log(`🆔 [${requestId}] ❌ Station ${stationId} not found`);
       return res.status(404).json({
         error: "Station not found",
         message: `No station found with ID ${stationId}`,
       });
     }
 
-    console.log("🔍 Request body:", JSON.stringify(req.body, null, 2));
+    console.log(`🆔 [${requestId}] 🔍 Request body:`, JSON.stringify(req.body, null, 2));
 
     const { images } = req.body;
     console.log(
@@ -1210,7 +1226,7 @@ app.post("/api/stations/:id/images", requestDeduplication, rateLimit, async (req
     }
 
     console.log(
-      `📸 Uploading ${images.length} images for station ${stationId}`,
+      `🆔 [${requestId}] 📸 Uploading ${images.length} images for station ${stationId}`,
     );
 
     const { results, errors } = await uploadBase64Images(
@@ -1219,9 +1235,11 @@ app.post("/api/stations/:id/images", requestDeduplication, rateLimit, async (req
       null,
     );
 
+    console.log(`🆔 [${requestId}] ✅ Upload complete: ${results.length} success, ${errors.length} errors`);
+
     // Clear cache so updated station data with images is served
     cache.clear();
-    console.log("🗑️ Cache cleared after image upload");
+    console.log(`🆔 [${requestId}] 🗑️ Cache cleared after image upload`);
 
     res.status(201).json({
       message: `Successfully uploaded ${results.length} images`,
@@ -1229,7 +1247,7 @@ app.post("/api/stations/:id/images", requestDeduplication, rateLimit, async (req
       errors: errors.length > 0 ? errors : undefined,
     });
   } catch (err) {
-    console.error("❌ Error uploading station images:", err);
+    console.error(`🆔 [${requestId}] ❌ Error uploading station images:`, err);
     res.status(500).json({
       error: "Failed to upload images",
       message: err.message,
