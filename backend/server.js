@@ -113,6 +113,8 @@ const {
   getNearbyStations,
   getAllStations,
   getStationById,
+  addStation,
+  updateStation,
   deleteStation,
   getStationsByBrand,
   searchStations,
@@ -121,6 +123,7 @@ const {
   getAllPois,
   getNearbyPois,
   addPoi,
+  updatePoi,
   deletePoi,
   // Price Reporting
   submitPriceReport,
@@ -574,6 +577,75 @@ app.post("/api/pois", requestDeduplication, rateLimit, async (req, res) => {
   }
 });
 
+// Update a POI (protected by optional API key)
+app.put("/api/pois/:id", rateLimit, async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const poiId = parseInt(req.params.id);
+    if (!isFinite(poiId)) {
+      return res.status(400).json({
+        error: "Invalid POI ID",
+        message: "POI ID must be a valid number",
+      });
+    }
+
+    const {
+      name,
+      type,
+      address,
+      phone,
+      operating_hours,
+      lat,
+      lng,
+    } = req.body;
+
+    // Build update payload with only provided fields
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (type !== undefined) updateData.type = type;
+    if (address !== undefined) updateData.address = address;
+    if (phone !== undefined) updateData.phone = phone;
+    if (operating_hours !== undefined) updateData.operating_hours = operating_hours;
+    if (lat !== undefined && lng !== undefined) {
+      updateData.lat = parseFloat(lat);
+      updateData.lng = parseFloat(lng);
+    }
+
+    const updated = await updatePoi(poiId, updateData);
+    if (!updated) {
+      return res.status(404).json({
+        error: "Not found",
+        message: `No POI with id ${poiId}`,
+      });
+    }
+
+    console.log(`✏️ POI updated: ${updated.name} (ID: ${poiId})`);
+    
+    // Clear cache so updated data is served
+    cache.clear();
+    
+    res.json({
+      success: true,
+      poi: updated,
+    });
+  } catch (err) {
+    console.error("❌ Error updating POI:", err.message || err);
+    res.status(500).json({
+      error: "Failed to update POI",
+      message: err?.message || "Unknown error",
+    });
+  }
+});
+
 // Delete a POI (protected by optional API key)
 app.delete("/api/pois/:id", async (req, res) => {
   try {
@@ -806,6 +878,79 @@ app.get("/api/stations/:id", async (req, res) => {
     res.status(500).json({
       error: "Failed to fetch station",
       message: err.message,
+    });
+  }
+});
+
+// Update a station (protected by optional API key)
+app.put("/api/stations/:id", rateLimit, async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({
+          error: "Unauthorized",
+          message: "Invalid or missing API key",
+        });
+      }
+    }
+
+    const stationId = parseInt(req.params.id);
+    if (!isFinite(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    const {
+      name,
+      brand,
+      fuel_price,
+      services,
+      address,
+      phone,
+      operating_hours,
+      lat,
+      lng,
+    } = req.body;
+
+    // Build update payload with only provided fields
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (brand !== undefined) updateData.brand = brand;
+    if (fuel_price !== undefined) updateData.fuel_price = parseFloat(fuel_price);
+    if (services !== undefined) updateData.services = services;
+    if (address !== undefined) updateData.address = address;
+    if (phone !== undefined) updateData.phone = phone;
+    if (operating_hours !== undefined) updateData.operating_hours = operating_hours;
+    if (lat !== undefined && lng !== undefined) {
+      updateData.lat = parseFloat(lat);
+      updateData.lng = parseFloat(lng);
+    }
+
+    const updated = await updateStation(stationId, updateData);
+    if (!updated) {
+      return res.status(404).json({
+        error: "Not found",
+        message: `No station with id ${stationId}`,
+      });
+    }
+
+    console.log(`✏️ Station updated: ${updated.name} (ID: ${stationId})`);
+    
+    // Clear cache so updated data is served
+    cache.clear();
+    
+    res.json({
+      success: true,
+      station: updated,
+    });
+  } catch (err) {
+    console.error("❌ Error updating station:", err.message || err);
+    res.status(500).json({
+      error: "Failed to update station",
+      message: err?.message || "Unknown error",
     });
   }
 });
