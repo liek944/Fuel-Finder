@@ -4,6 +4,8 @@
 **Issue:** Install App button not working - app not installing  
 **Status:** ✅ RESOLVED
 
+**Update (2025-01-15 - 4:36 PM):** Fixed race condition where `beforeinstallprompt` event fires before React component mounts. Now captures event globally in index.tsx.
+
 ---
 
 ## Problems Identified
@@ -22,6 +24,11 @@
 - No success confirmation
 - No periodic update checks
 - Limited error handling
+
+### 4. **Race Condition (Added 2025-01-15 4:36 PM)**
+- `beforeinstallprompt` event fires before React component mounts
+- Event listener added too late, missing the prompt
+- Custom button couldn't capture the install prompt even though browser could
 
 ---
 
@@ -69,6 +76,28 @@
 
 ---
 
+### File: `frontend/src/index.tsx` (Race Condition Fix)
+**Changes:**
+- ✅ Added global `beforeinstallprompt` event listener BEFORE React mounts
+- ✅ Stores prompt in `window.deferredPrompt` for component access
+- ✅ Added console log when event is captured globally
+
+**Code Added:**
+```typescript
+// Capture beforeinstallprompt event BEFORE React mounts
+let deferredPrompt: any = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  console.log('✅ beforeinstallprompt event captured globally!');
+  e.preventDefault();
+  deferredPrompt = e;
+  (window as any).deferredPrompt = e;
+});
+```
+
+**Why:** The `beforeinstallprompt` event can fire very early (even before React finishes mounting). By capturing it globally in `index.tsx`, we ensure the event is never missed, and the custom install button can use it.
+
+---
+
 ### File: `frontend/src/components/PWAInstallButton.tsx`
 **Changes:**
 - ✅ Added platform detection logging
@@ -78,17 +107,29 @@
 - ✅ Added prompt outcome logging
 - ✅ Added error handling with try-catch
 - ✅ Added helpful warning messages
+- ✅ **Check for globally captured prompt** (race condition fix)
 
 **Key Logs Added:**
 ```typescript
 console.log('🔍 PWA Install Button - Platform:', iOS ? 'iOS' : 'Other');
 console.log('🔍 PWA Install Button - Is Standalone:', isStandalone);
 console.log('✅ beforeinstallprompt event fired - PWA installable!');
+console.log('✅ Found globally captured install prompt!');
 console.log('🖱️ Install button clicked');
 console.log('🚀 Showing install prompt...');
 ```
 
-**Why:** These logs help diagnose exactly why the install button might not work - whether it's platform issues, already installed, or PWA criteria not met.
+**Race Condition Fix:**
+```typescript
+// Check if event was already captured globally (before React mounted)
+if ((window as any).deferredPrompt) {
+  console.log('✅ Found globally captured install prompt!');
+  setDeferredPrompt((window as any).deferredPrompt);
+  setShowInstallButton(true);
+}
+```
+
+**Why:** These logs help diagnose exactly why the install button might not work - whether it's platform issues, already installed, or PWA criteria not met. The global prompt check ensures we use the captured event even if it fired before component mount.
 
 ---
 

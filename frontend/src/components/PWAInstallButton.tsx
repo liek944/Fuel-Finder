@@ -38,6 +38,13 @@ const PWAInstallButton: React.FC = () => {
       return;
     }
 
+    // Check if event was already captured globally (before React mounted)
+    if ((window as any).deferredPrompt) {
+      console.log('✅ Found globally captured install prompt!');
+      setDeferredPrompt((window as any).deferredPrompt);
+      setShowInstallButton(true);
+    }
+
     // For other browsers, listen for beforeinstallprompt event
     const handler = (e: Event) => {
       console.log('✅ beforeinstallprompt event fired - PWA installable!');
