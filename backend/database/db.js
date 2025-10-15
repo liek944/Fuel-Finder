@@ -151,6 +151,9 @@ async function getAllPois() {
         p.id,
         p.name,
         p.type,
+        p.address,
+        p.phone,
+        p.operating_hours,
         ST_X(p.geom) as lng,
         ST_Y(p.geom) as lat,
         COALESCE(
@@ -183,6 +186,9 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
         p.id,
         p.name,
         p.type,
+        p.address,
+        p.phone,
+        p.operating_hours,
         ST_X(p.geom) as lng,
         ST_Y(p.geom) as lat,
         ST_Distance(p.geom, ST_SetSRID(ST_MakePoint($2,$1),4326)::geography) AS distance_meters,
@@ -211,13 +217,55 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
   return result.rows;
 }
 
-async function addPoi({ name, type, lat, lng }) {
+async function addPoi({ name, type, lat, lng, address, phone, operating_hours }) {
   const query = `
-    INSERT INTO pois (name, type, geom)
-    VALUES ($1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326))
-    RETURNING id, name, type, ST_X(geom) as lng, ST_Y(geom) as lat;
-  `;
-  const result = await pool.query(query, [name, type, lat, lng]);
+    INSERT INTO pois (name, type, address, phone, operating_hours, geom)
+    VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($7, $6), 4326))
+    RETURNING id, name, type, address, phone, operating_hours, ST_X(geom) as lng, ST_Y(geom) as lat`;
+  const result = await pool.query(query, [name, type, address, phone, operating_hours, lat, lng]);
+  return result.rows[0];
+}
+
+async function updatePoi(poiId, poiData) {
+  const {
+    name,
+    type,
+    address,
+    phone,
+    operating_hours,
+    lat,
+    lng,
+  } = poiData;
+
+  const query = `
+        UPDATE pois
+        SET name = COALESCE($2, name),
+            type = COALESCE($3, type),
+            address = COALESCE($4, address),
+            phone = COALESCE($5, phone),
+            operating_hours = COALESCE($6, operating_hours),
+            geom = CASE
+                WHEN $7 IS NOT NULL AND $8 IS NOT NULL
+                THEN ST_SetSRID(ST_MakePoint($8, $7), 4326)
+                ELSE geom
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+        RETURNING id, name, type, address, phone, operating_hours,
+                  ST_X(geom) as lng, ST_Y(geom) as lat, updated_at;
+    `;
+
+  const result = await pool.query(query, [
+    poiId,
+    name,
+    type,
+    address,
+    phone,
+    operating_hours,
+    lat,
+    lng,
+  ]);
+
   return result.rows[0];
 }
 
@@ -886,6 +934,7 @@ module.exports = {
   getAllPois,
   getNearbyPois,
   addPoi,
+  updatePoi,
   deletePoi,
   // Price Reporting
   submitPriceReport,

@@ -11,6 +11,7 @@ import "leaflet/dist/leaflet.css";
 import {
   apiGet,
   apiPost,
+  apiPut,
   apiDelete,
   apiPostBase64Images,
   getImageUrl,
@@ -448,6 +449,12 @@ const AdminPortal: React.FC = () => {
   const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>([]);
   const [uploadingImages, setUploadingImages] = useState<boolean>(false);
 
+  // Edit mode states
+  const [editingStationId, setEditingStationId] = useState<number | null>(null);
+  const [editingPoiId, setEditingPoiId] = useState<number | null>(null);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const [editSubmitting, setEditSubmitting] = useState<boolean>(false);
+
   // Image upload states for existing stations
   const [stationImageUploads, setStationImageUploads] = useState<{
     [key: string]: File[];
@@ -831,6 +838,80 @@ const AdminPortal: React.FC = () => {
     );
   };
 
+  const startEditStation = (station: Station) => {
+    setEditingStationId(station.id);
+    setEditFormData({
+      name: station.name,
+      brand: station.brand,
+      fuel_price: station.fuel_price,
+      services: station.services,
+      address: station.address || '',
+      phone: station.phone || '',
+      operating_hours: station.operating_hours || { open: '08:00', close: '20:00' },
+    });
+  };
+
+  const startEditPoi = (poi: POI) => {
+    setEditingPoiId(poi.id);
+    setEditFormData({
+      name: poi.name,
+      type: poi.type,
+      address: (poi as any).address || '',
+      phone: (poi as any).phone || '',
+      operating_hours: (poi as any).operating_hours || { open: '08:00', close: '20:00' },
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingStationId(null);
+    setEditingPoiId(null);
+    setEditFormData({});
+  };
+
+  const submitEditStation = async (stationId: number) => {
+    setEditSubmitting(true);
+    try {
+      const res = await apiPut(`/api/stations/${stationId}`, editFormData, adminApiKey.trim());
+      
+      if (res.ok) {
+        alert('Station updated successfully!');
+        setEditingStationId(null);
+        setEditFormData({});
+        fetchData(); // Refresh data
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to update station: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Error updating station:', err);
+      alert('Network error. Please try again.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const submitEditPoi = async (poiId: number) => {
+    setEditSubmitting(true);
+    try {
+      const res = await apiPut(`/api/pois/${poiId}`, editFormData, adminApiKey.trim());
+      
+      if (res.ok) {
+        alert('POI updated successfully!');
+        setEditingPoiId(null);
+        setEditFormData({});
+        fetchData(); // Refresh data
+      } else {
+        const errorData = await res.json();
+        alert(`Failed to update POI: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Error updating POI:', err);
+      alert('Network error. Please try again.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   const submitStationForm = async () => {
     if (!pendingLatLng || !formName) return;
 
@@ -1166,56 +1247,146 @@ const AdminPortal: React.FC = () => {
           >
             <Popup>
               <div style={{ minWidth: 200 }}>
-                <b>⛽ {station.name}</b>
-                <div style={{ marginTop: 4 }}>
-                  <strong>Brand:</strong> {station.brand}
-                </div>
-                {/* Display fuel prices */}
-                <div style={{ marginBottom: 4 }}>
-                  <strong>Fuel Prices:</strong>
-                  {station.fuel_prices && station.fuel_prices.length > 0 ? (
-                    <div style={{ marginLeft: 8, marginTop: 4 }}>
-                      {station.fuel_prices.map((fp) => (
-                        <div key={fp.fuel_type} style={{ fontSize: 12, marginBottom: 2 }}>
-                          <span style={{ fontWeight: 500 }}>{fp.fuel_type}:</span> ₱{fp.price.toFixed(2)}/L
-                          {fp.price_updated_by === 'community' && (
-                            <span style={{ fontSize: 10, color: '#666', marginLeft: 4 }}>(community)</span>
-                          )}
-                        </div>
-                      ))}
+                {editingStationId === station.id ? (
+                  /* EDIT FORM */
+                  <div>
+                    <b>✏️ Edit Station</b>
+                    <div style={{ marginTop: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={editFormData.name || ''}
+                        onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                        style={{ width: '100%', padding: 4, marginBottom: 4, fontSize: 12 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Brand"
+                        value={editFormData.brand || ''}
+                        onChange={(e) => setEditFormData({...editFormData, brand: e.target.value})}
+                        style={{ width: '100%', padding: 4, marginBottom: 4, fontSize: 12 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Address"
+                        value={editFormData.address || ''}
+                        onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                        style={{ width: '100%', padding: 4, marginBottom: 4, fontSize: 12 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Phone"
+                        value={editFormData.phone || ''}
+                        onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
+                        style={{ width: '100%', padding: 4, marginBottom: 4, fontSize: 12 }}
+                      />
+                      <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>Operating Hours:</div>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                        <input
+                          type="time"
+                          value={editFormData.operating_hours?.open || '08:00'}
+                          onChange={(e) => setEditFormData({...editFormData, operating_hours: {...(editFormData.operating_hours || {}), open: e.target.value}})}
+                          style={{ flex: 1, padding: 4, fontSize: 11 }}
+                        />
+                        <input
+                          type="time"
+                          value={editFormData.operating_hours?.close || '20:00'}
+                          onChange={(e) => setEditFormData({...editFormData, operating_hours: {...(editFormData.operating_hours || {}), close: e.target.value}})}
+                          style={{ flex: 1, padding: 4, fontSize: 11 }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                        <button
+                          onClick={() => submitEditStation(station.id)}
+                          disabled={editSubmitting}
+                          style={{
+                            flex: 1,
+                            padding: '6px 12px',
+                            background: '#4CAF50',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: editSubmitting ? 'not-allowed' : 'pointer',
+                            fontSize: 11,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {editSubmitting ? '⏳ Saving...' : '💾 Save'}
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          style={{
+                            flex: 1,
+                            padding: '6px 12px',
+                            background: '#999',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            fontWeight: 600,
+                          }}
+                        >
+                          ✖️ Cancel
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <span> ₱{station.fuel_price}/L</span>
-                  )}
-                </div>
-                <div>
-                  <strong>Services:</strong> {station.services.join(", ")}
-                </div>
-                {station.address && (
-                  <div>
-                    <strong>Address:</strong> {station.address}
                   </div>
-                )}
-                {station.phone && (
-                  <div>
-                    <strong>Phone:</strong> {station.phone}
-                  </div>
-                )}
-                {station.operating_hours && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
-                    <strong>🕐 Hours:</strong> {station.operating_hours.open} - {station.operating_hours.close}
-                  </div>
+                ) : (
+                  /* NORMAL VIEW */
+                  <>
+                    <b>⛽ {station.name}</b>
+                    <div style={{ marginTop: 4 }}>
+                      <strong>Brand:</strong> {station.brand}
+                    </div>
+                    {/* Display fuel prices */}
+                    <div style={{ marginBottom: 4 }}>
+                      <strong>Fuel Prices:</strong>
+                      {station.fuel_prices && station.fuel_prices.length > 0 ? (
+                        <div style={{ marginLeft: 8, marginTop: 4 }}>
+                          {station.fuel_prices.map((fp) => (
+                            <div key={fp.fuel_type} style={{ fontSize: 12, marginBottom: 2 }}>
+                              <span style={{ fontWeight: 500 }}>{fp.fuel_type}:</span> ₱{fp.price.toFixed(2)}/L
+                              {fp.price_updated_by === 'community' && (
+                                <span style={{ fontSize: 10, color: '#666', marginLeft: 4 }}>(community)</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span> ₱{station.fuel_price}/L</span>
+                      )}
+                    </div>
+                    <div>
+                      <strong>Services:</strong> {station.services.join(", ")}
+                    </div>
+                    {station.address && (
+                      <div>
+                        <strong>Address:</strong> {station.address}
+                      </div>
+                    )}
+                    {station.phone && (
+                      <div>
+                        <strong>Phone:</strong> {station.phone}
+                      </div>
+                    )}
+                    {station.operating_hours && (
+                      <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
+                        <strong>🕐 Hours:</strong> {station.operating_hours.open} - {station.operating_hours.close}
+                      </div>
+                    )}
+
+                    {/* Station Images */}
+                    {station.images && station.images.length > 0 && (
+                      <ImageSlideshow
+                        images={station.images}
+                        entityId={`station-${station.id}`}
+                      />
+                    )}
+                  </>
                 )}
 
-                {/* Station Images */}
-                {station.images && station.images.length > 0 && (
-                  <ImageSlideshow
-                    images={station.images}
-                    entityId={`station-${station.id}`}
-                  />
-                )}
-
-                {isAdminEnabled && (
+                {isAdminEnabled && editingStationId !== station.id && (
                   <div
                     style={{
                       marginTop: 12,
@@ -1360,6 +1531,23 @@ const AdminPortal: React.FC = () => {
 
                     <button
                       style={{
+                        background: "#2196F3",
+                        color: "white",
+                        border: "none",
+                        padding: "6px 12px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        width: "100%",
+                        marginBottom: 4,
+                      }}
+                      onClick={() => startEditStation(station)}
+                    >
+                      ✏️ Edit Station
+                    </button>
+                    <button
+                      style={{
                         background: "#f44336",
                         color: "white",
                         border: "none",
@@ -1408,23 +1596,131 @@ const AdminPortal: React.FC = () => {
           >
             <Popup>
               <div style={{ minWidth: 180 }}>
-                <b>{poi.name}</b>
-                <div style={{ marginTop: 4, color: "#666" }}>
-                  Type: {poi.type}
-                </div>
-                <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
-                  {poi.location.lat.toFixed(6)}, {poi.location.lng.toFixed(6)}
-                </div>
+                {editingPoiId === poi.id ? (
+                  /* EDIT FORM */
+                  <div>
+                    <b>✏️ Edit POI</b>
+                    <div style={{ marginTop: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="Name"
+                        value={editFormData.name || ''}
+                        onChange={(e) => setEditFormData({...editFormData, name: e.target.value})}
+                        style={{ width: '100%', padding: 4, marginBottom: 4, fontSize: 12 }}
+                      />
+                      <select
+                        value={editFormData.type || 'convenience'}
+                        onChange={(e) => setEditFormData({...editFormData, type: e.target.value})}
+                        style={{ width: '100%', padding: 4, marginBottom: 4, fontSize: 12 }}
+                      >
+                        <option value="convenience">Convenience Store</option>
+                        <option value="repair">Repair Shop</option>
+                        <option value="car_wash">Car Wash</option>
+                        <option value="motor_shop">Motor Shop</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Address"
+                        value={editFormData.address || ''}
+                        onChange={(e) => setEditFormData({...editFormData, address: e.target.value})}
+                        style={{ width: '100%', padding: 4, marginBottom: 4, fontSize: 12 }}
+                      />
+                      <input
+                        type="text"
+                        placeholder="Phone"
+                        value={editFormData.phone || ''}
+                        onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})}
+                        style={{ width: '100%', padding: 4, marginBottom: 4, fontSize: 12 }}
+                      />
+                      <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2 }}>Operating Hours:</div>
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
+                        <input
+                          type="time"
+                          value={editFormData.operating_hours?.open || '08:00'}
+                          onChange={(e) => setEditFormData({...editFormData, operating_hours: {...(editFormData.operating_hours || {}), open: e.target.value}})}
+                          style={{ flex: 1, padding: 4, fontSize: 11 }}
+                        />
+                        <input
+                          type="time"
+                          value={editFormData.operating_hours?.close || '20:00'}
+                          onChange={(e) => setEditFormData({...editFormData, operating_hours: {...(editFormData.operating_hours || {}), close: e.target.value}})}
+                          style={{ flex: 1, padding: 4, fontSize: 11 }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                        <button
+                          onClick={() => submitEditPoi(poi.id)}
+                          disabled={editSubmitting}
+                          style={{
+                            flex: 1,
+                            padding: '6px 12px',
+                            background: '#4CAF50',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: editSubmitting ? 'not-allowed' : 'pointer',
+                            fontSize: 11,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {editSubmitting ? '⏳ Saving...' : '💾 Save'}
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          style={{
+                            flex: 1,
+                            padding: '6px 12px',
+                            background: '#999',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            fontSize: 11,
+                            fontWeight: 600,
+                          }}
+                        >
+                          ✖️ Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* NORMAL VIEW */
+                  <>
+                    <b>{poi.name}</b>
+                    <div style={{ marginTop: 4, color: "#666" }}>
+                      Type: {poi.type}
+                    </div>
+                    <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
+                      {poi.location.lat.toFixed(6)}, {poi.location.lng.toFixed(6)}
+                    </div>
+                    {(poi as any).address && (
+                      <div style={{ marginTop: 4, fontSize: 12 }}>
+                        📍 {(poi as any).address}
+                      </div>
+                    )}
+                    {(poi as any).phone && (
+                      <div style={{ marginTop: 4, fontSize: 12 }}>
+                        📞 {(poi as any).phone}
+                      </div>
+                    )}
+                    {(poi as any).operating_hours && (
+                      <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
+                        🕐 {(poi as any).operating_hours.open} - {(poi as any).operating_hours.close}
+                      </div>
+                    )}
 
-                {/* POI Images */}
-                {poi.images && poi.images.length > 0 && (
-                  <ImageSlideshow
-                    images={poi.images}
-                    entityId={`poi-${poi.id}`}
-                  />
+                    {/* POI Images */}
+                    {poi.images && poi.images.length > 0 && (
+                      <ImageSlideshow
+                        images={poi.images}
+                        entityId={`poi-${poi.id}`}
+                      />
+                    )}
+                  </>
                 )}
 
-                {isAdminEnabled && (
+                {isAdminEnabled && editingPoiId !== poi.id && (
                   <div
                     style={{
                       marginTop: 8,
@@ -1434,6 +1730,22 @@ const AdminPortal: React.FC = () => {
                   >
                     <button
                       style={{
+                        background: "#2196F3",
+                        color: "white",
+                        border: "none",
+                        padding: "4px 8px",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        fontSize: 11,
+                        width: "100%",
+                        marginBottom: 4,
+                      }}
+                      onClick={() => startEditPoi(poi)}
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      style={{
                         background: "#f44336",
                         color: "white",
                         border: "none",
@@ -1441,6 +1753,7 @@ const AdminPortal: React.FC = () => {
                         borderRadius: 4,
                         cursor: "pointer",
                         fontSize: 11,
+                        width: "100%",
                       }}
                       onClick={async () => {
                         if (window.confirm(`Delete "${poi.name}"?`)) {

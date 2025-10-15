@@ -224,6 +224,24 @@ export const apiPostBase64Images = async (
 };
 
 /**
+ * Helper for making PUT requests
+ */
+export const apiPut = async (
+  path: string,
+  data?: any,
+  apiKey?: string,
+): Promise<Response> => {
+  return apiCall(
+    getApiUrl(path),
+    {
+      method: "PUT",
+      body: data ? JSON.stringify(data) : undefined,
+    },
+    apiKey,
+  );
+};
+
+/**
  * Helper for making DELETE requests
  */
 export const apiDelete = async (
