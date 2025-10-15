@@ -22,11 +22,19 @@ import markerIconPng from "leaflet/dist/images/marker-icon.png";
 import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
 
 // Types
+interface FuelPrice {
+  fuel_type: string;
+  price: number;
+  price_updated_at?: string;
+  price_updated_by?: string;
+}
+
 interface Station {
   id: number;
   name: string;
   brand: string;
-  fuel_price: number;
+  fuel_price: number; // Legacy field - kept for backward compatibility
+  fuel_prices?: FuelPrice[]; // New field for multiple fuel types
   services: string[];
   address: string;
   phone?: string;
@@ -1162,8 +1170,23 @@ const AdminPortal: React.FC = () => {
                 <div style={{ marginTop: 4 }}>
                   <strong>Brand:</strong> {station.brand}
                 </div>
-                <div>
-                  <strong>Price:</strong> ₱{station.fuel_price}/L
+                {/* Display fuel prices */}
+                <div style={{ marginBottom: 4 }}>
+                  <strong>Fuel Prices:</strong>
+                  {station.fuel_prices && station.fuel_prices.length > 0 ? (
+                    <div style={{ marginLeft: 8, marginTop: 4 }}>
+                      {station.fuel_prices.map((fp) => (
+                        <div key={fp.fuel_type} style={{ fontSize: 12, marginBottom: 2 }}>
+                          <span style={{ fontWeight: 500 }}>{fp.fuel_type}:</span> ₱{fp.price.toFixed(2)}/L
+                          {fp.price_updated_by === 'community' && (
+                            <span style={{ fontSize: 10, color: '#666', marginLeft: 4 }}>(community)</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span> ₱{station.fuel_price}/L</span>
+                  )}
                 </div>
                 <div>
                   <strong>Services:</strong> {station.services.join(", ")}
@@ -1176,6 +1199,11 @@ const AdminPortal: React.FC = () => {
                 {station.phone && (
                   <div>
                     <strong>Phone:</strong> {station.phone}
+                  </div>
+                )}
+                {station.operating_hours && (
+                  <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
+                    <strong>🕐 Hours:</strong> {station.operating_hours.open} - {station.operating_hours.close}
                   </div>
                 )}
 

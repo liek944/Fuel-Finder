@@ -13,6 +13,7 @@ import { getImageUrl, getApiUrl } from "../utils/api";
 import TripRecorder from "./TripRecorder";
 import TripHistoryPanel from "./TripHistoryPanel";
 import TripReplayVisualizer from "./TripReplayVisualizer";
+import PWAInstallButton from "./PWAInstallButton";
 import { Trip } from "../utils/indexedDB";
 import "../styles/TripReplayVisualizer.css";
 
@@ -1191,6 +1192,11 @@ const MainApp: React.FC = () => {
                       <strong>Phone:</strong> {station.phone}
                     </div>
                   )}
+                  {station.operating_hours && (
+                    <div style={{ marginBottom: 8, fontSize: 12, color: "#666" }}>
+                      <strong>🕐 Hours:</strong> {station.operating_hours.open} - {station.operating_hours.close}
+                    </div>
+                  )}
 
                   {/* Station Images */}
                   {station.images && station.images.length > 0 && (
@@ -1665,6 +1671,9 @@ const MainApp: React.FC = () => {
           ✕ Close Replay
         </button>
       )}
+
+      {/* PWA Install Button */}
+      <PWAInstallButton />
 
     </div>
   );
