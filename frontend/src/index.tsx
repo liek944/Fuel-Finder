@@ -4,6 +4,15 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// Capture beforeinstallprompt event BEFORE React mounts
+// This ensures we don't miss the event if it fires early
+window.addEventListener('beforeinstallprompt', (e) => {
+  console.log('✅ beforeinstallprompt event captured globally!');
+  e.preventDefault();
+  // Store it globally so PWAInstallButton can access it
+  (window as any).deferredPrompt = e;
+});
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
