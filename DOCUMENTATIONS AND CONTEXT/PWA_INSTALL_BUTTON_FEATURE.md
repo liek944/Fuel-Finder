@@ -1,5 +1,11 @@
 # PWA Install Button Feature
 
+> **⚠️ RECENT FIXES (2025-01-15):**
+> - Fixed `manifest.json` configuration (`start_url`, `scope`, icon purposes)
+> - Added comprehensive debugging logs throughout PWA components
+> - Enhanced Service Worker registration with success confirmation
+> - **See [PWA_INSTALLATION_TROUBLESHOOTING.md](./PWA_INSTALLATION_TROUBLESHOOTING.md) for detailed debugging guide**
+
 ## Overview
 The Fuel Finder app now includes a Progressive Web App (PWA) install button that allows mobile users to install the application on their devices for a native app-like experience.
 

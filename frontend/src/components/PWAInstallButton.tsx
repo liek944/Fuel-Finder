@@ -16,25 +16,31 @@ const PWAInstallButton: React.FC = () => {
     // Check if it's iOS
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(iOS);
+    console.log('🔍 PWA Install Button - Platform:', iOS ? 'iOS' : 'Other');
 
     // Check if already installed
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches 
       || (window.navigator as any).standalone 
       || document.referrer.includes('android-app://');
 
+    console.log('🔍 PWA Install Button - Is Standalone:', isStandalone);
+
     if (isStandalone) {
+      console.log('✅ PWA already installed, hiding button');
       // App is already installed, don't show button
       return;
     }
 
     // For iOS devices, show install button if not in standalone mode
     if (iOS) {
+      console.log('📱 iOS detected - showing install button with instructions');
       setShowInstallButton(true);
       return;
     }
 
     // For other browsers, listen for beforeinstallprompt event
     const handler = (e: Event) => {
+      console.log('✅ beforeinstallprompt event fired - PWA installable!');
       e.preventDefault();
       const promptEvent = e as BeforeInstallPromptEvent;
       setDeferredPrompt(promptEvent);
@@ -42,14 +48,20 @@ const PWAInstallButton: React.FC = () => {
     };
 
     window.addEventListener('beforeinstallprompt', handler);
+    console.log('👂 Listening for beforeinstallprompt event...');
 
     // Check if installation criteria are met
     if ('getInstalledRelatedApps' in navigator) {
       (navigator as any).getInstalledRelatedApps().then((relatedApps: any[]) => {
+        console.log('🔍 Related apps check:', relatedApps.length === 0 ? 'None installed' : `${relatedApps.length} found`);
         if (relatedApps.length === 0) {
           setShowInstallButton(true);
         }
+      }).catch((err: any) => {
+        console.warn('⚠️ getInstalledRelatedApps error:', err);
       });
+    } else {
+      console.log('ℹ️ getInstalledRelatedApps not supported');
     }
 
     return () => {
@@ -58,31 +70,41 @@ const PWAInstallButton: React.FC = () => {
   }, []);
 
   const handleInstallClick = async () => {
+    console.log('🖱️ Install button clicked');
+    
     if (isIOS) {
+      console.log('📱 Showing iOS installation instructions');
       // Show iOS instructions
       setShowIOSInstructions(true);
       return;
     }
 
     if (!deferredPrompt) {
+      console.warn('⚠️ No deferred prompt available - PWA may not be installable yet');
+      console.log('💡 Make sure you are on HTTPS and the app meets PWA criteria');
       return;
     }
 
-    // Show the install prompt
-    deferredPrompt.prompt();
+    try {
+      console.log('🚀 Showing install prompt...');
+      // Show the install prompt
+      await deferredPrompt.prompt();
 
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
+      // Wait for the user to respond to the prompt
+      const { outcome } = await deferredPrompt.userChoice;
 
-    if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
-      setShowInstallButton(false);
-    } else {
-      console.log('User dismissed the install prompt');
+      if (outcome === 'accepted') {
+        console.log('✅ User accepted the install prompt');
+        setShowInstallButton(false);
+      } else {
+        console.log('❌ User dismissed the install prompt');
+      }
+
+      // Clear the deferredPrompt
+      setDeferredPrompt(null);
+    } catch (error) {
+      console.error('❌ Error during installation:', error);
     }
-
-    // Clear the deferredPrompt
-    setDeferredPrompt(null);
   };
 
   const closeIOSInstructions = () => {
