@@ -136,6 +136,16 @@ const {
   getStationFuelPrices,
   updateStationFuelPrice,
   deleteStationFuelPrice,
+  // Donations
+  createDonation,
+  updateDonationStatus,
+  getDonationByPaymentIntent,
+  getDonationStats,
+  getRecentDonations,
+  getDonationStatsByCause,
+  getDonationLeaderboard,
+  getAllDonationsAdmin,
+  updateDonationImpact,
 } = require("./database/db");
 
 // Import image service
@@ -2329,7 +2339,7 @@ app.post("/api/donations/create", rateLimit, async (req, res) => {
     // Save donation to database
     const donorIdentifier = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress || 'unknown';
     
-    const donation = await db.createDonation({
+    const donation = await createDonation({
       amount,
       donor_name: donor_name || 'Anonymous',
       donor_email,
@@ -2361,7 +2371,7 @@ app.post("/api/donations/create", rateLimit, async (req, res) => {
 // Get donation statistics (public)
 app.get("/api/donations/stats", async (req, res) => {
   try {
-    const stats = await db.getDonationStats();
+    const stats = await getDonationStats();
     res.json(stats);
   } catch (error) {
     console.error('❌ Get donation stats error:', error);
@@ -2376,7 +2386,7 @@ app.get("/api/donations/stats", async (req, res) => {
 app.get("/api/donations/recent", async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-    const donations = await db.getRecentDonations(limit);
+    const donations = await getRecentDonations(limit);
     res.json(donations);
   } catch (error) {
     console.error('❌ Get recent donations error:', error);
@@ -2390,7 +2400,7 @@ app.get("/api/donations/recent", async (req, res) => {
 // Get donation statistics by cause (public)
 app.get("/api/donations/stats/by-cause", async (req, res) => {
   try {
-    const stats = await db.getDonationStatsByCause();
+    const stats = await getDonationStatsByCause();
     res.json(stats);
   } catch (error) {
     console.error('❌ Get donation stats by cause error:', error);
@@ -2405,7 +2415,7 @@ app.get("/api/donations/stats/by-cause", async (req, res) => {
 app.get("/api/donations/leaderboard", async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 10, 50);
-    const leaderboard = await db.getDonationLeaderboard(limit);
+    const leaderboard = await getDonationLeaderboard(limit);
     res.json(leaderboard);
   } catch (error) {
     console.error('❌ Get donation leaderboard error:', error);
@@ -2438,7 +2448,7 @@ app.post("/api/webhooks/paymongo", express.raw({ type: 'application/json' }), as
       const paymentIntentId = parsedEvent.id;
       const paymentMethod = parsedEvent.attributes.type || 'unknown';
 
-      const updated = await db.updateDonationStatus(paymentIntentId, 'succeeded', paymentMethod);
+      const updated = await updateDonationStatus(paymentIntentId, 'succeeded', paymentMethod);
       
       if (updated) {
         console.log(`✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`);
@@ -2452,7 +2462,7 @@ app.post("/api/webhooks/paymongo", express.raw({ type: 'application/json' }), as
       const paymentIntentId = parsedEvent.attributes.source?.id || parsedEvent.id;
       const paymentMethod = parsedEvent.attributes.source?.type || 'unknown';
 
-      const updated = await db.updateDonationStatus(paymentIntentId, 'succeeded', paymentMethod);
+      const updated = await updateDonationStatus(paymentIntentId, 'succeeded', paymentMethod);
       
       if (updated) {
         console.log(`✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`);
@@ -2463,7 +2473,7 @@ app.post("/api/webhooks/paymongo", express.raw({ type: 'application/json' }), as
     if (parsedEvent.type === 'payment.failed' || parsedEvent.type === 'link.payment.failed') {
       const paymentIntentId = parsedEvent.id;
 
-      const updated = await db.updateDonationStatus(paymentIntentId, 'failed');
+      const updated = await updateDonationStatus(paymentIntentId, 'failed');
       
       if (updated) {
         console.log(`❌ Donation payment failed: ${paymentIntentId}`);
@@ -2493,7 +2503,7 @@ app.get("/api/admin/donations", async (req, res) => {
       limit: req.query.limit ? parseInt(req.query.limit) : 100
     };
 
-    const donations = await db.getAllDonationsAdmin(filters);
+    const donations = await getAllDonationsAdmin(filters);
     res.json(donations);
   } catch (error) {
     console.error('❌ Get all donations error:', error);
@@ -2519,7 +2529,7 @@ app.patch("/api/admin/donations/impact/:cause", async (req, res) => {
       return res.status(400).json({ error: 'Metrics object required' });
     }
 
-    const updated = await db.updateDonationImpact(cause, metrics);
+    const updated = await updateDonationImpact(cause, metrics);
 
     if (!updated) {
       return res.status(404).json({ error: 'Cause not found' });
