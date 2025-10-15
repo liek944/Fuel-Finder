@@ -15,25 +15,42 @@ const CORE_ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
+  console.log('🔧 Service Worker installing...', CACHE_VERSION);
   event.waitUntil(
     (async () => {
-      const cache = await caches.open(STATIC_CACHE);
-      await cache.addAll(CORE_ASSETS);
-      await self.skipWaiting();
+      try {
+        const cache = await caches.open(STATIC_CACHE);
+        await cache.addAll(CORE_ASSETS);
+        console.log('✅ Core assets cached successfully');
+        await self.skipWaiting();
+      } catch (error) {
+        console.error('❌ Service Worker install failed:', error);
+        throw error;
+      }
     })()
   );
 });
 
 self.addEventListener('activate', (event) => {
+  console.log('⚡ Service Worker activating...', CACHE_VERSION);
   event.waitUntil(
     (async () => {
-      const keys = await caches.keys();
-      await Promise.all(
-        keys
-          .filter((k) => ![STATIC_CACHE, RUNTIME_CACHE].includes(k))
-          .map((k) => caches.delete(k))
-      );
-      await self.clients.claim();
+      try {
+        const keys = await caches.keys();
+        await Promise.all(
+          keys
+            .filter((k) => ![STATIC_CACHE, RUNTIME_CACHE].includes(k))
+            .map((k) => {
+              console.log('🗑️ Deleting old cache:', k);
+              return caches.delete(k);
+            })
+        );
+        await self.clients.claim();
+        console.log('✅ Service Worker activated and claimed clients');
+      } catch (error) {
+        console.error('❌ Service Worker activation failed:', error);
+        throw error;
+      }
     })()
   );
 });
