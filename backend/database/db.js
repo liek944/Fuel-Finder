@@ -904,6 +904,215 @@ async function getPriceReportingStats() {
   return result.rows[0];
 }
 
+// ==========================================
+// DONATION FUNCTIONS
+// ==========================================
+
+/**
+ * Create a new donation record
+ */
+async function createDonation(donationData) {
+  const query = `
+    INSERT INTO donations (
+      amount, currency, donor_name, donor_email, donor_identifier,
+      payment_intent_id, payment_method, status, cause, notes
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING *
+  `;
+
+  const values = [
+    donationData.amount,
+    donationData.currency || 'PHP',
+    donationData.donor_name || 'Anonymous',
+    donationData.donor_email,
+    donationData.donor_identifier,
+    donationData.payment_intent_id,
+    donationData.payment_method,
+    donationData.status || 'pending',
+    donationData.cause || 'general',
+    donationData.notes
+  ];
+
+  const result = await pool.query(query, values);
+  return result.rows[0];
+}
+
+/**
+ * Update donation status (e.g., when payment succeeds or fails)
+ */
+async function updateDonationStatus(paymentIntentId, status, paymentMethod = null) {
+  const query = `
+    UPDATE donations
+    SET status = $1,
+        payment_method = COALESCE($2, payment_method),
+        paid_at = CASE WHEN $1 = 'succeeded' THEN CURRENT_TIMESTAMP ELSE paid_at END
+    WHERE payment_intent_id = $3
+    RETURNING *
+  `;
+
+  const result = await pool.query(query, [status, paymentMethod, paymentIntentId]);
+  return result.rows[0];
+}
+
+/**
+ * Get donation by payment intent ID
+ */
+async function getDonationByPaymentIntent(paymentIntentId) {
+  const query = `
+    SELECT * FROM donations
+    WHERE payment_intent_id = $1
+  `;
+
+  const result = await pool.query(query, [paymentIntentId]);
+  return result.rows[0];
+}
+
+/**
+ * Get overall donation statistics
+ */
+async function getDonationStats() {
+  const query = `
+    SELECT * FROM donation_statistics
+  `;
+
+  const result = await pool.query(query);
+  return result.rows[0] || {
+    total_donations: 0,
+    total_amount: 0,
+    donations_this_month: 0,
+    amount_this_month: 0,
+    donations_this_week: 0,
+    amount_this_week: 0,
+    average_donation: 0,
+    unique_donors: 0
+  };
+}
+
+/**
+ * Get recent successful donations (for public display - anonymized)
+ */
+async function getRecentDonations(limit = 10) {
+  const query = `
+    SELECT 
+      id,
+      amount,
+      COALESCE(donor_name, 'Anonymous') as donor_name,
+      cause,
+      LEFT(notes, 100) as notes,
+      created_at
+    FROM donations
+    WHERE status = 'succeeded'
+    ORDER BY created_at DESC
+    LIMIT $1
+  `;
+
+  const result = await pool.query(query, [limit]);
+  return result.rows;
+}
+
+/**
+ * Get donation statistics by cause
+ */
+async function getDonationStatsByCause() {
+  const query = `
+    SELECT 
+      di.cause,
+      di.beneficiary_name,
+      di.total_amount,
+      di.impact_metrics,
+      di.beneficiary_verified,
+      COUNT(d.id) as donation_count,
+      MAX(d.created_at) as latest_donation
+    FROM donation_impacts di
+    LEFT JOIN donations d ON d.cause = di.cause AND d.status = 'succeeded'
+    GROUP BY di.cause, di.beneficiary_name, di.total_amount, di.impact_metrics, di.beneficiary_verified
+    ORDER BY di.total_amount DESC
+  `;
+
+  const result = await pool.query(query);
+  return result.rows;
+}
+
+/**
+ * Get donation leaderboard (top donors)
+ */
+async function getDonationLeaderboard(limit = 10) {
+  const result = await pool.query('SELECT * FROM get_donation_leaderboard($1)', [limit]);
+  return result.rows;
+}
+
+/**
+ * Get all donations for admin (includes full details)
+ */
+async function getAllDonationsAdmin(filters = {}) {
+  let query = `
+    SELECT 
+      d.*,
+      di.beneficiary_name
+    FROM donations d
+    LEFT JOIN donation_impacts di ON di.cause = d.cause
+    WHERE 1=1
+  `;
+
+  const values = [];
+  let paramCount = 0;
+
+  // Filter by status
+  if (filters.status) {
+    paramCount++;
+    query += ` AND d.status = $${paramCount}`;
+    values.push(filters.status);
+  }
+
+  // Filter by cause
+  if (filters.cause) {
+    paramCount++;
+    query += ` AND d.cause = $${paramCount}`;
+    values.push(filters.cause);
+  }
+
+  // Filter by date range
+  if (filters.start_date) {
+    paramCount++;
+    query += ` AND d.created_at >= $${paramCount}`;
+    values.push(filters.start_date);
+  }
+
+  if (filters.end_date) {
+    paramCount++;
+    query += ` AND d.created_at <= $${paramCount}`;
+    values.push(filters.end_date);
+  }
+
+  query += ` ORDER BY d.created_at DESC`;
+
+  // Limit
+  if (filters.limit) {
+    paramCount++;
+    query += ` LIMIT $${paramCount}`;
+    values.push(filters.limit);
+  }
+
+  const result = await pool.query(query, values);
+  return result.rows;
+}
+
+/**
+ * Update donation impact metrics (manual adjustment if needed)
+ */
+async function updateDonationImpact(cause, metrics) {
+  const query = `
+    UPDATE donation_impacts
+    SET impact_metrics = $1,
+        last_updated = CURRENT_TIMESTAMP
+    WHERE cause = $2
+    RETURNING *
+  `;
+
+  const result = await pool.query(query, [JSON.stringify(metrics), cause]);
+  return result.rows[0];
+}
+
 // Graceful shutdown
 async function closePool() {
   try {
@@ -954,5 +1163,15 @@ module.exports = {
   getStationFuelPrices,
   updateStationFuelPrice,
   deleteStationFuelPrice,
+  // Donations
+  createDonation,
+  updateDonationStatus,
+  getDonationByPaymentIntent,
+  getDonationStats,
+  getRecentDonations,
+  getDonationStatsByCause,
+  getDonationLeaderboard,
+  getAllDonationsAdmin,
+  updateDonationImpact,
   closePool,
 };

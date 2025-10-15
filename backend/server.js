@@ -2278,6 +2278,266 @@ app.delete("/api/stations/:id/fuel-prices/:fuelType", rateLimit, async (req, res
   }
 });
 
+// ============================================================================
+// DONATION ENDPOINTS
+// ============================================================================
+
+const paymentService = require('./services/paymentService');
+
+// Create donation and generate payment link
+app.post("/api/donations/create", rateLimit, async (req, res) => {
+  try {
+    const { amount, donor_name, donor_email, cause, notes } = req.body;
+
+    // Validate amount
+    if (!amount || isNaN(amount) || amount < 10 || amount > 10000) {
+      return res.status(400).json({ 
+        error: 'Invalid amount',
+        message: 'Amount must be between ₱10 and ₱10,000'
+      });
+    }
+
+    // Validate cause
+    const validCauses = ['ambulance', 'public_transport', 'emergency', 'general'];
+    const selectedCause = cause || 'general';
+    if (!validCauses.includes(selectedCause)) {
+      return res.status(400).json({
+        error: 'Invalid cause',
+        message: `Cause must be one of: ${validCauses.join(', ')}`
+      });
+    }
+
+    // Check if PayMongo is configured
+    if (!paymentService.isConfigured()) {
+      return res.status(503).json({
+        error: 'Payment system not configured',
+        message: 'Donation feature is temporarily unavailable. Please contact support.'
+      });
+    }
+
+    // Create payment link with PayMongo
+    const paymentLink = await paymentService.createPaymentLink(
+      amount,
+      `Fuel Finder Donation - ${selectedCause.replace('_', ' ').toUpperCase()}`,
+      {
+        remarks: notes || `Donation for ${selectedCause}`,
+        donor_name: donor_name || 'Anonymous',
+        cause: selectedCause
+      }
+    );
+
+    // Save donation to database
+    const donorIdentifier = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress || 'unknown';
+    
+    const donation = await db.createDonation({
+      amount,
+      donor_name: donor_name || 'Anonymous',
+      donor_email,
+      donor_identifier: donorIdentifier,
+      payment_intent_id: paymentLink.id,
+      status: 'pending',
+      cause: selectedCause,
+      notes
+    });
+
+    console.log(`💝 Donation created: ₱${amount} for ${selectedCause} (ID: ${donation.id})`);
+
+    res.json({
+      success: true,
+      donation_id: donation.id,
+      payment_url: paymentLink.attributes.checkout_url,
+      reference_number: paymentLink.attributes.reference_number,
+      expires_at: paymentLink.attributes.archived_at
+    });
+  } catch (error) {
+    console.error('❌ Create donation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to create donation',
+      message: error.message
+    });
+  }
+});
+
+// Get donation statistics (public)
+app.get("/api/donations/stats", async (req, res) => {
+  try {
+    const stats = await db.getDonationStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('❌ Get donation stats error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get donation statistics',
+      message: error.message
+    });
+  }
+});
+
+// Get recent donations (public, anonymized)
+app.get("/api/donations/recent", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const donations = await db.getRecentDonations(limit);
+    res.json(donations);
+  } catch (error) {
+    console.error('❌ Get recent donations error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get recent donations',
+      message: error.message
+    });
+  }
+});
+
+// Get donation statistics by cause (public)
+app.get("/api/donations/stats/by-cause", async (req, res) => {
+  try {
+    const stats = await db.getDonationStatsByCause();
+    res.json(stats);
+  } catch (error) {
+    console.error('❌ Get donation stats by cause error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get donation statistics by cause',
+      message: error.message
+    });
+  }
+});
+
+// Get donation leaderboard (public)
+app.get("/api/donations/leaderboard", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const leaderboard = await db.getDonationLeaderboard(limit);
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('❌ Get donation leaderboard error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get donation leaderboard',
+      message: error.message
+    });
+  }
+});
+
+// PayMongo webhook endpoint
+app.post("/api/webhooks/paymongo", express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const signature = req.headers['paymongo-signature'];
+    const payload = req.body.toString();
+
+    // Verify webhook signature
+    if (!paymentService.verifyWebhookSignature(payload, signature)) {
+      console.error('❌ Invalid webhook signature');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    const event = JSON.parse(payload);
+    const parsedEvent = paymentService.parseWebhookEvent(event);
+
+    console.log(`📬 Webhook received: ${parsedEvent.type}`);
+
+    // Handle link.payment.paid event (for payment links)
+    if (parsedEvent.type === 'link.payment.paid') {
+      const paymentIntentId = parsedEvent.id;
+      const paymentMethod = parsedEvent.attributes.type || 'unknown';
+
+      const updated = await db.updateDonationStatus(paymentIntentId, 'succeeded', paymentMethod);
+      
+      if (updated) {
+        console.log(`✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`);
+      } else {
+        console.warn(`⚠️  Payment succeeded but donation not found: ${paymentIntentId}`);
+      }
+    }
+
+    // Handle payment.paid event (for payment intents)
+    if (parsedEvent.type === 'payment.paid') {
+      const paymentIntentId = parsedEvent.attributes.source?.id || parsedEvent.id;
+      const paymentMethod = parsedEvent.attributes.source?.type || 'unknown';
+
+      const updated = await db.updateDonationStatus(paymentIntentId, 'succeeded', paymentMethod);
+      
+      if (updated) {
+        console.log(`✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`);
+      }
+    }
+
+    // Handle payment.failed event
+    if (parsedEvent.type === 'payment.failed' || parsedEvent.type === 'link.payment.failed') {
+      const paymentIntentId = parsedEvent.id;
+
+      const updated = await db.updateDonationStatus(paymentIntentId, 'failed');
+      
+      if (updated) {
+        console.log(`❌ Donation payment failed: ${paymentIntentId}`);
+      }
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('❌ Webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+});
+
+// Admin: Get all donations with filters (protected)
+app.get("/api/admin/donations", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+
+    const filters = {
+      status: req.query.status,
+      cause: req.query.cause,
+      start_date: req.query.start_date,
+      end_date: req.query.end_date,
+      limit: req.query.limit ? parseInt(req.query.limit) : 100
+    };
+
+    const donations = await db.getAllDonationsAdmin(filters);
+    res.json(donations);
+  } catch (error) {
+    console.error('❌ Get all donations error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get donations',
+      message: error.message
+    });
+  }
+});
+
+// Admin: Update donation impact metrics (protected)
+app.patch("/api/admin/donations/impact/:cause", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+
+    const cause = req.params.cause;
+    const metrics = req.body.metrics;
+
+    if (!metrics) {
+      return res.status(400).json({ error: 'Metrics object required' });
+    }
+
+    const updated = await db.updateDonationImpact(cause, metrics);
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Cause not found' });
+    }
+
+    console.log(`📊 Impact metrics updated for ${cause}`);
+    res.json(updated);
+  } catch (error) {
+    console.error('❌ Update donation impact error:', error);
+    res.status(500).json({ 
+      error: 'Failed to update donation impact',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================================
+
 // 404 handler for API routes
 app.use((req, res, next) => {
   if (req.path.startsWith("/api")) {
@@ -2413,11 +2673,36 @@ app.listen(port, "0.0.0.0", () => {
   console.log(
     `   🔹 GET  /api/admin/price-reports/stats        - Get price reporting statistics (x-api-key protected)`,
   );
+  console.log(
+    `   🔹 POST /api/donations/create                 - Create donation and get payment link`,
+  );
+  console.log(
+    `   🔹 GET  /api/donations/stats                  - Get donation statistics`,
+  );
+  console.log(
+    `   🔹 GET  /api/donations/recent                 - Get recent donations (public)`,
+  );
+  console.log(
+    `   🔹 GET  /api/donations/stats/by-cause         - Get donation stats by cause`,
+  );
+  console.log(
+    `   🔹 GET  /api/donations/leaderboard            - Get donation leaderboard`,
+  );
+  console.log(
+    `   🔹 POST /api/webhooks/paymongo                - PayMongo webhook handler`,
+  );
+  console.log(
+    `   🔹 GET  /api/admin/donations                  - Get all donations with filters (x-api-key protected)`,
+  );
+  console.log(
+    `   🔹 PATCH /api/admin/donations/impact/:cause   - Update donation impact metrics (x-api-key protected)`,
+  );
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("🗄️  Database: PostgreSQL + PostGIS");
   console.log("⚡ Cache: In-memory with " + CACHE_TTL_MS / 1000 + "s TTL");
   console.log("🌐 CORS: Enabled for frontend origins");
   console.log("💰 Community Price Reporting: Enabled");
+  console.log("💝 Fuel Donations: " + (paymentService.isConfigured() ? "Enabled (PayMongo)" : "Disabled (Configure PayMongo)"));
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("🎉 Server ready to accept connections!");
 });
