@@ -119,42 +119,39 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
   if (ctx) {
     const color = brandColors[brand] || brandColors.default;
     const centerX = (width + 10) / 2;
-    const topY = 5;
     const radius = width / 2 - 2;
+    const circleY = 5 + radius;
     const pointY = height + 5;
 
     // Draw shadow
     ctx.save();
     ctx.translate(3, 3);
-    ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
-    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX, pointY);
-    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX - radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
-    ctx.closePath();
     ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
+    ctx.lineTo(centerX - radius, circleY);
+    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.closePath();
     ctx.fill();
     ctx.restore();
 
-    // Draw teardrop shape (proper pin)
-    ctx.beginPath();
-    // Arc for the top circular part (from right to left, top portion)
-    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
-    // Curve from left side down to point
-    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX, pointY);
-    // Curve from point back up to right side
-    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX + radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
-    ctx.closePath();
+    // Draw teardrop shape
     ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
+    ctx.lineTo(centerX - radius, circleY);
+    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.closePath();
     ctx.fill();
 
     // Draw outline
-    ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
-    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX, pointY);
-    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX + radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
-    ctx.closePath();
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
+    ctx.lineTo(centerX - radius, circleY);
+    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.closePath();
     ctx.stroke();
 
     // Draw fuel pump icon
@@ -162,7 +159,7 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
     ctx.font = `${Math.floor(radius * 0.8)}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("⛽", centerX, topY + radius);
+    ctx.fillText("⛽", centerX, circleY);
   }
 
   return new L.Icon({
@@ -193,39 +190,39 @@ const createPOIIcon = (type: string) => {
 
   if (ctx) {
     const centerX = (width + 10) / 2;
-    const topY = 5;
     const radius = width / 2 - 2;
+    const circleY = 5 + radius;
     const pointY = height + 5;
 
     // Draw shadow
     ctx.save();
     ctx.translate(2, 2);
-    ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
-    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX, pointY);
-    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX - radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
-    ctx.closePath();
     ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
+    ctx.lineTo(centerX - radius, circleY);
+    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.closePath();
     ctx.fill();
     ctx.restore();
 
-    // Draw teardrop shape (proper pin)
-    ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
-    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX, pointY);
-    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX + radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
-    ctx.closePath();
+    // Draw teardrop shape
     ctx.fillStyle = "#FF9800";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
+    ctx.lineTo(centerX - radius, circleY);
+    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.closePath();
     ctx.fill();
 
     // Draw outline
-    ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
-    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX, pointY);
-    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX + radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
-    ctx.closePath();
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
+    ctx.lineTo(centerX - radius, circleY);
+    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.closePath();
     ctx.stroke();
 
     // Draw icon
@@ -233,7 +230,7 @@ const createPOIIcon = (type: string) => {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#fff";
-    ctx.fillText(iconMap[type] || "📍", centerX, topY + radius);
+    ctx.fillText(iconMap[type] || "📍", centerX, circleY);
   }
 
   return new L.Icon({
