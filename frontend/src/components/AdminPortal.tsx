@@ -804,6 +804,8 @@ const AdminPortal: React.FC = () => {
     const lat = parseFloat(manualLat);
     const lng = parseFloat(manualLng);
 
+    console.log("[AdminPortal] Manual Set -> lat:", lat, "lng:", lng);
+
     // Validate latitude
     if (!manualLat.trim()) {
       alert("Please enter a latitude value.");
@@ -1008,10 +1010,12 @@ const AdminPortal: React.FC = () => {
       }
 
       // Create the station or POI
+      console.log("[AdminPortal] Submitting new", isGasStation ? "station" : "poi", "with coords:", payload.lat, payload.lng);
       const res = await apiPost(endpoint, payload, apiKey);
 
       if (res.ok) {
         const newEntity = await res.json();
+        console.log("[AdminPortal] Server created entity at:", newEntity?.location?.lat, newEntity?.location?.lng);
         let imageUploadSuccess = true;
 
         // Upload images if any are selected
@@ -1280,7 +1284,7 @@ const AdminPortal: React.FC = () => {
                   Type: {formType}
                 </div>
                 <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
-                  {pendingLatLng.lat.toFixed(6)}, {pendingLatLng.lng.toFixed(6)}
+                  {pendingLatLng.lat.toFixed(8)}, {pendingLatLng.lng.toFixed(8)}
                 </div>
               </div>
             </Popup>
@@ -2885,7 +2889,7 @@ const AdminPortal: React.FC = () => {
                   fontFamily: "monospace",
                 }}
               >
-                {pendingLatLng.lat.toFixed(6)}, {pendingLatLng.lng.toFixed(6)}
+                {pendingLatLng.lat.toFixed(8)}, {pendingLatLng.lng.toFixed(8)}
               </div>
             </div>
 
