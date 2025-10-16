@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './DonationWidget.css';
+import { apiGet, apiPost } from '../utils/api';
 
 interface DonationStats {
   total_donations: number;
@@ -52,7 +53,7 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
 
   const fetchDonationStats = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/donations/stats`);
+      const response = await apiGet('/api/donations/stats');
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -62,7 +63,7 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
 
   const fetchRecentDonations = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/donations/recent?limit=5`);
+      const response = await apiGet('/api/donations/recent?limit=5');
       const data = await response.json();
       setRecentDonations(data);
     } catch (error) {
@@ -84,18 +85,12 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/donations/create`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount,
-          donor_name: donorName || 'Anonymous',
-          donor_email: donorEmail,
-          cause,
-          notes,
-        }),
+      const response = await apiPost('/api/donations/create', {
+        amount,
+        donor_name: donorName || 'Anonymous',
+        donor_email: donorEmail,
+        cause,
+        notes,
       });
 
       const data = await response.json();
