@@ -2209,12 +2209,11 @@ app.put("/api/stations/:id/fuel-prices/:fuelType", rateLimit, async (req, res) =
       });
     }
 
-    // Validate fuel type
-    const validFuelTypes = ['Regular', 'Premium', 'Diesel', 'Premium Diesel', 'E85', 'LPG'];
-    if (!validFuelTypes.includes(fuelType)) {
+    // Validate fuel type: allow any non-empty string up to 50 chars
+    if (!fuelType || typeof fuelType !== 'string' || !fuelType.trim() || fuelType.length > 50) {
       return res.status(400).json({
         error: "Invalid fuel type",
-        message: `Fuel type must be one of: ${validFuelTypes.join(', ')}`,
+        message: "Fuel type must be a non-empty string up to 50 characters",
       });
     }
 

@@ -228,18 +228,26 @@ interface PriceReport {
 }
 
 // PriceReportWidget Component
-const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = ({
+const PriceReportWidget: React.FC<{ stationId: number; stationName: string; availableFuelTypes?: string[] }> = ({
   stationId,
   stationName,
+  availableFuelTypes = ["Regular", "Premium", "Diesel"],
 }) => {
   const [showForm, setShowForm] = useState(false);
-  const [fuelType, setFuelType] = useState("Regular");
+  const defaultFuel = availableFuelTypes && availableFuelTypes.length > 0 ? availableFuelTypes[0] : "Regular";
+  const [fuelType, setFuelType] = useState(defaultFuel);
   const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [recentReports, setRecentReports] = useState<PriceReport[]>([]);
   const [showReports, setShowReports] = useState(false);
+
+  // Reset selected fuel when station or available fuels change
+  useEffect(() => {
+    const nextDefault = availableFuelTypes && availableFuelTypes.length > 0 ? availableFuelTypes[0] : "Regular";
+    setFuelType(nextDefault);
+  }, [stationId, availableFuelTypes]);
 
   // Fetch recent reports
   useEffect(() => {
@@ -414,9 +422,11 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string }> = 
                   fontSize: 12,
                 }}
               >
-                <option value="Regular">Regular</option>
-                <option value="Premium">Premium</option>
-                <option value="Diesel">Diesel</option>
+                {(availableFuelTypes && availableFuelTypes.length > 0
+                  ? availableFuelTypes
+                  : ["Regular", "Premium", "Diesel"]).map((ft) => (
+                  <option key={ft} value={ft}>{ft}</option>
+                ))}
               </select>
             </div>
 
@@ -1271,6 +1281,9 @@ const MainApp: React.FC = () => {
                   <PriceReportWidget
                     stationId={station.id}
                     stationName={station.name}
+                    availableFuelTypes={station.fuel_prices && station.fuel_prices.length > 0
+                      ? Array.from(new Set(station.fuel_prices.map(fp => fp.fuel_type)))
+                      : ["Regular", "Premium", "Diesel"]}
                   />
                 </div>
               </Popup>
