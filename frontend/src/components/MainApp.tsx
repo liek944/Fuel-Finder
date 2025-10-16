@@ -14,6 +14,7 @@ import TripRecorder from "./TripRecorder";
 import TripHistoryPanel from "./TripHistoryPanel";
 import TripReplayVisualizer from "./TripReplayVisualizer";
 import PWAInstallButton from "./PWAInstallButton";
+import DonationWidget from "./DonationWidget";
 import { Trip } from "../utils/indexedDB";
 import "../styles/TripReplayVisualizer.css";
 
@@ -760,6 +761,9 @@ const MainApp: React.FC = () => {
   // Trip replay states
   const [showTripHistory, setShowTripHistory] = useState<boolean>(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  
+  // Donation widget state
+  const [showDonations, setShowDonations] = useState<boolean>(false);
 
   // Get user location
   useEffect(() => {
@@ -1674,6 +1678,45 @@ const MainApp: React.FC = () => {
 
       {/* PWA Install Button */}
       <PWAInstallButton />
+
+      {/* Floating Donation Button */}
+      <button
+        onClick={() => setShowDonations(true)}
+        style={{
+          position: "fixed",
+          bottom: 24,
+          left: 24,
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          color: "white",
+          border: "none",
+          padding: "14px 24px",
+          borderRadius: 50,
+          fontSize: 15,
+          fontWeight: 600,
+          cursor: "pointer",
+          boxShadow: "0 4px 20px rgba(102, 126, 234, 0.4)",
+          zIndex: 999,
+          transition: "all 0.3s ease",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = "translateY(-4px)";
+          e.currentTarget.style.boxShadow = "0 8px 28px rgba(102, 126, 234, 0.5)";
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 4px 20px rgba(102, 126, 234, 0.4)";
+        }}
+      >
+        💝 Support Community
+      </button>
+
+      {/* Donation Widget */}
+      {showDonations && (
+        <DonationWidget onClose={() => setShowDonations(false)} />
+      )}
 
     </div>
   );
