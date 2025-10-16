@@ -22,6 +22,17 @@
 - Error messages updated
 - Database constraint updated
 
+### 3. ✅ Webhook Type Casting Fixed (October 16, 2025)
+**Issue**: Payments succeeded but stats didn't update - "inconsistent types deduced for parameter $1"  
+**Cause**: PostgreSQL type inference error in `updateDonationStatus()` function  
+**Error**: `code: '42P08', detail: 'text versus character varying'`  
+**Solution**: Added explicit `::VARCHAR` type casting to all SQL parameters in `db.js:943-955`
+- `$1::VARCHAR(50)` for status
+- `$2::VARCHAR(50)` for payment_method  
+- `$3::VARCHAR(255)` for payment_intent_id
+- Now webhooks process successfully and donations auto-update to 'succeeded'
+- **See**: `PAYMONGO_WEBHOOK_TYPE_CASTING_FIX.md` for full details
+
 ---
 
 ## ❓ Why Stats Show 0 and Donors Don't Appear
