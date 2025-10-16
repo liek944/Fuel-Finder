@@ -554,6 +554,7 @@ const AdminPortal: React.FC = () => {
   // Manual coordinate input states
   const [manualLat, setManualLat] = useState<string>("");
   const [manualLng, setManualLng] = useState<string>("");
+  const [manualCoords, setManualCoords] = useState<string>(""); // Single field for coordinates
   const [coordinateSource, setCoordinateSource] = useState<"map" | "manual">(
     "map",
   );
@@ -912,16 +913,33 @@ const AdminPortal: React.FC = () => {
   };
 
   const setManualCoordinates = () => {
-    let lat = parseFloat(manualLat);
-    let lng = parseFloat(manualLng);
+    let lat: number;
+    let lng: number;
+
+    // Check if using single coordinate field
+    if (manualCoords.trim()) {
+      // Parse single coordinate input (e.g., "12.5966, 121.5258" or "12.5966,121.5258")
+      const coords = manualCoords.trim().replace(/[\s]+/g, '').split(',');
+      
+      if (coords.length !== 2) {
+        alert("Please enter coordinates in format: latitude, longitude (e.g., 12.5966, 121.5258)");
+        return;
+      }
+      
+      lat = parseFloat(coords[0]);
+      lng = parseFloat(coords[1]);
+    } else if (manualLat.trim() && manualLng.trim()) {
+      // Fallback to separate fields if they're filled
+      lat = parseFloat(manualLat);
+      lng = parseFloat(manualLng);
+    } else {
+      alert("Please enter coordinates either in the single field or both latitude and longitude fields.");
+      return;
+    }
 
     console.log("[AdminPortal] Manual Set -> lat:", lat, "lng:", lng);
 
     // Validate latitude
-    if (!manualLat.trim()) {
-      alert("Please enter a latitude value.");
-      return;
-    }
     if (!isFinite(lat)) {
       alert("Please enter a valid latitude number.");
       return;
@@ -932,10 +950,6 @@ const AdminPortal: React.FC = () => {
     }
 
     // Validate longitude
-    if (!manualLng.trim()) {
-      alert("Please enter a longitude value.");
-      return;
-    }
     if (!isFinite(lng)) {
       alert("Please enter a valid longitude number.");
       return;
@@ -992,6 +1006,7 @@ const AdminPortal: React.FC = () => {
     setPendingLatLng({ lat, lng });
     setManualLat("");
     setManualLng("");
+    setManualCoords("");
     setCoordinateSource("manual");
   };
 
@@ -2276,6 +2291,7 @@ const AdminPortal: React.FC = () => {
                   setFormMsg(null);
                   setManualLat("");
                   setManualLng("");
+                  setManualCoords("");
                   setCoordinateSource("map");
                   setFormName("");
                   setFormType("gas");
@@ -2354,8 +2370,68 @@ const AdminPortal: React.FC = () => {
                         borderRadius: 3,
                       }}
                     >
-                      ⚠️ Google Maps shows: Lat, Lng (e.g., 13.43, 121.28)
+                      ⚠️ Google Maps format: Lat, Lng (e.g., 12.5966, 121.5258)
                     </p>
+                    
+                    {/* Single coordinate input field */}
+                    <div style={{ marginBottom: 12 }}>
+                      <label style={{ display: "block", fontSize: 11, color: "#333", marginBottom: 4, fontWeight: 600 }}>
+                        📍 Paste Coordinates (recommended)
+                      </label>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          type="text"
+                          placeholder="12.596600, 121.525800"
+                          value={manualCoords}
+                          onChange={(e) => setManualCoords(e.target.value)}
+                          style={{
+                            flex: 1,
+                            padding: "10px",
+                            border: "2px solid #4CAF50",
+                            borderRadius: 4,
+                            fontSize: "13px",
+                            fontFamily: "monospace",
+                            background: "#f0f9ff",
+                          }}
+                        />
+                        <button
+                          onClick={setManualCoordinates}
+                          disabled={!manualCoords.trim() && (!manualLat.trim() || !manualLng.trim())}
+                          style={{
+                            padding: "10px 16px",
+                            background:
+                              !manualCoords.trim() && (!manualLat.trim() || !manualLng.trim())
+                                ? "#ccc"
+                                : "#4CAF50",
+                            color: "white",
+                            border: "none",
+                            borderRadius: 4,
+                            cursor:
+                              !manualCoords.trim() && (!manualLat.trim() || !manualLng.trim())
+                                ? "not-allowed"
+                                : "pointer",
+                            fontSize: "13px",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          📍 Set
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Separator */}
+                    <div style={{ 
+                      textAlign: "center", 
+                      margin: "12px 0 8px 0",
+                      fontSize: 10,
+                      color: "#999",
+                      fontStyle: "italic"
+                    }}>
+                      — OR enter separately —
+                    </div>
+                    
+                    {/* Separate coordinate inputs (legacy) */}
                     <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
                       <div style={{ flex: 1 }}>
                         <label style={{ display: "block", fontSize: 10, color: "#666", marginBottom: 2, fontWeight: 600 }}>
@@ -2399,29 +2475,6 @@ const AdminPortal: React.FC = () => {
                           }}
                         />
                       </div>
-                      <button
-                        onClick={setManualCoordinates}
-                        disabled={!manualLat.trim() || !manualLng.trim()}
-                        style={{
-                          padding: "8px 12px",
-                          background:
-                            !manualLat.trim() || !manualLng.trim()
-                              ? "#ccc"
-                              : "#4CAF50",
-                          color: "white",
-                          border: "none",
-                          borderRadius: 4,
-                          cursor:
-                            !manualLat.trim() || !manualLng.trim()
-                              ? "not-allowed"
-                              : "pointer",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        📍 Set
-                      </button>
                     </div>
                   </div>
                 </>
