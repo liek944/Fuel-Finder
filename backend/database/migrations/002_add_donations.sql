@@ -6,7 +6,7 @@
 -- Create donations table
 CREATE TABLE IF NOT EXISTS donations (
     id SERIAL PRIMARY KEY,
-    amount DECIMAL(10, 2) NOT NULL CHECK (amount >= 10 AND amount <= 10000),
+    amount DECIMAL(10, 2) NOT NULL CHECK (amount >= 100 AND amount <= 10000),
     currency VARCHAR(3) DEFAULT 'PHP' NOT NULL,
     donor_name VARCHAR(255) DEFAULT 'Anonymous',
     donor_email VARCHAR(255),
