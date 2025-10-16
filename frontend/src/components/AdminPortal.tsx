@@ -900,7 +900,8 @@ const AdminPortal: React.FC = () => {
       const originalSet = new Set<string>((_originalFuelTypes || []) as string[]);
 
       // Upsert non-zero prices
-      for (const [ft, price] of newMap.entries()) {
+      for (const entry of Array.from(newMap.entries())) {
+        const [ft, price] = entry;
         if (price > 0) {
           const path = `/api/stations/${stationId}/fuel-prices/${encodeURIComponent(ft)}`;
           const putRes = await apiPut(path, { price, updated_by: 'admin' }, adminApiKey.trim());
