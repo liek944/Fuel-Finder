@@ -943,10 +943,10 @@ async function createDonation(donationData) {
 async function updateDonationStatus(paymentIntentId, status, paymentMethod = null) {
   const query = `
     UPDATE donations
-    SET status = $1,
-        payment_method = COALESCE($2, payment_method),
-        paid_at = CASE WHEN $1 = 'succeeded' THEN CURRENT_TIMESTAMP ELSE paid_at END
-    WHERE payment_intent_id = $3
+    SET status = $1::VARCHAR(50),
+        payment_method = COALESCE($2::VARCHAR(50), payment_method),
+        paid_at = CASE WHEN $1::VARCHAR(50) = 'succeeded' THEN CURRENT_TIMESTAMP ELSE paid_at END
+    WHERE payment_intent_id = $3::VARCHAR(255)
     RETURNING *
   `;
 
