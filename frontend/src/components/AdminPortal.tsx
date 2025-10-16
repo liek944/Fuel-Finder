@@ -18,9 +18,7 @@ import {
 } from "../utils/api";
 import PriceReportsManagement from "./PriceReportsManagement";
 
-// Fix Leaflet's default icon issues
-import markerIconPng from "leaflet/dist/images/marker-icon.png";
-import markerShadowPng from "leaflet/dist/images/marker-shadow.png";
+// Canvas-based markers are created dynamically - no static image imports needed
 
 // Types
 interface FuelPrice {
@@ -130,19 +128,75 @@ interface CustomMarker {
   lng: number;
 }
 
-// Create default icon
-const DefaultIcon = new L.Icon({
-  iconUrl: markerIconPng,
-  shadowUrl: markerShadowPng,
-  iconSize: [40, 60],
-  iconAnchor: [20, 60],
-  popupAnchor: [1, -34],
-  shadowSize: [60, 60],
-  className: "user-location-marker",
-  zIndexOffset: 10000,
-});
+// Create custom user location icon with sharp point
+const createUserLocationIcon = () => {
+  const width = 36;
+  const height = 50;
+  const canvas = document.createElement("canvas");
+  canvas.width = width + 10;
+  canvas.height = height + 10;
+  const ctx = canvas.getContext("2d");
 
-// Function to create brand-specific fuel station markers
+  if (ctx) {
+    const centerX = (width + 10) / 2;
+    const topRadius = width / 2 - 2;
+    const circleY = 5 + topRadius;
+    const pointY = height + 5;
+
+    // Draw shadow
+    ctx.save();
+    ctx.translate(3, 3);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, topRadius, 0, Math.PI, true);
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Draw pin shape - circle top with sharp triangle bottom
+    ctx.fillStyle = "#2196F3";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, topRadius, 0, Math.PI, true);
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Draw border
+    ctx.strokeStyle = "#1565C0";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, topRadius, 0, Math.PI, true);
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
+    ctx.stroke();
+
+    // Inner white circle
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, topRadius * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Inner blue dot
+    ctx.fillStyle = "#2196F3";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, topRadius * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  return new L.Icon({
+    iconUrl: canvas.toDataURL(),
+    iconSize: [width + 10, height + 10],
+    iconAnchor: [(width + 10) / 2, height + 10],
+    popupAnchor: [0, -(height + 10)],
+    className: "user-location-marker",
+    zIndexOffset: 10000,
+  });
+};
+
+const DefaultIcon = createUserLocationIcon();
+
+// Function to create brand-specific fuel station markers with sharp points
 const createFuelStationIcon = (brand: string, proximity?: number) => {
   const brandColors: { [key: string]: string } = {
     Shell: "#FFCC00",
@@ -155,11 +209,11 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
     default: "#ff6b6b",
   };
 
-  const baseSize = proximity ? Math.max(28, Math.min(44, 44 - proximity * 10)) : 36;
+  const baseSize = proximity ? Math.max(24, Math.min(36, 36 - proximity * 8)) : 32;
   const width = baseSize;
-  const height = baseSize * 1.5; // Teardrop height
+  const height = baseSize * 1.4; // Pin height ratio
   const canvas = document.createElement("canvas");
-  canvas.width = width + 10; // Extra space for shadow
+  canvas.width = width + 10;
   canvas.height = height + 10;
   const ctx = canvas.getContext("2d");
 
@@ -172,38 +226,43 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
 
     // Draw shadow
     ctx.save();
-    ctx.translate(3, 3);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.translate(2, 2);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
     ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
-    ctx.lineTo(centerX - radius, circleY);
-    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
+    // Sharp triangular point
+    ctx.lineTo(centerX, pointY);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
 
-    // Draw teardrop shape
+    // Draw pin shape with sharp point
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
-    ctx.lineTo(centerX - radius, circleY);
-    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
+    // Create sharp triangular point
+    ctx.lineTo(centerX, pointY);
     ctx.closePath();
     ctx.fill();
 
-    // Draw outline
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 2;
+    // Draw darker border for better definition
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
-    ctx.lineTo(centerX - radius, circleY);
-    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
+    ctx.lineTo(centerX, pointY);
     ctx.closePath();
     ctx.stroke();
 
-    // Draw fuel pump icon
-    ctx.fillStyle = "#fff";
-    ctx.font = `${Math.floor(radius * 0.8)}px Arial`;
+    // Inner white circle for icon background
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, radius * 0.75, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw fuel pump icon smaller and cleaner
+    ctx.fillStyle = color;
+    ctx.font = `bold ${Math.floor(radius * 0.7)}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("⛽", centerX, circleY);
@@ -217,7 +276,7 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
   });
 };
 
-// POI icon creator
+// POI icon creator with sharp points
 const createPOIIcon = (type: string) => {
   const iconMap: { [key: string]: string } = {
     gas: "⛽",
@@ -227,11 +286,11 @@ const createPOIIcon = (type: string) => {
     motor_shop: "🏍️",
   };
 
-  const baseSize = 32;
+  const baseSize = 28;
   const width = baseSize;
-  const height = baseSize * 1.5; // Teardrop height
+  const height = baseSize * 1.4; // Pin height ratio
   const canvas = document.createElement("canvas");
-  canvas.width = width + 10; // Extra space for shadow
+  canvas.width = width + 10;
   canvas.height = height + 10;
   const ctx = canvas.getContext("2d");
 
@@ -244,40 +303,45 @@ const createPOIIcon = (type: string) => {
     // Draw shadow
     ctx.save();
     ctx.translate(2, 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
     ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
-    ctx.lineTo(centerX - radius, circleY);
-    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
+    // Sharp triangular point
+    ctx.lineTo(centerX, pointY);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
 
-    // Draw teardrop shape
-    ctx.fillStyle = "#FF9800";
+    // Draw pin shape with sharp point - using purple for POIs
+    ctx.fillStyle = "#8B5CF6";
     ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
-    ctx.lineTo(centerX - radius, circleY);
-    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
+    // Create sharp triangular point
+    ctx.lineTo(centerX, pointY);
     ctx.closePath();
     ctx.fill();
 
-    // Draw outline
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 2;
+    // Draw darker border for better definition
+    ctx.strokeStyle = "#5B21B6";
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true); // Top semicircle
-    ctx.lineTo(centerX - radius, circleY);
-    ctx.quadraticCurveTo(centerX, pointY, centerX + radius, circleY);
+    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
+    ctx.lineTo(centerX, pointY);
     ctx.closePath();
     ctx.stroke();
 
-    // Draw icon
-    ctx.font = `${Math.floor(radius * 0.9)}px Arial`;
+    // Inner white circle for icon background
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(centerX, circleY, radius * 0.75, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw POI icon smaller and cleaner
+    const icon = iconMap[type] || "📍";
+    ctx.font = `${Math.floor(radius * 0.65)}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = "#fff";
-    ctx.fillText(iconMap[type] || "📍", centerX, circleY);
+    ctx.fillText(icon, centerX, circleY);
   }
 
   return new L.Icon({
