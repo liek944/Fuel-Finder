@@ -127,27 +127,31 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
     ctx.save();
     ctx.translate(3, 3);
     ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
-    ctx.lineTo(centerX, pointY);
+    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
+    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX, pointY);
+    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX - radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
     ctx.closePath();
     ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
     ctx.fill();
     ctx.restore();
 
-    // Draw teardrop shape
+    // Draw teardrop shape (proper pin)
     ctx.beginPath();
-    // Top circle part
-    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
-    // Point at bottom
-    ctx.lineTo(centerX, pointY);
+    // Arc for the top circular part (from right to left, top portion)
+    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
+    // Curve from left side down to point
+    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX, pointY);
+    // Curve from point back up to right side
+    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX + radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
     ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
 
     // Draw outline
     ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
-    ctx.lineTo(centerX, pointY);
+    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
+    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX, pointY);
+    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX + radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
     ctx.closePath();
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 2;
@@ -197,27 +201,28 @@ const createPOIIcon = (type: string) => {
     ctx.save();
     ctx.translate(2, 2);
     ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
-    ctx.lineTo(centerX, pointY);
+    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
+    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX, pointY);
+    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX - radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
     ctx.closePath();
     ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
     ctx.fill();
     ctx.restore();
 
-    // Draw teardrop shape
+    // Draw teardrop shape (proper pin)
     ctx.beginPath();
-    // Top circle part
-    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
-    // Point at bottom
-    ctx.lineTo(centerX, pointY);
+    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
+    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX, pointY);
+    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX + radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
     ctx.closePath();
     ctx.fillStyle = "#FF9800";
     ctx.fill();
 
     // Draw outline
     ctx.beginPath();
-    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
-    ctx.lineTo(centerX, pointY);
+    ctx.arc(centerX, topY + radius, radius, Math.PI * 0.3, Math.PI * 2.7);
+    ctx.quadraticCurveTo(centerX - radius * 0.3, pointY - 5, centerX, pointY);
+    ctx.quadraticCurveTo(centerX + radius * 0.3, pointY - 5, centerX + radius * Math.cos(Math.PI * 0.3), topY + radius - radius * Math.sin(Math.PI * 0.3));
     ctx.closePath();
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 2;
