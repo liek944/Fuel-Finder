@@ -27,7 +27,7 @@ interface DonationWidgetProps {
 }
 
 const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
-  const [amount, setAmount] = useState<number>(50);
+  const [amount, setAmount] = useState<number>(100);
   const [donorName, setDonorName] = useState<string>('');
   const [donorEmail, setDonorEmail] = useState<string>('');
   const [cause, setCause] = useState<string>('ambulance');
@@ -37,7 +37,7 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
   const [recentDonations, setRecentDonations] = useState<RecentDonation[]>([]);
   const [showRecent, setShowRecent] = useState<boolean>(false);
 
-  const presetAmounts = [10, 20, 50, 100, 200, 500];
+  const presetAmounts = [100, 200, 500, 1000, 2000, 5000];
 
   const causes = [
     { value: 'ambulance', label: '🚑 Ambulance Services', description: 'Fuel for emergency ambulances' },
@@ -72,8 +72,8 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
   };
 
   const handleDonate = async () => {
-    if (amount < 10) {
-      alert('Minimum donation is ₱10');
+    if (amount < 100) {
+      alert('⚠️ Minimum donation is ₱100 (PayMongo requirement)');
       return;
     }
 
@@ -210,12 +210,12 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
                 className="amount-input"
                 value={amount}
                 onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                placeholder="Custom amount"
-                min="10"
+                placeholder="Custom amount (min ₱100)"
+                min="100"
                 max="10000"
               />
-              {amount > 0 && amount < 10 && (
-                <span className="input-error">Minimum: ₱10</span>
+              {amount > 0 && amount < 100 && (
+                <span className="input-error">Minimum: ₱100 (PayMongo requirement)</span>
               )}
               {amount > 10000 && (
                 <span className="input-error">Maximum: ₱10,000</span>
@@ -258,7 +258,7 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
             <button
               className="donate-btn"
               onClick={handleDonate}
-              disabled={loading || amount < 10 || amount > 10000}
+              disabled={loading || amount < 100 || amount > 10000}
             >
               {loading ? 'Processing...' : `Donate ₱${formatAmount(amount)}`}
             </button>

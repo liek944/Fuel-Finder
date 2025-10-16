@@ -2546,6 +2546,57 @@ app.patch("/api/admin/donations/impact/:cause", async (req, res) => {
   }
 });
 
+// Admin: Manually update donation status (for testing without webhooks)
+app.patch("/api/admin/donations/:id/status", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+
+    const donationId = parseInt(req.params.id);
+    const { status, payment_method } = req.body;
+
+    if (!status || !['pending', 'succeeded', 'failed', 'refunded'].includes(status)) {
+      return res.status(400).json({ error: 'Valid status required (pending, succeeded, failed, refunded)' });
+    }
+
+    // Get donation first
+    const checkQuery = 'SELECT * FROM donations WHERE id = $1';
+    const checkResult = await pool.query(checkQuery, [donationId]);
+    
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Donation not found' });
+    }
+
+    const donation = checkResult.rows[0];
+
+    // Update using the payment_intent_id (for trigger to work)
+    const updated = await updateDonationStatus(
+      donation.payment_intent_id, 
+      status, 
+      payment_method || donation.payment_method || 'manual'
+    );
+
+    if (!updated) {
+      return res.status(500).json({ error: 'Failed to update donation status' });
+    }
+
+    console.log(`✅ Manually updated donation #${donationId} status to: ${status}`);
+    res.json({
+      success: true,
+      donation: updated,
+      message: `Donation status updated to ${status}`
+    });
+  } catch (error) {
+    console.error('❌ Update donation status error:', error);
+    res.status(500).json({ 
+      error: 'Failed to update donation status',
+      message: error.message
+    });
+  }
+});
+
 // ============================================================================
 
 // 404 handler for API routes
