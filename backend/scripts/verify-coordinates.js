@@ -57,8 +57,12 @@ async function verifyCoordinates() {
       FROM stations
       ORDER BY 
         CASE 
-          WHEN status = 'SWAPPED' THEN 1
-          WHEN status = 'OUT_OF_BOUNDS' THEN 2
+          WHEN ST_Y(geom) >= ${PHILIPPINES_BOUNDS.minLng} AND ST_Y(geom) <= ${PHILIPPINES_BOUNDS.maxLng}
+               AND ST_X(geom) >= ${PHILIPPINES_BOUNDS.minLat} AND ST_X(geom) <= ${PHILIPPINES_BOUNDS.maxLat}
+          THEN 1
+          WHEN NOT (ST_Y(geom) >= ${PHILIPPINES_BOUNDS.minLat} AND ST_Y(geom) <= ${PHILIPPINES_BOUNDS.maxLat}
+               AND ST_X(geom) >= ${PHILIPPINES_BOUNDS.minLng} AND ST_X(geom) <= ${PHILIPPINES_BOUNDS.maxLng})
+          THEN 2
           ELSE 3
         END,
         name;
