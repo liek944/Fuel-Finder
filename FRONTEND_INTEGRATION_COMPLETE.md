@@ -379,6 +379,20 @@ curl https://fuelfinder.duckdns.org/api/donations/recent
 
 ## ❓ Troubleshooting
 
+### ✅ FIXED: API URL Undefined Error (October 16, 2025)
+**Issue**: Console showed `POST https://fuelfinderths.netlify.app/undefined/api/donations/create 404`
+
+**Root Cause**: DonationWidget was using `process.env.REACT_APP_API_URL` but the environment files defined `REACT_APP_API_BASE_URL`.
+
+**Solution**: Updated DonationWidget to use the API utilities (`apiGet`, `apiPost`) from `utils/api.ts`, which properly reads from `REACT_APP_API_BASE_URL`.
+
+**Files Modified**:
+- `frontend/src/components/DonationWidget.tsx` - Now imports and uses API utilities
+
+**Result**: API calls now correctly go to `https://fuelfinder.duckdns.org/api/donations/create` ✅
+
+---
+
 ### Widget Doesn't Open
 **Check browser console** for errors
 ```javascript
