@@ -108,46 +108,64 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
     default: "#ff6b6b",
   };
 
-  const size = proximity ? Math.max(28, Math.min(44, 44 - proximity * 10)) : 36;
+  const baseSize = proximity ? Math.max(28, Math.min(44, 44 - proximity * 10)) : 36;
+  const width = baseSize;
+  const height = baseSize * 1.5; // Teardrop height
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size + 20;
+  canvas.width = width + 10; // Extra space for shadow
+  canvas.height = height + 10;
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
     const color = brandColors[brand] || brandColors.default;
+    const centerX = (width + 10) / 2;
+    const topY = 5;
+    const radius = width / 2 - 2;
+    const pointY = height + 5;
 
-    // Draw pin shadow
+    // Draw shadow
+    ctx.save();
+    ctx.translate(3, 3);
     ctx.beginPath();
-    ctx.arc(size / 2 + 4, size / 2 + 4, size / 2 - 2, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
     ctx.fill();
+    ctx.restore();
 
-    // Draw pin body
+    // Draw teardrop shape
     ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+    // Top circle part
+    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
+    // Point at bottom
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
     ctx.fillStyle = color;
     ctx.fill();
 
-    // Draw pin outline
+    // Draw outline
     ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Draw fuel pump icon
-    ctx.fillStyle = "#333";
-    ctx.font = `${Math.floor(size * 0.4)}px Arial`;
+    ctx.fillStyle = "#fff";
+    ctx.font = `${Math.floor(radius * 0.8)}px Arial`;
     ctx.textAlign = "center";
-    ctx.fillText("⛽", size / 2, size / 2 + size * 0.1);
+    ctx.textBaseline = "middle";
+    ctx.fillText("⛽", centerX, topY + radius);
   }
 
   return new L.Icon({
     iconUrl: canvas.toDataURL(),
-    iconSize: [size, size + 20],
-    iconAnchor: [size / 2, size + 20],
-    popupAnchor: [0, -(size + 20)],
+    iconSize: [width + 10, height + 10],
+    iconAnchor: [(width + 10) / 2, height + 10],
+    popupAnchor: [0, -(height + 10)],
   });
 };
 
@@ -161,36 +179,63 @@ const createPOIIcon = (type: string) => {
     motor_shop: "🏍️",
   };
 
-  const size = 32;
+  const baseSize = 32;
+  const width = baseSize;
+  const height = baseSize * 1.5; // Teardrop height
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size + 12;
+  canvas.width = width + 10; // Extra space for shadow
+  canvas.height = height + 10;
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
-    // Draw pin body
+    const centerX = (width + 10) / 2;
+    const topY = 5;
+    const radius = width / 2 - 2;
+    const pointY = height + 5;
+
+    // Draw shadow
+    ctx.save();
+    ctx.translate(2, 2);
     ctx.beginPath();
-    ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2);
+    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+    ctx.fill();
+    ctx.restore();
+
+    // Draw teardrop shape
+    ctx.beginPath();
+    // Top circle part
+    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
+    // Point at bottom
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
     ctx.fillStyle = "#FF9800";
     ctx.fill();
 
     // Draw outline
+    ctx.beginPath();
+    ctx.arc(centerX, topY + radius, radius, 0, Math.PI * 2);
+    ctx.lineTo(centerX, pointY);
+    ctx.closePath();
     ctx.strokeStyle = "#333";
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Draw icon
-    ctx.font = `${Math.floor(size * 0.5)}px Arial`;
+    ctx.font = `${Math.floor(radius * 0.9)}px Arial`;
     ctx.textAlign = "center";
-    ctx.fillStyle = "#333";
-    ctx.fillText(iconMap[type] || "📍", size / 2, size / 2 + size * 0.15);
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(iconMap[type] || "📍", centerX, topY + radius);
   }
 
   return new L.Icon({
     iconUrl: canvas.toDataURL(),
-    iconSize: [size, size + 12],
-    iconAnchor: [size / 2, size + 12],
-    popupAnchor: [0, -(size + 12)],
+    iconSize: [width + 10, height + 10],
+    iconAnchor: [(width + 10) / 2, height + 10],
+    popupAnchor: [0, -(height + 10)],
   });
 };
 
