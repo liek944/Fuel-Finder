@@ -1018,7 +1018,8 @@ const MainApp: React.FC = () => {
 
     // Get locations based on selected type
     if (selectedRouteType === "gas") {
-      locations = filteredStations;
+      // Use ALL stations to find the absolute nearest, not filtered ones
+      locations = stations;
     } else {
       locations = pois.filter(poi => poi.type === selectedRouteType);
     }
