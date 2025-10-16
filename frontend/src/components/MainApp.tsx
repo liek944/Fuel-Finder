@@ -150,7 +150,7 @@ const createUserLocationIcon = () => {
 const DefaultIcon = createUserLocationIcon();
 
 // Function to create brand-specific fuel station markers with sharp points
-const createFuelStationIcon = (brand: string, proximity?: number) => {
+const createFuelStationIcon = (brand: string, proximity?: number, isClosed: boolean = false) => {
   const brandColors: { [key: string]: string } = {
     Shell: "#FFCC00",
     Petron: "#FF0000",
@@ -167,11 +167,12 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
   const height = baseSize * 1.4; // Pin height ratio
   const canvas = document.createElement("canvas");
   canvas.width = width + 10;
-  canvas.height = height + 10;
+  canvas.height = height + 15; // Extra space for CLOSED text
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
-    const color = brandColors[brand] || brandColors.default;
+    // Use gray for closed stations
+    const color = isClosed ? "#9E9E9E" : (brandColors[brand] || brandColors.default);
     const centerX = (width + 10) / 2;
     const radius = width / 2 - 2;
     const circleY = 5 + radius;
@@ -199,7 +200,7 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
     ctx.fill();
 
     // Draw darker border for better definition
-    ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.strokeStyle = isClosed ? "#616161" : "rgba(0, 0, 0, 0.5)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
@@ -208,24 +209,31 @@ const createFuelStationIcon = (brand: string, proximity?: number) => {
     ctx.stroke();
 
     // Inner white circle for icon background
-    ctx.fillStyle = "white";
+    ctx.fillStyle = isClosed ? "#f5f5f5" : "white";
     ctx.beginPath();
     ctx.arc(centerX, circleY, radius * 0.75, 0, Math.PI * 2);
     ctx.fill();
 
     // Draw fuel pump icon smaller and cleaner
-    ctx.fillStyle = color;
+    ctx.fillStyle = isClosed ? "#757575" : color;
     ctx.font = `bold ${Math.floor(radius * 0.7)}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("⛽", centerX, circleY);
+    
+    // Add "CLOSED" text below for closed stations
+    if (isClosed) {
+      ctx.fillStyle = "#f44336";
+      ctx.font = "bold 8px Arial";
+      ctx.fillText("CLOSED", centerX, pointY + 8);
+    }
   }
 
   return new L.Icon({
     iconUrl: canvas.toDataURL(),
-    iconSize: [width + 10, height + 10],
-    iconAnchor: [(width + 10) / 2, height + 10],
-    popupAnchor: [0, -(height + 10)],
+    iconSize: [width + 10, height + 15],
+    iconAnchor: [(width + 10) / 2, height + 15],
+    popupAnchor: [0, -(height + 15)],
   });
 };
 
@@ -1018,8 +1026,7 @@ const MainApp: React.FC = () => {
 
     // Get locations based on selected type
     if (selectedRouteType === "gas") {
-      // Use ALL stations to find the absolute nearest, not filtered ones
-      locations = stations;
+      locations = filteredStations;
     } else {
       locations = pois.filter(poi => poi.type === selectedRouteType);
     }
@@ -1029,7 +1036,7 @@ const MainApp: React.FC = () => {
       return;
     }
 
-    // Sort by distance and filter by open status
+    // Sort by distance and check open status
     const sortedLocations = [...locations]
       .map(loc => ({
         location: loc,
@@ -1039,23 +1046,37 @@ const MainApp: React.FC = () => {
           loc.location.lat,
           loc.location.lng,
         ),
+        isOpen: isLocationOpen(loc.operating_hours)
       }))
       .sort((a, b) => a.distance - b.distance);
 
-    // Find the first open location
+    // Find the first open location and count skipped closed ones
     let targetLocation = null;
-    for (const item of sortedLocations) {
-      const loc = item.location;
-      if (isLocationOpen(loc.operating_hours)) {
-        targetLocation = loc;
+    let targetIndex = -1;
+    let skippedClosed: Array<{name: string, distance: number}> = [];
+    
+    for (let i = 0; i < sortedLocations.length; i++) {
+      const item = sortedLocations[i];
+      if (item.isOpen) {
+        targetLocation = item.location;
+        targetIndex = i;
         break;
+      } else {
+        skippedClosed.push({
+          name: item.location.name,
+          distance: item.distance
+        });
       }
     }
 
-    // If no open location found, use the nearest one anyway
+    // Provide detailed feedback about the routing decision
     if (!targetLocation && sortedLocations.length > 0) {
       targetLocation = sortedLocations[0].location;
-      alert("The nearest location appears to be closed, but routing anyway.");
+      alert(`⚠️ All ${sortedLocations.length} nearby locations appear to be closed.\n\nRouting to: ${targetLocation.name} (${sortedLocations[0].distance.toFixed(1)}km)`);
+    } else if (targetLocation && skippedClosed.length > 0) {
+      const skippedNames = skippedClosed.slice(0, 2).map(s => `${s.name} (${s.distance.toFixed(1)}km)`).join(", ");
+      const moreText = skippedClosed.length > 2 ? ` and ${skippedClosed.length - 2} more` : "";
+      alert(`ℹ️ Skipping ${skippedClosed.length} closed location${skippedClosed.length > 1 ? 's' : ''}:\n${skippedNames}${moreText}\n\nRouting to: ${targetLocation.name} (${sortedLocations[targetIndex].distance.toFixed(1)}km)`);
     }
 
     if (targetLocation) {
@@ -1246,11 +1267,13 @@ const MainApp: React.FC = () => {
           );
           const proximity = Math.min(1, distance / 5); // 0-1 scale based on 5km max
 
+          const isOpen = isLocationOpen(station.operating_hours);
+          
           return (
             <Marker
               key={`station-${station.id}`}
               position={[station.location.lat, station.location.lng]}
-              icon={createFuelStationIcon(station.brand, proximity)}
+              icon={createFuelStationIcon(station.brand, proximity, !isOpen)}
             >
               <Popup>
                 <div style={{ minWidth: 250 }}>
@@ -1275,6 +1298,20 @@ const MainApp: React.FC = () => {
                         }}
                       >
                         ROUTING
+                      </span>
+                    )}
+                    {!isOpen && (
+                      <span
+                        style={{
+                          background: "#f44336",
+                          color: "white",
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          fontSize: 10,
+                          fontWeight: 600,
+                        }}
+                      >
+                        CLOSED
                       </span>
                     )}
                   </div>
