@@ -419,16 +419,21 @@ const AdminPortal: React.FC = () => {
   const [formType, setFormType] = useState<string>("gas");
   const [formBrand, setFormBrand] = useState<string>("Local");
   const [formPrice, setFormPrice] = useState<string>("60.00"); // Legacy field
-  const [formFuelPrices, setFormFuelPrices] = useState<{[key: string]: string}>({
-    Regular: "58.00",
-    Diesel: "55.00",
-    Premium: "62.00"
-  });
+  // Dynamic fuel types for gas stations
+  const [formFuelPrices, setFormFuelPrices] = useState<Array<{ fuel_type: string; price: string }>>([
+    { fuel_type: "Regular", price: "58.00" },
+    { fuel_type: "Diesel", price: "55.00" },
+    { fuel_type: "Premium", price: "62.00" },
+  ]);
   const [formAddress, setFormAddress] = useState<string>("");
   const [formPhone, setFormPhone] = useState<string>("");
   const [formServices, setFormServices] = useState<string[]>([]);
   const [formOpenTime, setFormOpenTime] = useState<string>("08:00");
   const [formCloseTime, setFormCloseTime] = useState<string>("20:00");
+  const [open24Hours, setOpen24Hours] = useState<boolean>(false);
+  // Preserve previous times when toggling 24h mode
+  const prevOpenTimeRef = useRef<string>("08:00");
+  const prevCloseTimeRef = useRef<string>("20:00");
   const [formSubmitting, setFormSubmitting] = useState<boolean>(false);
   const [formMsg, setFormMsg] = useState<{
     type: "error" | "success";
@@ -454,6 +459,9 @@ const AdminPortal: React.FC = () => {
   const [editingPoiId, setEditingPoiId] = useState<number | null>(null);
   const [editFormData, setEditFormData] = useState<any>({});
   const [editSubmitting, setEditSubmitting] = useState<boolean>(false);
+  // Preserve previous times when toggling 24h mode in edit forms
+  const editPrevOpenRef = useRef<string>("08:00");
+  const editPrevCloseRef = useRef<string>("20:00");
 
   // Image upload states for existing stations
   const [stationImageUploads, setStationImageUploads] = useState<{
@@ -848,6 +856,8 @@ const AdminPortal: React.FC = () => {
       address: station.address || '',
       phone: station.phone || '',
       operating_hours: station.operating_hours || { open: '08:00', close: '20:00' },
+      fuel_prices: (station.fuel_prices || []).map(fp => ({ fuel_type: fp.fuel_type, price: String(fp.price) })),
+      _originalFuelTypes: Array.from(new Set((station.fuel_prices || []).map(fp => fp.fuel_type)))
     });
   };
 
@@ -871,17 +881,53 @@ const AdminPortal: React.FC = () => {
   const submitEditStation = async (stationId: number) => {
     setEditSubmitting(true);
     try {
-      const res = await apiPut(`/api/stations/${stationId}`, editFormData, adminApiKey.trim());
-      
-      if (res.ok) {
-        alert('Station updated successfully!');
-        setEditingStationId(null);
-        setEditFormData({});
-        fetchData(); // Refresh data
-      } else {
+      // Split general fields vs fuel prices
+      const { fuel_prices, _originalFuelTypes, ...general } = editFormData || {};
+
+      // 1) Update general station fields
+      const res = await apiPut(`/api/stations/${stationId}`, general, adminApiKey.trim());
+      if (!res.ok) {
         const errorData = await res.json();
         alert(`Failed to update station: ${errorData.message || 'Unknown error'}`);
+        setEditSubmitting(false);
+        return;
       }
+
+      // 2) Sync fuel prices
+      const newList: Array<{ fuel_type: string; price: string }> = (fuel_prices || []).filter((fp: any) => String(fp.fuel_type || '').trim().length > 0);
+      const newMap = new Map<string, number>();
+      newList.forEach(fp => newMap.set(fp.fuel_type.trim(), parseFloat(fp.price)));
+      const originalSet = new Set<string>((_originalFuelTypes || []) as string[]);
+
+      // Upsert non-zero prices
+      for (const [ft, price] of newMap.entries()) {
+        if (price > 0) {
+          const path = `/api/stations/${stationId}/fuel-prices/${encodeURIComponent(ft)}`;
+          const putRes = await apiPut(path, { price, updated_by: 'admin' }, adminApiKey.trim());
+          if (!putRes.ok) {
+            const e = await putRes.json().catch(() => ({}));
+            console.warn('Fuel price upsert failed', ft, e);
+          }
+        }
+      }
+
+      // Delete removed types or zero-priced
+      const newTypes = new Set<string>(Array.from(newMap.keys()).filter((ft) => newMap.get(ft)! > 0));
+      for (const ft of originalSet) {
+        if (!newTypes.has(ft)) {
+          const delPath = `/api/stations/${stationId}/fuel-prices/${encodeURIComponent(ft)}`;
+          try {
+            await apiDelete(delPath, adminApiKey.trim());
+          } catch (e) {
+            console.warn('Fuel price delete failed', ft, e);
+          }
+        }
+      }
+
+      alert('Station updated successfully!');
+      setEditingStationId(null);
+      setEditFormData({});
+      fetchData();
     } catch (err) {
       console.error('Error updating station:', err);
       alert('Network error. Please try again.');
@@ -934,12 +980,9 @@ const AdminPortal: React.FC = () => {
         payload.brand = formBrand;
         payload.fuel_price = parseFloat(formPrice); // Legacy field for backward compatibility
         // Add fuel prices array with only non-zero prices
-        payload.fuel_prices = Object.entries(formFuelPrices)
-          .filter(([_, price]) => parseFloat(price) > 0)
-          .map(([fuel_type, price]) => ({
-            fuel_type,
-            price: parseFloat(price)
-          }));
+        payload.fuel_prices = formFuelPrices
+          .filter((fp) => fp.fuel_type.trim() && parseFloat(fp.price) > 0)
+          .map((fp) => ({ fuel_type: fp.fuel_type.trim(), price: parseFloat(fp.price) }));
         payload.services = formServices;
         payload.address = formAddress;
         payload.phone = formPhone;
@@ -1010,17 +1053,22 @@ const AdminPortal: React.FC = () => {
         setFormType("gas");
         setFormBrand("Local");
         setFormPrice("60.00");
-        setFormFuelPrices({
-          Regular: "58.00",
-          Diesel: "55.00",
-          Premium: "62.00"
-        });
+        setFormFuelPrices([
+          { fuel_type: "Regular", price: "58.00" },
+          { fuel_type: "Diesel", price: "55.00" },
+          { fuel_type: "Premium", price: "62.00" },
+        ]);
         setFormAddress("");
         setFormPhone("");
-        setFormServices([]);
-        setFormOpenTime("08:00");
-        setFormCloseTime("20:00");
-        setPendingLatLng(null);
+                  setFormServices([]);
+                  setFormOpenTime("08:00");
+                  setFormCloseTime("20:00");
+                  setFormFuelPrices([
+                    { fuel_type: "Regular", price: "58.00" },
+                    { fuel_type: "Diesel", price: "55.00" },
+                    { fuel_type: "Premium", price: "62.00" },
+                  ]);
+                  setManualLat("");
         setAddingMode(false);
         setManualLat("");
         setManualLng("");
@@ -1284,17 +1332,91 @@ const AdminPortal: React.FC = () => {
                       <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
                         <input
                           type="time"
+                          step="60"
                           value={editFormData.operating_hours?.open || '08:00'}
                           onChange={(e) => setEditFormData({...editFormData, operating_hours: {...(editFormData.operating_hours || {}), open: e.target.value}})}
-                          style={{ flex: 1, padding: 4, fontSize: 11 }}
+                          disabled={editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59'}
+                          style={{ flex: 1, padding: 4, fontSize: 11, backgroundColor: (editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59') ? '#f5f5f5' : undefined }}
                         />
                         <input
                           type="time"
+                          step="60"
                           value={editFormData.operating_hours?.close || '20:00'}
                           onChange={(e) => setEditFormData({...editFormData, operating_hours: {...(editFormData.operating_hours || {}), close: e.target.value}})}
-                          style={{ flex: 1, padding: 4, fontSize: 11 }}
+                          disabled={editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59'}
+                          style={{ flex: 1, padding: 4, fontSize: 11, backgroundColor: (editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59') ? '#f5f5f5' : undefined }}
                         />
                       </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, marginTop: 4 }}>
+                        <input
+                          type="checkbox"
+                          checked={editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59'}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            if (checked) {
+                              editPrevOpenRef.current = editFormData?.operating_hours?.open || '08:00';
+                              editPrevCloseRef.current = editFormData?.operating_hours?.close || '20:00';
+                              setEditFormData({
+                                ...editFormData,
+                                operating_hours: { open: '00:00', close: '23:59' },
+                              });
+                            } else {
+                              setEditFormData({
+                                ...editFormData,
+                                operating_hours: { open: editPrevOpenRef.current || '08:00', close: editPrevCloseRef.current || '20:00' },
+                              });
+                            }
+                          }}
+                        />
+                        Open 24 hours
+                      </label>
+                      {/* Fuel types & prices editor */}
+                      <div style={{ fontSize: 11, fontWeight: 600, margin: '6px 0 2px' }}>Fuel Types & Prices:</div>
+                      {(editFormData.fuel_prices || []).map((item: any, idx: number) => (
+                        <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 4, marginBottom: 4 }}>
+                          <input
+                            type="text"
+                            value={item.fuel_type}
+                            placeholder="Fuel name"
+                            onChange={(e) => setEditFormData({
+                              ...editFormData,
+                              fuel_prices: (editFormData.fuel_prices || []).map((p: any, i: number) => i === idx ? { ...p, fuel_type: e.target.value } : p)
+                            })}
+                            style={{ padding: 4, fontSize: 11 }}
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={item.price}
+                            onChange={(e) => setEditFormData({
+                              ...editFormData,
+                              fuel_prices: (editFormData.fuel_prices || []).map((p: any, i: number) => i === idx ? { ...p, price: e.target.value } : p)
+                            })}
+                            style={{ padding: 4, fontSize: 11 }}
+                          />
+                          <button
+                            onClick={() => setEditFormData({
+                              ...editFormData,
+                              fuel_prices: (editFormData.fuel_prices || []).filter((_: any, i: number) => i !== idx)
+                            })}
+                            style={{ padding: '4px 8px', background: '#f44336', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, cursor: 'pointer' }}
+                            title="Remove fuel type"
+                          >
+                            ✖
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => setEditFormData({
+                          ...editFormData,
+                          fuel_prices: [ ...(editFormData.fuel_prices || []), { fuel_type: '', price: '0' } ]
+                        })}
+                        style={{ padding: '4px 8px', background: '#2196F3', color: 'white', border: 'none', borderRadius: 4, fontSize: 11, fontWeight: 600, marginBottom: 6 }}
+                      >
+                        + Add Fuel Type
+                      </button>
+
                       <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
                         <button
                           onClick={() => submitEditStation(station.id)}
@@ -1636,17 +1758,44 @@ const AdminPortal: React.FC = () => {
                       <div style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
                         <input
                           type="time"
+                          step="60"
                           value={editFormData.operating_hours?.open || '08:00'}
                           onChange={(e) => setEditFormData({...editFormData, operating_hours: {...(editFormData.operating_hours || {}), open: e.target.value}})}
-                          style={{ flex: 1, padding: 4, fontSize: 11 }}
+                          disabled={editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59'}
+                          style={{ flex: 1, padding: 4, fontSize: 11, backgroundColor: (editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59') ? '#f5f5f5' : undefined }}
                         />
                         <input
                           type="time"
+                          step="60"
                           value={editFormData.operating_hours?.close || '20:00'}
                           onChange={(e) => setEditFormData({...editFormData, operating_hours: {...(editFormData.operating_hours || {}), close: e.target.value}})}
-                          style={{ flex: 1, padding: 4, fontSize: 11 }}
+                          disabled={editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59'}
+                          style={{ flex: 1, padding: 4, fontSize: 11, backgroundColor: (editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59') ? '#f5f5f5' : undefined }}
                         />
                       </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, marginTop: 4 }}>
+                        <input
+                          type="checkbox"
+                          checked={editFormData?.operating_hours?.open === '00:00' && editFormData?.operating_hours?.close === '23:59'}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            if (checked) {
+                              editPrevOpenRef.current = editFormData?.operating_hours?.open || '08:00';
+                              editPrevCloseRef.current = editFormData?.operating_hours?.close || '20:00';
+                              setEditFormData({
+                                ...editFormData,
+                                operating_hours: { open: '00:00', close: '23:59' },
+                              });
+                            } else {
+                              setEditFormData({
+                                ...editFormData,
+                                operating_hours: { open: editPrevOpenRef.current || '08:00', close: editPrevCloseRef.current || '20:00' },
+                              });
+                            }
+                          }}
+                        />
+                        Open 24 hours
+                      </label>
                       <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
                         <button
                           onClick={() => submitEditPoi(poi.id)}
@@ -1975,8 +2124,14 @@ const AdminPortal: React.FC = () => {
                   setFormAddress("");
                   setFormPhone("");
                   setFormServices([]);
+                  setFormFuelPrices([
+                    { fuel_type: "Regular", price: "58.00" },
+                    { fuel_type: "Diesel", price: "55.00" },
+                    { fuel_type: "Premium", price: "62.00" },
+                  ]);
                   setFormOpenTime("08:00");
                   setFormCloseTime("20:00");
+                  setOpen24Hours(false);
                   // Reset image states
                   imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
                   setSelectedImages([]);
@@ -2343,43 +2498,54 @@ const AdminPortal: React.FC = () => {
                       color: "#555",
                     }}
                   >
-                    ⛽ Fuel Prices (₱/L)
+                    ⛽ Fuel Types & Prices (₱/L)
                   </label>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    {Object.entries(formFuelPrices).map(([fuelType, price]) => (
-                      <div key={fuelType}>
-                        <label
-                          style={{
-                            display: "block",
-                            marginBottom: 4,
-                            fontSize: "12px",
-                            color: "#666",
-                          }}
-                        >
-                          {fuelType}
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={price}
-                          onChange={(e) => setFormFuelPrices(prev => ({
-                            ...prev,
-                            [fuelType]: e.target.value
-                          }))}
-                          style={{
-                            width: "100%",
-                            padding: "8px",
-                            border: "1px solid #ddd",
-                            borderRadius: 4,
-                            fontSize: "14px",
-                          }}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: 8, fontSize: "11px", color: "#666" }}>
-                    💡 Leave at 0 if fuel type is not available
+
+                  {/* Dynamic rows for fuel types */}
+                  {formFuelPrices.map((item, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8, marginBottom: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="Fuel name (e.g., Regular)"
+                        value={item.fuel_type}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFormFuelPrices(prev => prev.map((p, i) => i === idx ? { ...p, fuel_type: v } : p));
+                        }}
+                        style={{ padding: '8px', border: '1px solid #ddd', borderRadius: 4, fontSize: '14px' }}
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={item.price}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          setFormFuelPrices(prev => prev.map((p, i) => i === idx ? { ...p, price: v } : p));
+                        }}
+                        style={{ padding: '8px', border: '1px solid #ddd', borderRadius: 4, fontSize: '14px' }}
+                      />
+                      <button
+                        onClick={() => setFormFuelPrices(prev => prev.filter((_, i) => i !== idx))}
+                        style={{ padding: '8px 10px', background: '#f44336', color: 'white', border: 'none', borderRadius: 4, fontSize: 12, cursor: 'pointer' }}
+                        title="Remove fuel type"
+                      >
+                        ✖
+                      </button>
+                    </div>
+                  ))}
+
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button
+                      onClick={() => setFormFuelPrices(prev => [...prev, { fuel_type: '', price: '0' }])}
+                      style={{ padding: '8px 12px', background: '#2196F3', color: 'white', border: 'none', borderRadius: 4, fontWeight: 600, fontSize: 12, cursor: 'pointer' }}
+                    >
+                      + Add Fuel Type
+                    </button>
+                    <div style={{ fontSize: '11px', color: '#666', alignSelf: 'center' }}>
+                      Tip: Set price to 0 or remove the row if not available
+                    </div>
                   </div>
                 </div>
               </>
@@ -2461,14 +2627,17 @@ const AdminPortal: React.FC = () => {
                   </label>
                   <input
                     type="time"
+                    step="60"
                     value={formOpenTime}
                     onChange={(e) => setFormOpenTime(e.target.value)}
+                    disabled={open24Hours}
                     style={{
                       width: "100%",
                       padding: "10px",
                       border: "1px solid #ddd",
                       borderRadius: 4,
                       fontSize: "14px",
+                      backgroundColor: open24Hours ? "#f5f5f5" : undefined,
                     }}
                   />
                 </div>
@@ -2485,17 +2654,47 @@ const AdminPortal: React.FC = () => {
                   </label>
                   <input
                     type="time"
+                    step="60"
                     value={formCloseTime}
                     onChange={(e) => setFormCloseTime(e.target.value)}
+                    disabled={open24Hours}
                     style={{
                       width: "100%",
                       padding: "10px",
                       border: "1px solid #ddd",
                       borderRadius: 4,
                       fontSize: "14px",
+                      backgroundColor: open24Hours ? "#f5f5f5" : undefined,
                     }}
                   />
                 </div>
+              </div>
+
+              {/* 24 Hours Toggle */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+                <input
+                  id="open24h-toggle"
+                  type="checkbox"
+                  checked={open24Hours}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setOpen24Hours(checked);
+                    if (checked) {
+                      // Save previous values and set to 24h
+                      prevOpenTimeRef.current = formOpenTime;
+                      prevCloseTimeRef.current = formCloseTime;
+                      setFormOpenTime("00:00");
+                      setFormCloseTime("23:59");
+                    } else {
+                      // Restore previous values
+                      setFormOpenTime(prevOpenTimeRef.current || "08:00");
+                      setFormCloseTime(prevCloseTimeRef.current || "20:00");
+                    }
+                  }}
+                />
+                <label htmlFor="open24h-toggle" style={{ fontSize: "13px", color: "#555" }}>
+                  Open 24 hours
+                </label>
               </div>
             </div>
 
@@ -2723,6 +2922,7 @@ const AdminPortal: React.FC = () => {
                   setFormServices([]);
                   setFormOpenTime("08:00");
                   setFormCloseTime("20:00");
+                  setOpen24Hours(false);
                   setManualLat("");
                   setManualLng("");
                   setCoordinateSource("map");
