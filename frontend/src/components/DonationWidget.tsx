@@ -139,6 +139,11 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
       <div className="donation-widget">
         <button className="close-button" onClick={onClose}>✕</button>
         
+        {/* Test Mode Notice */}
+        <div className="test-mode-banner">
+          🧪 TEST MODE ONLY - No real money will be charged
+        </div>
+        
         <div className="donation-header">
           <h2>💝 Support Our Community</h2>
           <p>Help fund fuel for ambulances, public transport, and emergency services in Oriental Mindoro</p>
@@ -265,8 +270,8 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
 
             <div className="payment-info">
               <p>💳 Secure payment via PayMongo</p>
-              <p>Accepts: GCash, PayMaya, Cards, Online Banking</p>
-              <p className="tax-note">Donations support verified community programs</p>
+              <p style={{ color: '#ff9800', fontWeight: 600 }}>🧪 Test Mode: Use test number 09123456789 with OTP 123456</p>
+              <p className="tax-note">No real money will be charged in test mode</p>
             </div>
           </div>
         ) : (
