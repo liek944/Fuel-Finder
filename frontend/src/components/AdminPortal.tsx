@@ -848,8 +848,8 @@ const AdminPortal: React.FC = () => {
   };
 
   const setManualCoordinates = () => {
-    const lat = parseFloat(manualLat);
-    const lng = parseFloat(manualLng);
+    let lat = parseFloat(manualLat);
+    let lng = parseFloat(manualLng);
 
     console.log("[AdminPortal] Manual Set -> lat:", lat, "lng:", lng);
 
@@ -879,6 +879,50 @@ const AdminPortal: React.FC = () => {
     if (Math.abs(lng) > 180) {
       alert("Longitude must be between -180 and 180 degrees.");
       return;
+    }
+
+    // SMART VALIDATION: Detect swapped coordinates for Philippines region
+    // Philippines bounds: Lat: 4.5°N to 21.3°N, Lng: 116.9°E to 126.6°E
+    const isValidPhilippinesLat = lat >= 4 && lat <= 22;
+    const isValidPhilippinesLng = lng >= 116 && lng <= 127;
+
+    if (!isValidPhilippinesLat && !isValidPhilippinesLng) {
+      const confirmOutside = window.confirm(
+        `⚠️ WARNING: These coordinates (${lat.toFixed(6)}, ${lng.toFixed(6)}) are outside the Philippines region.\n\n` +
+        `Expected ranges:\n` +
+        `• Latitude: 4° to 22°N (you entered: ${lat.toFixed(2)}°)\n` +
+        `• Longitude: 116° to 127°E (you entered: ${lng.toFixed(2)}°)\n\n` +
+        `Do you want to continue anyway?`
+      );
+      if (!confirmOutside) return;
+    } else if (!isValidPhilippinesLat && isValidPhilippinesLng) {
+      // Latitude is out of range but longitude is valid - likely swapped!
+      const shouldSwap = window.confirm(
+        `⚠️ COORDINATE SWAP DETECTED!\n\n` +
+        `Your latitude (${lat.toFixed(6)}) looks like a longitude value.\n` +
+        `Your longitude (${lng.toFixed(6)}) looks like a latitude value.\n\n` +
+        `Did you accidentally swap them?\n\n` +
+        `Click OK to auto-swap to: ${lng.toFixed(6)}, ${lat.toFixed(6)}\n` +
+        `Click Cancel to keep original values`
+      );
+      if (shouldSwap) {
+        [lat, lng] = [lng, lat];
+        console.log("[AdminPortal] Auto-swapped coordinates to:", lat, lng);
+      }
+    } else if (isValidPhilippinesLat && !isValidPhilippinesLng) {
+      // Longitude is out of range but latitude is valid - likely swapped!
+      const shouldSwap = window.confirm(
+        `⚠️ COORDINATE SWAP DETECTED!\n\n` +
+        `Your longitude (${lng.toFixed(6)}) looks like a latitude value.\n` +
+        `Your latitude (${lat.toFixed(6)}) looks like a longitude value.\n\n` +
+        `Did you accidentally swap them?\n\n` +
+        `Click OK to auto-swap to: ${lng.toFixed(6)}, ${lat.toFixed(6)}\n` +
+        `Click Cancel to keep original values`
+      );
+      if (shouldSwap) {
+        [lat, lng] = [lng, lat];
+        console.log("[AdminPortal] Auto-swapped coordinates to:", lat, lng);
+      }
     }
 
     setPendingLatLng({ lat, lng });
@@ -2228,22 +2272,37 @@ const AdminPortal: React.FC = () => {
                     </p>
                     <p
                       style={{
-                        margin: "0 0 8px 0",
+                        margin: "0 0 4px 0",
                         fontSize: 11,
                         color: "#999",
                       }}
                     >
-                      💡 Tip: Right-click on Google Maps and select coordinates
-                      to copy them
+                      💡 Tip: Right-click on Google Maps → Copy coordinates
+                    </p>
+                    <p
+                      style={{
+                        margin: "0 0 8px 0",
+                        fontSize: 10,
+                        color: "#e65100",
+                        fontWeight: 600,
+                        background: "#fff3e0",
+                        padding: "4px 6px",
+                        borderRadius: 3,
+                      }}
+                    >
+                      ⚠️ Google Maps shows: Lat, Lng (e.g., 13.43, 121.28)
                     </p>
                     <div style={{ display: "flex", gap: 8, alignItems: "end" }}>
                       <div style={{ flex: 1 }}>
+                        <label style={{ display: "block", fontSize: 10, color: "#666", marginBottom: 2, fontWeight: 600 }}>
+                          Latitude (4° to 22°)
+                        </label>
                         <input
                           type="number"
                           step="0.000001"
                           min="-90"
                           max="90"
-                          placeholder="Latitude (e.g., 12.596600)"
+                          placeholder="12.596600"
                           value={manualLat}
                           onChange={(e) => setManualLat(e.target.value)}
                           style={{
@@ -2256,12 +2315,15 @@ const AdminPortal: React.FC = () => {
                         />
                       </div>
                       <div style={{ flex: 1 }}>
+                        <label style={{ display: "block", fontSize: 10, color: "#666", marginBottom: 2, fontWeight: 600 }}>
+                          Longitude (116° to 127°)
+                        </label>
                         <input
                           type="number"
                           step="0.000001"
                           min="-180"
                           max="180"
-                          placeholder="Longitude (e.g., 121.525800)"
+                          placeholder="121.525800"
                           value={manualLng}
                           onChange={(e) => setManualLng(e.target.value)}
                           style={{
