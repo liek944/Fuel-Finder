@@ -18,6 +18,7 @@ import {
   getImageUrl,
 } from "../utils/api";
 import PriceReportsManagement from "./PriceReportsManagement";
+import UserAnalytics from "./UserAnalytics";
 
 // Canvas-based markers are created dynamically - no static image imports needed
 
@@ -519,7 +520,7 @@ const AdminPortal: React.FC = () => {
   const [customMarkers, setCustomMarkers] = useState<CustomMarker[]>([]);
   
   // Admin view management
-  const [currentAdminView, setCurrentAdminView] = useState<"map" | "price-reports">("map");
+  const [currentAdminView, setCurrentAdminView] = useState<"map" | "price-reports" | "user-analytics">("map");
 
   // Form states - unified for all POI types
   const [addingMode, setAddingMode] = useState<boolean>(false);
@@ -1377,11 +1378,28 @@ const AdminPortal: React.FC = () => {
                 border: "none",
                 borderRadius: 4,
                 cursor: "pointer",
-                fontSize: "12px",
+                fontSize: 14,
                 fontWeight: 600,
+                transition: "all 0.2s ease",
               }}
             >
               💰 Price Reports
+            </button>
+            <button
+              onClick={() => setCurrentAdminView("user-analytics")}
+              style={{
+                padding: "6px 12px",
+                background: currentAdminView === "user-analytics" ? "#2196F3" : "#f5f5f5",
+                color: currentAdminView === "user-analytics" ? "white" : "#666",
+                border: "none",
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                transition: "all 0.2s ease",
+              }}
+            >
+              👥 User Analytics
             </button>
           </div>
         )}
@@ -1400,6 +1418,10 @@ const AdminPortal: React.FC = () => {
       {currentAdminView === "price-reports" ? (
         <div style={{ height: "100%", padding: "20px", overflow: "auto" }}>
           <PriceReportsManagement adminApiKey={adminApiKey} />
+        </div>
+      ) : currentAdminView === "user-analytics" ? (
+        <div style={{ height: "100%", overflow: "auto", background: "#f5f5f5" }}>
+          <UserAnalytics />
         </div>
       ) : (
         <>

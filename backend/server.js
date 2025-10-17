@@ -165,6 +165,9 @@ const {
   isSupabaseStorageAvailable,
 } = require("./services/supabaseStorage");
 
+// Import user activity tracker
+const userActivityTracker = require("./services/userActivityTracker");
+
 const app = express();
 
 // Trust proxy - REQUIRED for AWS EC2 behind reverse proxy/load balancer
@@ -2602,6 +2605,110 @@ app.patch("/api/admin/donations/:id/status", async (req, res) => {
     console.error('❌ Update donation status error:', error);
     res.status(500).json({ 
       error: 'Failed to update donation status',
+      message: error.message
+    });
+  }
+});
+
+// ============================================================================
+// USER ACTIVITY TRACKING - Lightweight in-memory tracking for admin dashboard
+// ============================================================================
+
+// Heartbeat endpoint for tracking active users (public, no auth required)
+app.post("/api/user/heartbeat", async (req, res) => {
+  try {
+    const { sessionId, location, page, feature } = req.body;
+    
+    // Extract user agent
+    const userAgent = req.headers['user-agent'];
+    
+    // Record activity
+    const result = userActivityTracker.recordActivity({
+      sessionId,
+      location,
+      userAgent,
+      page,
+      feature
+    });
+    
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+    
+    res.json({ 
+      success: true,
+      message: 'Activity recorded',
+      activeUsers: userActivityTracker.getActiveUserCount()
+    });
+  } catch (error) {
+    console.error('❌ Heartbeat error:', error);
+    res.status(500).json({ 
+      error: 'Failed to record activity',
+      message: error.message
+    });
+  }
+});
+
+// Get active user statistics (admin only)
+app.get("/api/admin/users/stats", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+    
+    const stats = userActivityTracker.getStatistics();
+    
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('❌ User stats error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get user statistics',
+      message: error.message
+    });
+  }
+});
+
+// Get active users list (admin only)
+app.get("/api/admin/users/active", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+    
+    const activeUsers = userActivityTracker.getActiveUsers();
+    
+    res.json({
+      success: true,
+      count: activeUsers.length,
+      users: activeUsers
+    });
+  } catch (error) {
+    console.error('❌ Active users error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get active users',
+      message: error.message
+    });
+  }
+});
+
+// Get active user count (lightweight, can be public or admin-only)
+app.get("/api/users/count", async (req, res) => {
+  try {
+    const count = userActivityTracker.getActiveUserCount();
+    
+    res.json({
+      success: true,
+      activeUsers: count
+    });
+  } catch (error) {
+    console.error('❌ User count error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get user count',
       message: error.message
     });
   }
