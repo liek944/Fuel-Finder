@@ -6,6 +6,7 @@ import {
   Popup,
   Circle,
   Polyline,
+  LayersControl,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -1181,11 +1182,25 @@ const MainApp: React.FC = () => {
         zoom={12}
         style={{ height: "100%", width: "100%" }}
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          crossOrigin="anonymous"
-        />
+        {/* Layer Control for switching between Street and Satellite views */}
+        <LayersControl position="topright">
+          <LayersControl.BaseLayer checked name="Street">
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              crossOrigin="anonymous"
+            />
+          </LayersControl.BaseLayer>
+          
+          <LayersControl.BaseLayer name="Satellite">
+            <TileLayer
+              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+              attribution='&copy; <a href="https://www.esri.com/">Esri</a> i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+              crossOrigin="anonymous"
+              maxZoom={19}
+            />
+          </LayersControl.BaseLayer>
+        </LayersControl>
 
         {/* Search radius circle */}
         <Circle
