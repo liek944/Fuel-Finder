@@ -18,6 +18,7 @@ import PWAInstallButton from "./PWAInstallButton";
 import DonationWidget from "./DonationWidget";
 import { Trip } from "../utils/indexedDB";
 import "../styles/TripReplayVisualizer.css";
+import userTracking from "../utils/userTracking";
 
 // Canvas-based markers are created dynamically - no static image imports needed
 
@@ -954,6 +955,17 @@ const MainApp: React.FC = () => {
 
     fetchPOIs();
   }, [position, radiusMeters]);
+
+  // Initialize user activity tracking
+  useEffect(() => {
+    // Start tracking when component mounts
+    userTracking.startTracking('main');
+    
+    // Stop tracking when component unmounts
+    return () => {
+      userTracking.stopTracking();
+    };
+  }, []);
 
   // Filter stations based on search criteria
   const filteredStations = stations.filter((station) => {
