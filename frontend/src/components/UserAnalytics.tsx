@@ -164,7 +164,7 @@ const UserAnalytics: React.FC = () => {
   }
 
   return (
-    <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
+    <div style={{ padding: "80px 20px 20px 20px", maxWidth: 1200, margin: "0 auto" }}>
       {/* Header */}
       <div
         style={{

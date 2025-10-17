@@ -1119,6 +1119,8 @@ const MainApp: React.FC = () => {
     );
   }
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 600;
+
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
       {/* Header */}
@@ -1126,14 +1128,14 @@ const MainApp: React.FC = () => {
         style={{
           position: "absolute",
           top: 10,
-          left: 70,
+          left: isMobile ? 90 : 70,
           right: 10,
           zIndex: 1000,
           display: "flex",
           gap: 10,
           alignItems: "center",
           background: "rgba(255,255,255,0.95)",
-          padding: "10px 15px",
+          padding: isMobile ? "8px 12px" : "10px 15px",
           borderRadius: 8,
           boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
         }}
@@ -1150,14 +1152,14 @@ const MainApp: React.FC = () => {
             src="/logo.jpeg" 
             alt="Fuel Finder Logo" 
             style={{
-              height: "48px",
+              height: isMobile ? "36px" : "48px",
               width: "auto",
             }}
           />
           <h1
             style={{
               margin: 0,
-              fontSize: "20px",
+              fontSize: isMobile ? "16px" : "20px",
               fontWeight: 700,
               color: "#333",
             }}
@@ -1173,10 +1175,10 @@ const MainApp: React.FC = () => {
             background: showTripHistory ? "#667eea" : "white",
             color: showTripHistory ? "white" : "#667eea",
             border: "2px solid #667eea",
-            padding: "8px 16px",
+            padding: isMobile ? "6px 10px" : "8px 16px",
             borderRadius: 6,
             cursor: "pointer",
-            fontSize: "14px",
+            fontSize: isMobile ? "12px" : "14px",
             fontWeight: 600,
             display: "flex",
             alignItems: "center",
@@ -1195,7 +1197,7 @@ const MainApp: React.FC = () => {
         style={{ height: "100%", width: "100%" }}
       >
         {/* Layer Control for switching between Street and Satellite views */}
-        <LayersControl position="topright">
+        <LayersControl position="topleft">
           <LayersControl.BaseLayer checked name="Street">
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
