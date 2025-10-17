@@ -1128,8 +1128,8 @@ const MainApp: React.FC = () => {
         style={{
           position: "absolute",
           top: 10,
-          left: isMobile ? 90 : 70,
-          right: 10,
+          left: "50%",
+          transform: "translateX(-50%)",
           zIndex: 1000,
           display: "flex",
           gap: 10,
@@ -1138,6 +1138,8 @@ const MainApp: React.FC = () => {
           padding: isMobile ? "8px 12px" : "10px 15px",
           borderRadius: 8,
           boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+          maxWidth: "calc(100vw - 20px)",
+          width: "auto",
         }}
       >
         <div
