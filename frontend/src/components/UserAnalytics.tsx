@@ -58,23 +58,34 @@ const UserAnalytics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Fetch statistics
   const fetchStats = async () => {
     try {
       const apiKey = getAdminApiKey();
+      console.log('📊 Fetching user stats with API key:', apiKey ? 'Present' : 'Missing');
+      
       const response = await apiGet("/api/admin/users/stats", apiKey);
+      
+      console.log('📊 Stats response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 Stats data:', data);
+        
         if (data.success) {
           setStats(data.stats);
+          setLastUpdated(new Date());
+          setError(null);
         }
       } else {
+        const errorText = await response.text();
+        console.error('❌ Stats fetch failed:', response.status, errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (err: any) {
-      console.error("Failed to fetch user stats:", err);
+      console.error("❌ Failed to fetch user stats:", err);
       setError(err.message || "Failed to load statistics");
     }
   };
@@ -83,16 +94,24 @@ const UserAnalytics: React.FC = () => {
   const fetchActiveUsers = async () => {
     try {
       const apiKey = getAdminApiKey();
+      console.log('👥 Fetching active users with API key:', apiKey ? 'Present' : 'Missing');
+      
       const response = await apiGet("/api/admin/users/active", apiKey);
+      
+      console.log('👥 Active users response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('👥 Active users data:', data);
+        
         if (data.success) {
           setActiveUsers(data.users);
         }
+      } else {
+        console.error('❌ Active users fetch failed:', response.status);
       }
     } catch (err: any) {
-      console.error("Failed to fetch active users:", err);
+      console.error("❌ Failed to fetch active users:", err);
     }
   };
 
@@ -155,7 +174,14 @@ const UserAnalytics: React.FC = () => {
           marginBottom: 20,
         }}
       >
-        <h2 style={{ margin: 0 }}>👥 User Analytics</h2>
+        <div>
+          <h2 style={{ margin: 0 }}>👥 User Analytics</h2>
+          {lastUpdated && (
+            <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </div>
+          )}
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <label style={{ fontSize: 14 }}>
             <input
@@ -185,6 +211,33 @@ const UserAnalytics: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Help message when no users */}
+      {stats.activeUsers === 0 && (
+        <div
+          style={{
+            background: "#fff3cd",
+            border: "1px solid #ffc107",
+            borderRadius: 8,
+            padding: 16,
+            marginBottom: 20,
+          }}
+        >
+          <h3 style={{ margin: "0 0 8px 0", color: "#856404" }}>
+            ℹ️ No Active Users Detected
+          </h3>
+          <p style={{ margin: "0 0 12px 0", fontSize: 14 }}>
+            The dashboard shows users who have visited the main app in the last 5 minutes.
+          </p>
+          <p style={{ margin: 0, fontSize: 14 }}>
+            <strong>To test:</strong> Open the main Fuel Finder app in another browser tab or device,
+            then return here. You should see at least 1 active user (yourself!) within 60 seconds.
+          </p>
+          <p style={{ margin: "8px 0 0 0", fontSize: 12, color: "#666" }}>
+            💡 Check the browser console for heartbeat logs to verify tracking is working.
+          </p>
+        </div>
+      )}
 
       {/* Active Users Overview */}
       <div
