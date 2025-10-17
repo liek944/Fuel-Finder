@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { apiGet } from "../utils/api";
 
+// Get admin API key from localStorage (set by AdminPortal)
+const getAdminApiKey = (): string => {
+  return localStorage.getItem('admin_api_key') || '';
+};
+
 interface UserStats {
   activeUsers: number;
   timestamp: number;
@@ -57,9 +62,16 @@ const UserAnalytics: React.FC = () => {
   // Fetch statistics
   const fetchStats = async () => {
     try {
-      const response = await apiGet("/admin/users/stats");
-      if (response.success) {
-        setStats(response.stats);
+      const apiKey = getAdminApiKey();
+      const response = await apiGet("/api/admin/users/stats", apiKey);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setStats(data.stats);
+        }
+      } else {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (err: any) {
       console.error("Failed to fetch user stats:", err);
@@ -70,9 +82,14 @@ const UserAnalytics: React.FC = () => {
   // Fetch active users
   const fetchActiveUsers = async () => {
     try {
-      const response = await apiGet("/admin/users/active");
-      if (response.success) {
-        setActiveUsers(response.users);
+      const apiKey = getAdminApiKey();
+      const response = await apiGet("/api/admin/users/active", apiKey);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setActiveUsers(data.users);
+        }
       }
     } catch (err: any) {
       console.error("Failed to fetch active users:", err);
