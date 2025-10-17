@@ -59,7 +59,7 @@ class UserActivityTracker {
       // Get approximate location (city-level)
       const location = await this.getApproximateLocation();
       
-      const response = await fetch(`${getApiUrl()}/user/heartbeat`, {
+      const response = await fetch(getApiUrl('/api/user/heartbeat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
