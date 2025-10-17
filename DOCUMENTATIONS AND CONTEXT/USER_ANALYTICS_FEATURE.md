@@ -38,7 +38,7 @@ Map<sessionId, {
   firstSeen: timestamp,
   lastSeen: timestamp,
   location: { lat, lng, city, region }, // Generalized to ~10km precision
-  userAgent: 'Mobile' | 'Desktop' | 'Tablet',
+  userAgent: 'Mobile' | 'Desktop' | 'Tablet' | 'Unknown',
   pageViews: number,
   currentPage: string,
   features: { [featureName]: usageCount }
@@ -108,6 +108,12 @@ userTracking.trackFeature('route-navigation');
 // Update current page
 userTracking.setPage('trip-history');
 ```
+
+> Implementation note: When calling the heartbeat API from the frontend, use the API helper with the full path:
+>
+> ```typescript
+> fetch(getApiUrl('/api/user/heartbeat'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, location, page, feature }) });
+> ```
 
 #### 2. **User Analytics Dashboard** (`frontend/src/components/UserAnalytics.tsx`)
 
