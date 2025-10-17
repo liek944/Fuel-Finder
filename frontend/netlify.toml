@@ -11,10 +11,9 @@
   publish = "build"
   
   # Node version for build
-  environment = { NODE_VERSION = "18" }
 
-# Environment variables for production
 [build.environment]
+  NODE_VERSION = "18"
   VITE_API_BASE_URL = "https://fuelfinder.duckdns.org"
 
 # Redirects for SPA routing
