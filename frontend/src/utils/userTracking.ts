@@ -59,7 +59,10 @@ class UserActivityTracker {
       // Get approximate location (city-level)
       const location = await this.getApproximateLocation();
       
-      const response = await fetch(getApiUrl('/api/user/heartbeat'), {
+      const url = getApiUrl('/api/user/heartbeat');
+      console.log('📡 Sending heartbeat to:', url);
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,12 +75,15 @@ class UserActivityTracker {
         })
       });
       
-      if (!response.ok) {
-        console.warn('Heartbeat failed:', response.statusText);
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Heartbeat successful - Active users:', data.activeUsers);
+      } else {
+        console.warn('❌ Heartbeat failed:', response.status, response.statusText);
       }
     } catch (error) {
-      // Silently fail - don't interrupt user experience
-      console.debug('Heartbeat error (non-critical):', error);
+      // Log errors visibly for debugging
+      console.error('❌ Heartbeat error:', error);
     }
   }
   
@@ -136,7 +142,7 @@ class UserActivityTracker {
     // Send heartbeat on page visibility change (return from background)
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
     
-    console.debug('🔄 User tracking started');
+    console.log('🔄 User tracking started - Session ID:', this.sessionId, '| Heartbeat interval:', this.heartbeatIntervalMs / 1000, 'seconds');
   }
   
   /**
@@ -151,7 +157,7 @@ class UserActivityTracker {
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     
     this.isTracking = false;
-    console.debug('⏹️ User tracking stopped');
+    console.log('⏹️ User tracking stopped');
   }
   
   /**
