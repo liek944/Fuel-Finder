@@ -1197,7 +1197,7 @@ const MainApp: React.FC = () => {
         style={{ height: "100%", width: "100%" }}
       >
         {/* Layer Control for switching between Street and Satellite views */}
-        <LayersControl position="topleft">
+        <LayersControl position="bottomleft">
           <LayersControl.BaseLayer checked name="Street">
             <TileLayer
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
