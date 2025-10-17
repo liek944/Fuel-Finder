@@ -425,7 +425,7 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
       )}
 
       {/* Simplification Metrics (Development Only) */}
-      {process.env.NODE_ENV === 'development' && simplificationMetrics && (
+      {import.meta.env.DEV && simplificationMetrics && (
         <div className="trip-simplification-metrics">
           <small>
             Simplified: {simplificationMetrics.originalCount} → {simplificationMetrics.simplifiedCount} pts

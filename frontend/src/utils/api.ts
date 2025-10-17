@@ -17,7 +17,7 @@ function createRequestKey(url: string, method: string, body?: any): string {
  */
 const getApiBaseUrl = (): string => {
   // First try to get from environment variable
-  const envUrl = process.env.REACT_APP_API_BASE_URL;
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
 
   if (envUrl) {
     // Remove trailing slash if present
@@ -25,14 +25,14 @@ const getApiBaseUrl = (): string => {
   }
 
   // Fallback for development
-  if (process.env.NODE_ENV === "development") {
+  if (import.meta.env.DEV) {
     return "http://localhost:3001";
   }
 
   // In production, we should always have the env var set
   // This will help catch configuration issues early
   throw new Error(
-    "REACT_APP_API_BASE_URL environment variable is not set. " +
+    "VITE_API_BASE_URL environment variable is not set. " +
       "Please configure your backend URL in your hosting platform environment variables.",
   );
 };
@@ -290,8 +290,8 @@ export const getImageUrl = (imagePath: string): string => {
  */
 export const CONFIG = {
   API_BASE_URL,
-  isDevelopment: process.env.NODE_ENV === "development",
-  isProduction: process.env.NODE_ENV === "production",
+  isDevelopment: import.meta.env.DEV,
+  isProduction: import.meta.env.PROD,
   // Add other environment-specific config here
 };
 
@@ -299,6 +299,6 @@ export const CONFIG = {
 if (CONFIG.isDevelopment) {
   console.log("🔧 API Configuration:", {
     baseUrl: API_BASE_URL,
-    environment: process.env.NODE_ENV,
+    environment: import.meta.env.MODE,
   });
 }
