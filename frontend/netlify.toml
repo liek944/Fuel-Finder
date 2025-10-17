@@ -1,0 +1,43 @@
+# Netlify configuration for Vite build
+
+[build]
+  # Directory to change to before starting the build
+  base = "frontend"
+  
+  # Build command - runs from the base directory
+  command = "npm run build"
+  
+  # Directory that contains the deploy-ready files
+  publish = "build"
+  
+  # Node version for build
+  environment = { NODE_VERSION = "18" }
+
+# Environment variables for production
+[build.environment]
+  VITE_API_BASE_URL = "https://fuelfinder.duckdns.org"
+
+# Redirects for SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/service-worker.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
