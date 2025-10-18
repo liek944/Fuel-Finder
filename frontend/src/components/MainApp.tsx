@@ -904,22 +904,6 @@ const MainApp: React.FC = () => {
   const lastUpdateRef = useRef<number>(0);
   const UPDATE_THROTTLE = 3000; // 3 seconds minimum between position updates
 
-  // Helper function to calculate distance between two coordinates (Haversine formula)
-  const calculateDistance = (coord1: [number, number], coord2: [number, number]): number => {
-    const R = 6371e3; // Earth's radius in meters
-    const φ1 = (coord1[0] * Math.PI) / 180;
-    const φ2 = (coord2[0] * Math.PI) / 180;
-    const Δφ = ((coord2[0] - coord1[0]) * Math.PI) / 180;
-    const Δλ = ((coord2[1] - coord1[1]) * Math.PI) / 180;
-
-    const a =
-      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c; // Distance in meters
-  };
-
   // Helper function to format time ago
   const getTimeAgo = (timestamp: number): string => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -952,9 +936,15 @@ const MainApp: React.FC = () => {
         let shouldUpdate = timeSinceUpdate >= UPDATE_THROTTLE;
         
         if (position && timeSinceUpdate < UPDATE_THROTTLE) {
-          const distance = calculateDistance(position, newPosition);
+          const distanceKm = calculateDistance(
+            position[0],
+            position[1],
+            newPosition[0],
+            newPosition[1]
+          );
+          const distanceMeters = distanceKm * 1000;
           // Update if moved more than 20 meters even within throttle period
-          shouldUpdate = distance > 20;
+          shouldUpdate = distanceMeters > 20;
         }
         
         if (!position || shouldUpdate) {
@@ -1361,7 +1351,6 @@ const MainApp: React.FC = () => {
         <Marker 
           position={position} 
           icon={DefaultIcon}
-          className={isLocationUpdating ? "user-location-marker updating" : "user-location-marker"}
         >
           <Popup>
             <div>
