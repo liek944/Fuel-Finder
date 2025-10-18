@@ -95,11 +95,15 @@ const TripReplayController: React.FC<TripReplayControllerProps> = ({
 
   // Handle play/pause
   const handlePlayPause = useCallback(() => {
+    console.log('[TripReplayController] Play/Pause clicked, current state:', state);
     if (state === 'playing') {
+      console.log('[TripReplayController] Pausing animation');
       animator.pause();
     } else if (state === 'completed') {
+      console.log('[TripReplayController] Restarting animation');
       animator.restart();
     } else {
+      console.log('[TripReplayController] Starting animation');
       animator.play();
     }
   }, [animator, state]);

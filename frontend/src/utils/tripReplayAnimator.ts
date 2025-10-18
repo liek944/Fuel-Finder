@@ -250,6 +250,7 @@ export class TripReplayAnimator {
     const position = this.getCurrentPosition(elapsedTime);
     
     if (!position) {
+      console.log('[TripReplayAnimator] No position returned, stopping');
       this.stop();
       return;
     }
@@ -262,6 +263,7 @@ export class TripReplayAnimator {
 
     // Check if animation is complete
     if (position.progress >= 1) {
+      console.log('[TripReplayAnimator] Animation complete, progress:', position.progress);
       if (this.config.loop) {
         this.restart();
       } else {
@@ -278,21 +280,29 @@ export class TripReplayAnimator {
    * Start or resume animation
    */
   play(): void {
-    if (this.state === 'playing') return;
+    console.log('[TripReplayAnimator] play() called, current state:', this.state, 'points:', this.interpolatedPoints.length);
+    
+    if (this.state === 'playing') {
+      console.log('[TripReplayAnimator] Already playing, ignoring');
+      return;
+    }
 
     if (this.state === 'idle' || this.state === 'completed') {
       // Start from beginning
       this.startTime = performance.now();
       this.pausedTime = 0;
       this.currentSegmentIndex = 0;
+      console.log('[TripReplayAnimator] Starting from beginning, startTime:', this.startTime);
     } else if (this.state === 'paused') {
       // Resume from paused position
       this.startTime = performance.now() - this.pausedTime;
+      console.log('[TripReplayAnimator] Resuming from paused, startTime:', this.startTime, 'pausedTime:', this.pausedTime);
     }
 
     this.state = 'playing';
     this.lastFrameTime = performance.now();
     this.animationFrameId = requestAnimationFrame(this.animate);
+    console.log('[TripReplayAnimator] Animation started, frameId:', this.animationFrameId);
   }
 
   /**
