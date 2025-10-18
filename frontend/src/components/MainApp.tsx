@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -18,6 +18,7 @@ import PWAInstallButton from "./PWAInstallButton";
 import DonationWidget from "./DonationWidget";
 import { Trip } from "../utils/indexedDB";
 import "../styles/TripReplayVisualizer.css";
+import "../styles/MainApp.css";
 import userTracking from "../utils/userTracking";
 
 // Canvas-based markers are created dynamically - no static image imports needed
@@ -895,23 +896,112 @@ const MainApp: React.FC = () => {
   
   // Donation widget state
   const [showDonations, setShowDonations] = useState<boolean>(false);
+  
+  // Location tracking states
+  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(Date.now());
+  const [isLocationUpdating, setIsLocationUpdating] = useState<boolean>(false);
+  const lastUpdateRef = useRef<number>(0);
+  const UPDATE_THROTTLE = 3000; // 3 seconds minimum between position updates
 
-  // Get user location
+  // Helper function to calculate distance between two coordinates (Haversine formula)
+  const calculateDistance = (coord1: [number, number], coord2: [number, number]): number => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = (coord1[0] * Math.PI) / 180;
+    const φ2 = (coord2[0] * Math.PI) / 180;
+    const Δφ = ((coord2[0] - coord1[0]) * Math.PI) / 180;
+    const Δλ = ((coord2[1] - coord1[1]) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance in meters
+  };
+
+  // Helper function to format time ago
+  const getTimeAgo = (timestamp: number): string => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 10) return 'just now';
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
+  };
+
+  // Continuous location tracking with watchPosition
   useEffect(() => {
+    let watchId: number | null = null;
+    
     setLoading(true);
-    navigator.geolocation.getCurrentPosition(
+    console.log('🌍 Starting continuous location tracking...');
+    
+    // Start watching position with high accuracy
+    watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        setPosition([pos.coords.latitude, pos.coords.longitude]);
+        const now = Date.now();
+        const newPosition: [number, number] = [
+          pos.coords.latitude,
+          pos.coords.longitude,
+        ];
+        
+        // Smart throttling: only update if enough time passed or moved significantly
+        const timeSinceUpdate = now - lastUpdateRef.current;
+        let shouldUpdate = timeSinceUpdate >= UPDATE_THROTTLE;
+        
+        if (position && timeSinceUpdate < UPDATE_THROTTLE) {
+          const distance = calculateDistance(position, newPosition);
+          // Update if moved more than 20 meters even within throttle period
+          shouldUpdate = distance > 20;
+        }
+        
+        if (!position || shouldUpdate) {
+          console.log('📍 Location updated:', {
+            lat: newPosition[0].toFixed(6),
+            lng: newPosition[1].toFixed(6),
+            accuracy: `±${Math.round(pos.coords.accuracy)}m`,
+          });
+          
+          setPosition(newPosition);
+          setLocationAccuracy(pos.coords.accuracy);
+          setLastLocationUpdate(now);
+          lastUpdateRef.current = now;
+          
+          // Visual feedback
+          setIsLocationUpdating(true);
+          setTimeout(() => setIsLocationUpdating(false), 600);
+        }
+        
         setLoading(false);
       },
       (err) => {
-        console.warn("Geolocation failed:", err);
-        // Default to Oriental Mindoro center
-        setPosition([12.5966, 121.5258]);
+        console.warn("Geolocation error:", err.message);
+        
+        // Only set default location if we don't have a position yet
+        if (!position) {
+          console.log('📍 Using default location (Oriental Mindoro)');
+          setPosition([12.5966, 121.5258]);
+        }
+        
         setLoading(false);
       },
+      {
+        enableHighAccuracy: true, // Use GPS for better accuracy
+        maximumAge: 10000,        // Accept cached position up to 10s old
+        timeout: 15000,           // 15 second timeout
+      }
     );
-  }, []);
+    
+    // Cleanup: stop watching position when component unmounts
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        console.log('🛑 Stopped location tracking');
+      }
+    };
+  }, []); // Only run once on mount, but sets up continuous watching
 
   // Fetch nearby stations
   useEffect(() => {
@@ -1192,6 +1282,43 @@ const MainApp: React.FC = () => {
         </button>
       </div>
 
+      {/* Location Accuracy Indicator */}
+      {locationAccuracy !== null && (
+        <div
+          style={{
+            position: "absolute",
+            top: 80,
+            left: 10,
+            background: "rgba(255, 255, 255, 0.95)",
+            padding: "8px 12px",
+            borderRadius: 8,
+            fontSize: 11,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            zIndex: 1000,
+            border: `2px solid ${locationAccuracy < 20 ? '#4CAF50' : locationAccuracy < 50 ? '#FF9800' : '#F44336'}`,
+            minWidth: 140,
+          }}
+        >
+          <div style={{ fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ 
+              display: 'inline-block', 
+              width: 8, 
+              height: 8, 
+              borderRadius: '50%', 
+              background: locationAccuracy < 20 ? '#4CAF50' : locationAccuracy < 50 ? '#FF9800' : '#F44336',
+              animation: isLocationUpdating ? 'pulse 0.6s ease-out' : 'none',
+            }} />
+            GPS Accuracy
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>
+            ±{Math.round(locationAccuracy)}m
+          </div>
+          <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+            Updated {getTimeAgo(lastLocationUpdate)}
+          </div>
+        </div>
+      )}
+
       {/* Map */}
       <MapContainer
         center={position}
@@ -1231,7 +1358,11 @@ const MainApp: React.FC = () => {
         />
 
         {/* User location */}
-        <Marker position={position} icon={DefaultIcon}>
+        <Marker 
+          position={position} 
+          icon={DefaultIcon}
+          className={isLocationUpdating ? "user-location-marker updating" : "user-location-marker"}
+        >
           <Popup>
             <div>
               <b>📍 Your Location</b>
@@ -1241,6 +1372,11 @@ const MainApp: React.FC = () => {
               <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
                 {position[0].toFixed(6)}, {position[1].toFixed(6)}
               </div>
+              {locationAccuracy && (
+                <div style={{ marginTop: 4, fontSize: 10, color: "#666", fontWeight: 600 }}>
+                  Accuracy: ±{Math.round(locationAccuracy)}m
+                </div>
+              )}
             </div>
           </Popup>
         </Marker>

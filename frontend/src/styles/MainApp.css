@@ -1,0 +1,75 @@
+/* MainApp Component Styles */
+
+/* Location accuracy indicator pulse animation */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* User location marker pulse animation when updating */
+@keyframes locationPulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.user-location-marker.updating {
+  animation: locationPulse 0.6s ease-out;
+}
+
+/* Animated route dashed line */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+
+.animated-route {
+  animation: dash 30s linear infinite;
+}
+
+/* Smooth transitions for location updates */
+.location-updating {
+  transition: all 0.3s ease-out;
+}
+
+/* Accuracy indicator color states */
+.accuracy-excellent {
+  border-color: #4CAF50 !important;
+}
+
+.accuracy-good {
+  border-color: #FF9800 !important;
+}
+
+.accuracy-poor {
+  border-color: #F44336 !important;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 600px) {
+  .location-accuracy-indicator {
+    font-size: 10px;
+    padding: 6px 10px;
+    min-width: 120px;
+  }
+}
