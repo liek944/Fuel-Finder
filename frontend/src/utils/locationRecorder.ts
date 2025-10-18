@@ -34,11 +34,11 @@ class LocationRecorder {
 
   constructor(config: RecorderConfig = {}) {
     this.config = {
-      updateInterval: config.updateInterval || 3000, // 3 seconds default
+      updateInterval: config.updateInterval || 1000, // 1 second for better path tracking
       highAccuracy: config.highAccuracy !== undefined ? config.highAccuracy : true,
-      maximumAge: config.maximumAge || 5000,
+      maximumAge: config.maximumAge || 2000, // Reduced for fresher data
       timeout: config.timeout || 10000,
-      minAccuracy: config.minAccuracy || 50, // 50 meters
+      minAccuracy: config.minAccuracy || 100, // 100 meters - more lenient to capture more points
     };
 
     this.state = {

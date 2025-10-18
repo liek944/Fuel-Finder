@@ -281,6 +281,12 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
   useEffect(() => {
     if (!animatorRef.current) {
       animatorRef.current = createTripReplayAnimator(processedCoordinates, animationConfig);
+      
+      // Set initial position
+      const initialPosition = animatorRef.current.getCurrentAnimationPosition();
+      if (initialPosition) {
+        setCurrentPosition(initialPosition);
+      }
     }
 
     return () => {
