@@ -1876,7 +1876,11 @@ const AdminPortal: React.FC = () => {
                         width: "100%",
                         marginBottom: 4,
                       }}
-                      onClick={() => startEditStation(station)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startEditStation(station);
+                      }}
                     >
                       ✏️ Edit Station
                     </button>
@@ -2101,7 +2105,11 @@ const AdminPortal: React.FC = () => {
                         width: "100%",
                         marginBottom: 4,
                       }}
-                      onClick={() => startEditPoi(poi)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        startEditPoi(poi);
+                      }}
                     >
                       ✏️ Edit
                     </button>
