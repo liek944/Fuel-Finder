@@ -75,8 +75,12 @@ const lastUpdateRef = useRef<number>(0);
 
 ### 4. Visual Feedback
 
+**Accuracy Indicator:**
+- Pulse animation on the status dot when location updates
+- Color-coded border (green/orange/red)
+- Shows time since last update
+
 **User Location Marker:**
-- Pulse animation when location updates
 - Shows accuracy in popup
 - Better user awareness of tracking status
 
