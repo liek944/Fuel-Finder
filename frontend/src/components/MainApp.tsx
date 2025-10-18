@@ -1868,7 +1868,6 @@ const MainApp: React.FC = () => {
               <div style={{ fontWeight: 600, marginBottom: 2, fontSize: "12px" }}>📊 Results</div>
               <div>⛽ {filteredStations.length} stations</div>
               <div>📍 {pois.length} POIs</div>
-              {loading && <div style={{ color: "#2196F3" }}>⏳ Loading...</div>}
             </div>
 
             {/* Route to Nearest POI Section */}
