@@ -998,7 +998,7 @@ const MainApp: React.FC = () => {
     if (!position) return;
 
     const fetchStations = async () => {
-      setLoading(true);
+      // No loading indicator for automatic background updates
       try {
         const url = getApiUrl(
           `/api/stations/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
@@ -1008,8 +1008,6 @@ const MainApp: React.FC = () => {
         setStations(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to fetch stations:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
