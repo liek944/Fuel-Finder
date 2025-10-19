@@ -11,12 +11,12 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { getImageUrl, getApiUrl } from "../utils/api";
-import TripRecorder from "./TripRecorder";
-import TripHistoryPanel from "./TripHistoryPanel";
-import TripReplayVisualizer from "./TripReplayVisualizer";
+// import TripRecorder from './TripRecorder';
+// import TripHistoryPanel from './TripHistoryPanel';
+// import TripReplayVisualizer from './TripReplayVisualizer';
 import PWAInstallButton from "./PWAInstallButton";
 import DonationWidget from "./DonationWidget";
-import { Trip } from "../utils/indexedDB";
+// import { Trip } from '../utils/indexedDB';
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
 import userTracking from "../utils/userTracking";
@@ -891,8 +891,8 @@ const MainApp: React.FC = () => {
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
   
   // Trip replay states
-  const [showTripHistory, setShowTripHistory] = useState<boolean>(false);
-  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  // const [showTripHistory, setShowTripHistory] = useState<boolean>(false);
+  // const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   
   // Donation widget state
   const [showDonations, setShowDonations] = useState<boolean>(false);
@@ -1248,26 +1248,28 @@ const MainApp: React.FC = () => {
           </h1>
         </div>
         
-        {/* Trip History Button */}
+        {/* Trip History Button - Commented out */}
+        {/*
         <button
           onClick={() => setShowTripHistory(!showTripHistory)}
           style={{
-            background: showTripHistory ? "#667eea" : "white",
-            color: showTripHistory ? "white" : "#667eea",
-            border: "2px solid #667eea",
-            padding: isMobile ? "6px 10px" : "8px 16px",
+            background: showTripHistory ? '#667eea' : 'white',
+            color: showTripHistory ? 'white' : '#667eea',
+            border: '2px solid #667eea',
+            padding: isMobile ? '6px 10px' : '8px 16px',
             borderRadius: 6,
-            cursor: "pointer",
-            fontSize: isMobile ? "12px" : "14px",
+            cursor: 'pointer',
+            fontSize: isMobile ? '12px' : '14px',
             fontWeight: 600,
-            display: "flex",
-            alignItems: "center",
+            display: 'flex',
+            alignItems: 'center',
             gap: 6,
-            transition: "all 0.2s",
+            transition: 'all 0.2s',
           }}
         >
           📍 Trip History
         </button>
+        */}
       </div>
 
       {/* Location Accuracy Indicator */}
@@ -1703,7 +1705,8 @@ const MainApp: React.FC = () => {
           </Marker>
         ))}
 
-        {/* Trip Replay Visualizer - MUST be inside MapContainer */}
+        {/* Trip Replay Visualizer - MUST be inside MapContainer - Commented out */}
+        {/*
         {selectedTrip && (
           <TripReplayVisualizer
             trip={selectedTrip}
@@ -1724,6 +1727,7 @@ const MainApp: React.FC = () => {
             }}
           />
         )}
+        */}
       </MapContainer>
 
       {/* Search Controls */}
@@ -1947,7 +1951,8 @@ const MainApp: React.FC = () => {
         )}
       </div>
 
-      {/* Trip Recorder Component */}
+      {/* Trip Recorder Component - Commented out */}
+      {/*
       <TripRecorder
         onTripComplete={(trip: Trip) => {
           console.log('Trip completed:', trip);
@@ -1957,8 +1962,10 @@ const MainApp: React.FC = () => {
           console.log('Recording state changed:', isRecording);
         }}
       />
+      */}
 
-      {/* Trip History Panel */}
+      {/* Trip History Panel - Commented out */}
+      {/*
       {showTripHistory && (
         <TripHistoryPanel
           onSelectTrip={(trip: Trip) => {
@@ -1968,30 +1975,33 @@ const MainApp: React.FC = () => {
           onClose={() => setShowTripHistory(false)}
         />
       )}
+      */}
 
-      {/* Close Replay Button */}
+      {/* Close Replay Button - Commented out */}
+      {/*
       {selectedTrip && (
         <button
           onClick={() => setSelectedTrip(null)}
           style={{
-            position: "fixed",
+            position: 'fixed',
             top: window.innerWidth <= 480 ? 140 : 80, // Lower on mobile to avoid overlap
             right: 20,
             zIndex: 1300,
-            background: "#ff5252",
-            color: "white",
-            border: "none",
-            padding: window.innerWidth <= 480 ? "8px 16px" : "10px 20px",
+            background: '#ff5252',
+            color: 'white',
+            border: 'none',
+            padding: window.innerWidth <= 480 ? '8px 16px' : '10px 20px',
             borderRadius: 8,
-            cursor: "pointer",
-            fontSize: window.innerWidth <= 480 ? "12px" : "14px",
+            cursor: 'pointer',
+            fontSize: window.innerWidth <= 480 ? '12px' : '14px',
             fontWeight: 600,
-            boxShadow: "0 4px 12px rgba(255, 82, 82, 0.3)",
+            boxShadow: '0 4px 12px rgba(255, 82, 82, 0.3)',
           }}
         >
           ✕ Close Replay
         </button>
       )}
+      */}
 
       {/* PWA Install Button */}
       <PWAInstallButton />
