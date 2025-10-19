@@ -315,6 +315,13 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
       // Track performance
       performanceMonitor.current.recordFrame();
 
+      // Add/remove replay-mode class based on state
+      if (state === 'playing' || state === 'paused') {
+        document.body.classList.add('replay-mode');
+      } else {
+        document.body.classList.remove('replay-mode');
+      }
+
       // Notify parent
       if (onStateChange) {
         onStateChange(state);
@@ -324,7 +331,11 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      // Remove replay-mode class when component unmounts
+      document.body.classList.remove('replay-mode');
+    };
   }, [processedCoordinates, showTraveledPath, onStateChange, onPositionUpdate]);
 
   // Auto-follow map with throttling (Phase 7)
@@ -400,34 +411,37 @@ const TripReplayVisualizer: React.FC<TripReplayVisualizerProps> = ({
         </div>
       )}
 
-      {/* Trip Summary Analytics (Phase 6) */}
-      {showSummary && (
-        <div className="trip-summary-container">
-          <TripSummaryCard
-            trip={trip}
-            fuelConfig={fuelConfig}
-            stopConfig={stopConfig}
-            showDetailedMetrics={showDetailedMetrics}
-            showFuelCost={true}
-            showEmissions={false}
-            allowConfigEdit={allowConfigEdit}
-            onConfigChange={onFuelConfigChange}
-          />
-        </div>
-      )}
-
-      {/* Real-time Overlay (Phase 7) */}
+      {/* Unified Replay Overlay Container (Phase 7) */}
       {showOverlay && currentPosition && (
-        <TripReplayOverlay
-          trip={trip}
-          position={currentPosition}
-          showTitle={true}
-          showSpeed={true}
-          showTimestamp={true}
-          showProgress={true}
-          showDistance={true}
-          position_style={overlayPosition}
-        />
+        <div className="replay-overlay">
+          <div className="trip-summary">
+            {/* Real-time Overlay */}
+            <TripReplayOverlay
+              trip={trip}
+              position={currentPosition}
+              showTitle={true}
+              showSpeed={true}
+              showTimestamp={true}
+              showProgress={true}
+              showDistance={true}
+              position_style={overlayPosition}
+            />
+
+            {/* Trip Summary Analytics */}
+            {showSummary && (
+              <TripSummaryCard
+                trip={trip}
+                fuelConfig={fuelConfig}
+                stopConfig={stopConfig}
+                showDetailedMetrics={showDetailedMetrics}
+                showFuelCost={true}
+                showEmissions={false}
+                allowConfigEdit={allowConfigEdit}
+                onConfigChange={onFuelConfigChange}
+              />
+            )}
+          </div>
+        </div>
       )}
 
       {/* Simplification Metrics (Development Only) */}

@@ -103,7 +103,113 @@
 }
 
 /* ===========================
-   Trip Summary Container (Phase 6)
+   Unified Replay Overlay (Phase 7)
+   =========================== */
+
+.replay-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 20px;
+  pointer-events: none;
+}
+
+.trip-summary {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 450px;
+  width: 100%;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  pointer-events: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+}
+
+.trip-summary::-webkit-scrollbar {
+  width: 6px;
+}
+
+.trip-summary::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.trip-summary::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+@media (max-width: 768px) {
+  .replay-overlay {
+    padding: 10px;
+  }
+
+  .trip-summary {
+    max-width: calc(100vw - 20px);
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .replay-overlay {
+    padding: 5px;
+  }
+
+  .trip-summary {
+    max-width: calc(100vw - 10px);
+    padding: 12px;
+  }
+}
+
+/* ===========================
+   Replay Mode - Hide/Dim Filter Modal
+   =========================== */
+
+.replay-mode .filter-modal,
+.replay-mode [style*="z-index: 1100"],
+.replay-mode div[style*="position: absolute"][style*="top: 80px"][style*="left: 10px"] {
+  opacity: 0.3;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Ensure replay controls and overlay remain fully visible */
+.replay-mode .replay-overlay,
+.replay-mode .trip-replay-controls-container,
+.replay-mode .trip-summary {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure map remains interactive during replay */
+.replay-overlay {
+  /* Allow map clicks to pass through overlay background */
+  pointer-events: none;
+}
+
+.replay-overlay .trip-summary {
+  /* Only the summary content should capture pointer events */
+  pointer-events: auto;
+}
+
+/* Ensure replay controls are not blocked by overlay */
+.replay-mode .trip-replay-controls-container {
+  z-index: 10000;
+}
+
+/* ===========================
+   Trip Summary Container (Phase 6) - Legacy styles for backward compatibility
    =========================== */
 
 .trip-summary-container {
