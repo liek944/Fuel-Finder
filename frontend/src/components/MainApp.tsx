@@ -1741,6 +1741,8 @@ const MainApp: React.FC = () => {
           maxHeight: "calc(100vh - 100px)",
           overflowY: "auto",
           fontSize: "13px",
+          // Mobile optimizations
+          maxWidth: window.innerWidth <= 480 ? "calc(100vw - 20px)" : "none",
         }}
       >
         <div
@@ -1973,16 +1975,16 @@ const MainApp: React.FC = () => {
           onClick={() => setSelectedTrip(null)}
           style={{
             position: "fixed",
-            top: 80,
+            top: window.innerWidth <= 480 ? 140 : 80, // Lower on mobile to avoid overlap
             right: 20,
-            zIndex: 1001,
+            zIndex: 1300,
             background: "#ff5252",
             color: "white",
             border: "none",
-            padding: "10px 20px",
+            padding: window.innerWidth <= 480 ? "8px 16px" : "10px 20px",
             borderRadius: 8,
             cursor: "pointer",
-            fontSize: "14px",
+            fontSize: window.innerWidth <= 480 ? "12px" : "14px",
             fontWeight: 600,
             boxShadow: "0 4px 12px rgba(255, 82, 82, 0.3)",
           }}
