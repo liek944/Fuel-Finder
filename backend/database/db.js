@@ -413,8 +413,8 @@ async function updateStation(stationId, stationData) {
             phone = COALESCE($7, phone),
             operating_hours = COALESCE($8, operating_hours),
             geom = CASE
-                WHEN $9 IS NOT NULL AND $10 IS NOT NULL
-                THEN ST_SetSRID(ST_MakePoint($10, $9), 4326)
+                WHEN $9::text IS NOT NULL AND $10::text IS NOT NULL
+                THEN ST_SetSRID(ST_MakePoint($10::float, $9::float), 4326)
                 ELSE geom
             END,
             updated_at = CURRENT_TIMESTAMP
