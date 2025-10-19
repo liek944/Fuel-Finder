@@ -2228,7 +2228,7 @@ app.put("/api/stations/:id/fuel-prices/:fuelType", rateLimit, async (req, res) =
     );
 
     // Clear cache
-    cache.flushAll();
+    cache.clear();
 
     res.json({
       message: "Fuel price updated successfully",
@@ -2275,7 +2275,7 @@ app.delete("/api/stations/:id/fuel-prices/:fuelType", rateLimit, async (req, res
     }
 
     // Clear cache
-    cache.flushAll();
+    cache.clear();
 
     res.json({
       message: "Fuel price deleted successfully",
