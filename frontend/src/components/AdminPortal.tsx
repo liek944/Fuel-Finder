@@ -1030,6 +1030,8 @@ const AdminPortal: React.FC = () => {
       address: station.address || '',
       phone: station.phone || '',
       operating_hours: station.operating_hours || { open: '08:00', close: '20:00' },
+      lat: station.location.lat,
+      lng: station.location.lng,
       fuel_prices: (station.fuel_prices || []).map(fp => ({ fuel_type: fp.fuel_type, price: String(fp.price) })),
       _originalFuelTypes: Array.from(new Set((station.fuel_prices || []).map(fp => fp.fuel_type)))
     });
