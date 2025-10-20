@@ -129,7 +129,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [adminApiKey, currentPage, selectedFilter]);
+  }, [adminApiKey, currentPage, selectedFilter, selectedStation]);
 
   // Fetch statistics
   const fetchStats = useCallback(async () => {
