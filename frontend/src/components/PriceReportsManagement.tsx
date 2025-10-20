@@ -45,6 +45,8 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   const [selectedFilter, setSelectedFilter] = useState<"all" | "verified" | "pending">("all");
   const [selectedStation, setSelectedStation] = useState<string>("");
   const [stations, setStations] = useState<Array<{id: number, name: string}>>([]);
+  const [stationSearch, setStationSearch] = useState<string>("");
+  const [showStationList, setShowStationList] = useState<boolean>(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -338,7 +340,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
               <option value="pending">Pending Only</option>
             </select>
           </div>
-          <div>
+          <div style={{ position: 'relative' }}>
             <label
               style={{
                 display: "block",
@@ -349,27 +351,95 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
             >
               Filter by Station:
             </label>
-            <select
-              value={selectedStation}
-              onChange={(e) => {
-                setSelectedStation(e.target.value);
-                setCurrentPage(1); // Reset to first page when changing station
-              }}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #ddd",
-                borderRadius: 4,
-                fontSize: "14px",
-                width: '100%',
-              }}
-            >
-              <option value="">All Stations</option>
-              {stations.map((station) => (
-                <option key={station.id} value={station.id}>
-                  {station.name}
-                </option>
-              ))}
-            </select>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                placeholder="Search for a station..."
+                value={stationSearch}
+                onChange={(e) => {
+                  setStationSearch(e.target.value);
+                  setShowStationList(true);
+                }}
+                onFocus={() => setShowStationList(true)}
+                onBlur={() => setTimeout(() => setShowStationList(false), 200)}
+                style={{
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: 4,
+                  fontSize: "14px",
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              />
+              {selectedStation && (
+                <div 
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: '#f5f5f5',
+                    borderRadius: '50%',
+                    width: '20px',
+                    height: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedStation('');
+                    setStationSearch('');
+                    setCurrentPage(1);
+                  }}
+                >
+                  ×
+                </div>
+              )}
+              {showStationList && (
+                <div 
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    background: 'white',
+                    border: '1px solid #ddd',
+                    borderRadius: '0 0 4px 4px',
+                    zIndex: 1000,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  }}
+                >
+                  {stations
+                    .filter(station => 
+                      station.name.toLowerCase().includes(stationSearch.toLowerCase())
+                    )
+                    .map((station) => (
+                      <div
+                        key={station.id}
+                        onClick={() => {
+                          setSelectedStation(station.id.toString());
+                          setStationSearch(station.name);
+                          setShowStationList(false);
+                          setCurrentPage(1);
+                        }}
+                        className={`station-option ${selectedStation === station.id.toString() ? 'selected' : ''}`}
+                        style={{
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          backgroundColor: selectedStation === station.id.toString() ? '#f0f7ff' : 'white',
+                        }}
+                      >
+                        {station.name}
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
