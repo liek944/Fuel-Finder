@@ -43,6 +43,8 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<"all" | "verified" | "pending">("all");
+  const [selectedStation, setSelectedStation] = useState<string>("");
+  const [stations, setStations] = useState<Array<{id: number, name: string}>>([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -76,6 +78,23 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     }
   }, [adminApiKey, currentPage]);
 
+  // Fetch unique stations for filtering
+  const fetchStations = useCallback(async () => {
+    try {
+      const response = await apiGet(
+        "/api/admin/price-reports/stations",
+        adminApiKey
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setStations(data.stations || []);
+      }
+    } catch (err) {
+      console.error("Error fetching stations:", err);
+    }
+  }, [adminApiKey]);
+
   // Fetch all reports with filtering
   const fetchAllReports = useCallback(async () => {
     setLoading(true);
@@ -86,6 +105,10 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
       
       if (selectedFilter !== "all") {
         url += `&verified=${selectedFilter === "verified" ? "true" : "false"}`;
+      }
+      
+      if (selectedStation) {
+        url += `&station_id=${selectedStation}`;
       }
 
       const response = await apiGet(url, adminApiKey);
@@ -216,11 +239,12 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     if (activeTab === "pending") {
       fetchPendingReports();
     } else if (activeTab === "all") {
+      fetchStations();
       fetchAllReports();
     } else if (activeTab === "stats") {
       fetchStats();
     }
-  }, [activeTab, currentPage, selectedFilter, fetchPendingReports, fetchAllReports, fetchStats]);
+  }, [activeTab, currentPage, selectedFilter, selectedStation, fetchPendingReports, fetchAllReports, fetchStats, fetchStations]);
 
   // Reset page when changing tabs or filters
   useEffect(() => {
@@ -286,31 +310,67 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
 
       {/* Filter for All Reports tab */}
       {activeTab === "all" && (
-        <div style={{ marginBottom: 20 }}>
-          <label
-            style={{
-              display: "block",
-              marginBottom: 8,
-              fontWeight: 600,
-              color: "#555",
-            }}
-          >
-            Filter by Status:
-          </label>
-          <select
-            value={selectedFilter}
-            onChange={(e) => setSelectedFilter(e.target.value as any)}
-            style={{
-              padding: "8px 12px",
-              border: "1px solid #ddd",
-              borderRadius: 4,
-              fontSize: "14px",
-            }}
-          >
-            <option value="all">All Reports</option>
-            <option value="verified">Verified Only</option>
-            <option value="pending">Pending Only</option>
-          </select>
+        <div style={{ marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: 8,
+                fontWeight: 600,
+                color: "#555",
+              }}
+            >
+              Filter by Status:
+            </label>
+            <select
+              value={selectedFilter}
+              onChange={(e) => setSelectedFilter(e.target.value as any)}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 4,
+                fontSize: "14px",
+                width: '100%',
+              }}
+            >
+              <option value="all">All Reports</option>
+              <option value="verified">Verified Only</option>
+              <option value="pending">Pending Only</option>
+            </select>
+          </div>
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: 8,
+                fontWeight: 600,
+                color: "#555",
+              }}
+            >
+              Filter by Station:
+            </label>
+            <select
+              value={selectedStation}
+              onChange={(e) => {
+                setSelectedStation(e.target.value);
+                setCurrentPage(1); // Reset to first page when changing station
+              }}
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 4,
+                fontSize: "14px",
+                width: '100%',
+              }}
+            >
+              <option value="">All Stations</option>
+              {stations.map((station) => (
+                <option key={station.id} value={station.id}>
+                  {station.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       )}
 
