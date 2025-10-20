@@ -1920,6 +1920,44 @@ app.patch("/api/price-reports/:id/verify", rateLimit, async (req, res) => {
 // ADMIN PRICE REPORT MANAGEMENT ENDPOINTS
 // ============================================================================
 
+// Get unique stations for price reports filtering (admin only)
+app.get("/api/admin/price-reports/stations", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+      }
+    }
+
+    // Query to get distinct stations that have price reports
+    const query = `
+      SELECT DISTINCT s.id, s.name, s.brand 
+      FROM stations s
+      INNER JOIN fuel_price_reports r ON s.id = r.station_id
+      ORDER BY s.name ASC
+    `;
+    
+    const result = await pool.query(query);
+    
+    res.json({
+      stations: result.rows.map(row => ({
+        id: row.id,
+        name: row.name,
+        brand: row.brand,
+        displayName: `${row.name} (${row.brand})`
+      }))
+    });
+  } catch (error) {
+    console.error("Error fetching stations for price reports:", error);
+    res.status(500).json({ 
+      error: "Internal server error",
+      message: error.message 
+    });
+  }
+});
+
 // Get all pending (unverified) price reports (admin only)
 app.get("/api/admin/price-reports/pending", rateLimit, async (req, res) => {
   try {
