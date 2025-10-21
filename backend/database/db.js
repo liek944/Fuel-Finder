@@ -766,6 +766,8 @@ async function getAllPriceReportsAdmin(options = {}) {
     verified = null,
     stationId = null,
     stationName = null,
+    startDate = null,
+    endDate = null,
   } = options;
 
   let whereConditions = [];
@@ -788,6 +790,18 @@ async function getAllPriceReportsAdmin(options = {}) {
   if (stationName) {
     whereConditions.push(`s.name ILIKE $${paramIndex}`);
     queryParams.push(`%${stationName}%`);
+    paramIndex++;
+  }
+
+  if (startDate) {
+    whereConditions.push(`fpr.created_at >= $${paramIndex}`);
+    queryParams.push(startDate);
+    paramIndex++;
+  }
+
+  if (endDate) {
+    whereConditions.push(`fpr.created_at <= $${paramIndex}`);
+    queryParams.push(endDate);
     paramIndex++;
   }
 
