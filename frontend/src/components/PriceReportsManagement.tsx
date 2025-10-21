@@ -48,97 +48,79 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     "all" | "verified" | "pending"
   >("all");
   const [stationSearch, setStationSearch] = useState<string>("");
+  const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalReports, setTotalReports] = useState<number>(0);
   const reportsPerPage = 20;
 
-  // Fetch pending reports
-  const fetchPendingReports = useCallback(async () => {
+  // Unified data fetching function
+  const refreshData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const offset = (currentPage - 1) * reportsPerPage;
-      const response = await apiGet(
-        `/api/admin/price-reports/pending?limit=${reportsPerPage}&offset=${offset}`,
-        adminApiKey,
-      );
+      let response;
+      if (activeTab === "pending") {
+        const offset = (currentPage - 1) * reportsPerPage;
+        response = await apiGet(
+          `/api/admin/price-reports/pending?limit=${reportsPerPage}&offset=${offset}`,
+          adminApiKey,
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setReports(data.reports);
+          setTotalReports(data.pagination.total);
+        }
+      } else if (activeTab === "all") {
+        const offset = (currentPage - 1) * reportsPerPage;
+        let url = `/api/admin/price-reports?limit=${reportsPerPage}&offset=${offset}`;
+        if (selectedFilter !== "all") {
+          url += `&verified=${selectedFilter === "verified" ? "true" : "false"}`;
+        }
+        if (stationSearch) {
+          url += `&station_name=${encodeURIComponent(stationSearch)}`;
+        }
+        response = await apiGet(url, adminApiKey);
+        if (response.ok) {
+          const data = await response.json();
+          setReports(data.reports);
+          setTotalReports(data.pagination.total);
+        }
+      } else if (activeTab === "stats") {
+        response = await apiGet("/api/admin/price-reports/stats", adminApiKey);
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        }
+      }
 
-      if (response.ok) {
-        const data = await response.json();
-        setReports(data.reports);
-        setTotalReports(data.pagination.total);
-      } else {
+      if (response && response.ok) {
+        setLastUpdated(new Date());
+      } else if (response) {
         const errorData = await response.json();
-        setError(errorData.message || "Failed to fetch pending reports");
+        setError(errorData.message || `Failed to fetch data for ${activeTab}`);
       }
     } catch (err) {
-      setError("Network error while fetching reports");
-      console.error("Error fetching pending reports:", err);
+      setError(`Network error while fetching data for ${activeTab}`);
+      console.error(`Error fetching ${activeTab}:`, err);
     } finally {
       setLoading(false);
     }
-  }, [adminApiKey, currentPage]);
+  }, [activeTab, adminApiKey, currentPage, selectedFilter, stationSearch]);
 
-  // Fetch all reports with filtering
-  const fetchAllReports = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const offset = (currentPage - 1) * reportsPerPage;
-      let url = `/api/admin/price-reports?limit=${reportsPerPage}&offset=${offset}`;
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    if (!autoRefresh) return;
 
-      if (selectedFilter !== "all") {
-        url += `&verified=${selectedFilter === "verified" ? "true" : "false"}`;
-      }
+    const interval = setInterval(() => {
+      console.log("Auto-refreshing data...");
+      refreshData();
+    }, 15000); // 15 seconds
 
-      if (stationSearch) {
-        url += `&station_name=${encodeURIComponent(stationSearch)}`;
-      }
-
-      const response = await apiGet(url, adminApiKey);
-
-      if (response.ok) {
-        const data = await response.json();
-        setReports(data.reports);
-        setTotalReports(data.pagination.total);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || "Failed to fetch reports");
-      }
-    } catch (err) {
-      setError("Network error while fetching reports");
-      console.error("Error fetching reports:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [adminApiKey, currentPage, selectedFilter, stationSearch]);
-
-  // Fetch statistics
-  const fetchStats = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await apiGet(
-        "/api/admin/price-reports/stats",
-        adminApiKey,
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.message || "Failed to fetch statistics");
-      }
-    } catch (err) {
-      setError("Network error while fetching statistics");
-      console.error("Error fetching stats:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [adminApiKey]);
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshData]);
 
   // Verify a price report
   const verifyReport = async (reportId: number) => {
@@ -151,11 +133,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
 
       if (response.ok) {
         // Refresh the current view
-        if (activeTab === "pending") {
-          fetchPendingReports();
-        } else if (activeTab === "all") {
-          fetchAllReports();
-        }
+        refreshData();
         alert("Report verified successfully!");
       } else {
         const errorData = await response.json();
@@ -181,11 +159,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
 
       if (response.ok) {
         // Refresh the current view
-        if (activeTab === "pending") {
-          fetchPendingReports();
-        } else if (activeTab === "all") {
-          fetchAllReports();
-        }
+        refreshData();
         alert("Report deleted successfully!");
       } else {
         const errorData = await response.json();
@@ -225,22 +199,8 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
 
   // Effect to fetch data when tab or page changes
   useEffect(() => {
-    if (activeTab === "pending") {
-      fetchPendingReports();
-    } else if (activeTab === "all") {
-      fetchAllReports();
-    } else if (activeTab === "stats") {
-      fetchStats();
-    }
-  }, [
-    activeTab,
-    currentPage,
-    selectedFilter,
-    stationSearch,
-    fetchPendingReports,
-    fetchAllReports,
-    fetchStats,
-  ]);
+    refreshData();
+  }, [activeTab, currentPage, selectedFilter, stationSearch, refreshData]);
 
   // Reset page when changing tabs or filters
   useEffect(() => {
@@ -258,17 +218,57 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
         overflowY: "auto",
       }}
     >
-      <h3
+      <div
         style={{
-          margin: "0 0 20px 0",
-          color: "#333",
           display: "flex",
+          justifyContent: "space-between",
           alignItems: "center",
-          gap: 8,
+          marginBottom: 16,
         }}
       >
-        💰 Price Reports Management
-      </h3>
+        <h3
+          style={{
+            margin: 0,
+            color: "#333",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          💰 Price Reports Management
+        </h3>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {lastUpdated && (
+            <div style={{ fontSize: 12, color: "#666" }}>
+              Last updated: {lastUpdated.toLocaleTimeString()}
+            </div>
+          )}
+          <label style={{ fontSize: 14 }}>
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              style={{ marginRight: 5 }}
+            />
+            Auto-refresh (15s)
+          </label>
+          <button
+            onClick={() => refreshData()}
+            disabled={loading}
+            style={{
+              padding: "6px 12px",
+              background: loading ? "#ccc" : "#2196F3",
+              color: "white",
+              border: "none",
+              borderRadius: 4,
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: 14,
+            }}
+          >
+            {loading ? "Refreshing..." : "🔄 Refresh"}
+          </button>
+        </div>
+      </div>
 
       {/* Tab Navigation */}
       <div
