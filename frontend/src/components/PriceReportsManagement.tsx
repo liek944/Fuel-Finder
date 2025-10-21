@@ -50,6 +50,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   const [stationSearch, setStationSearch] = useState<string>("");
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshInterval, setRefreshInterval] = useState<number>(15000);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -110,17 +111,17 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     }
   }, [activeTab, adminApiKey, currentPage, selectedFilter, stationSearch]);
 
-  // Auto-refresh every 15 seconds
+  // Auto-refresh every X seconds
   useEffect(() => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
-      console.log("Auto-refreshing data...");
+      console.log(`Auto-refreshing data every ${refreshInterval / 1000}s...`);
       refreshData();
-    }, 15000); // 15 seconds
+    }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, refreshData]);
+  }, [autoRefresh, refreshData, refreshInterval]);
 
   // Verify a price report
   const verifyReport = async (reportId: number) => {
@@ -250,8 +251,25 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
               onChange={(e) => setAutoRefresh(e.target.checked)}
               style={{ marginRight: 5 }}
             />
-            Auto-refresh (15s)
+            Auto-refresh
           </label>
+          <select
+            value={refreshInterval}
+            onChange={(e) => setRefreshInterval(Number(e.target.value))}
+            disabled={!autoRefresh}
+            style={{
+              padding: "4px 8px",
+              fontSize: 12,
+              border: "1px solid #ccc",
+              borderRadius: 4,
+              background: !autoRefresh ? "#f5f5f5" : "white",
+            }}
+          >
+            <option value={10000}>10s</option>
+            <option value={15000}>15s</option>
+            <option value={30000}>30s</option>
+            <option value={60000}>60s</option>
+          </select>
           <button
             onClick={() => refreshData()}
             disabled={loading}
