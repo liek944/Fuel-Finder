@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { apiGet, apiDelete, apiPatch } from "../utils/api";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 // Types
 interface PriceReport {
@@ -48,6 +50,8 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     "all" | "verified" | "pending"
   >("all");
   const [stationSearch, setStationSearch] = useState<string>("");
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshInterval, setRefreshInterval] = useState<number>(15000);
@@ -83,6 +87,12 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
         if (stationSearch) {
           url += `&station_name=${encodeURIComponent(stationSearch)}`;
         }
+        if (startDate) {
+          url += `&start_date=${startDate.toISOString()}`;
+        }
+        if (endDate) {
+          url += `&end_date=${endDate.toISOString()}`;
+        }
         response = await apiGet(url, adminApiKey);
         if (response.ok) {
           const data = await response.json();
@@ -109,7 +119,15 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [activeTab, adminApiKey, currentPage, selectedFilter, stationSearch]);
+  }, [
+    activeTab,
+    adminApiKey,
+    currentPage,
+    selectedFilter,
+    stationSearch,
+    startDate,
+    endDate,
+  ]);
 
   // Auto-refresh every X seconds
   useEffect(() => {
@@ -201,7 +219,15 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   // Effect to fetch data when tab or page changes
   useEffect(() => {
     refreshData();
-  }, [activeTab, currentPage, selectedFilter, stationSearch, refreshData]);
+  }, [
+    activeTab,
+    currentPage,
+    selectedFilter,
+    stationSearch,
+    startDate,
+    endDate,
+    refreshData,
+  ]);
 
   // Reset page when changing tabs or filters
   useEffect(() => {
@@ -331,8 +357,9 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
           style={{
             marginBottom: 20,
             display: "grid",
-            gridTemplateColumns: "1fr 1fr",
+            gridTemplateColumns: "1fr 1fr 1fr 1fr",
             gap: "16px",
+            alignItems: "flex-end",
           }}
         >
           <div>
@@ -390,8 +417,66 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
               />
             </div>
           </div>
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: 8,
+                fontWeight: 600,
+                color: "#555",
+              }}
+            >
+              Start Date:
+            </label>
+            <DatePicker
+              selected={startDate}
+              onChange={(date) => setStartDate(date || undefined)}
+              selectsStart
+              startDate={startDate}
+              endDate={endDate}
+              isClearable
+              placeholderText="MM/DD/YYYY"
+              dateFormat="MM/dd/yyyy"
+              className="date-picker-input"
+            />
+          </div>
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: 8,
+                fontWeight: 600,
+                color: "#555",
+              }}
+            >
+              End Date:
+            </label>
+            <DatePicker
+              selected={endDate}
+              onChange={(date) => setEndDate(date || undefined)}
+              selectsEnd
+              startDate={startDate}
+              endDate={endDate}
+              minDate={startDate}
+              isClearable
+              placeholderText="MM/DD/YYYY"
+              dateFormat="MM/dd/yyyy"
+              className="date-picker-input"
+            />
+          </div>
         </div>
       )}
+
+      <style>{`
+        .date-picker-input {
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 14px;
+          width: 100%;
+          box-sizing: border-box;
+        }
+      `}</style>
 
       {/* Error Display */}
       {error && (
