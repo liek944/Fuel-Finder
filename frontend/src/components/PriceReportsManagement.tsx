@@ -91,7 +91,9 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
           url += `&start_date=${startDate.toISOString()}`;
         }
         if (endDate) {
-          url += `&end_date=${endDate.toISOString()}`;
+          const adjustedEndDate = new Date(endDate);
+          adjustedEndDate.setHours(23, 59, 59, 999);
+          url += `&end_date=${adjustedEndDate.toISOString()}`;
         }
         response = await apiGet(url, adminApiKey);
         if (response.ok) {
