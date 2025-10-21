@@ -37,16 +37,17 @@ interface PriceReportsManagementProps {
 const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   adminApiKey,
 }) => {
-  const [activeTab, setActiveTab] = useState<"pending" | "all" | "stats">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "all" | "stats">(
+    "pending",
+  );
   const [reports, setReports] = useState<PriceReport[]>([]);
   const [stats, setStats] = useState<PriceReportStats | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedFilter, setSelectedFilter] = useState<"all" | "verified" | "pending">("all");
-  const [selectedStation, setSelectedStation] = useState<string>("");
-  const [stations, setStations] = useState<Array<{id: number, name: string}>>([]);
+  const [selectedFilter, setSelectedFilter] = useState<
+    "all" | "verified" | "pending"
+  >("all");
   const [stationSearch, setStationSearch] = useState<string>("");
-  const [showStationList, setShowStationList] = useState<boolean>(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -61,9 +62,9 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
       const offset = (currentPage - 1) * reportsPerPage;
       const response = await apiGet(
         `/api/admin/price-reports/pending?limit=${reportsPerPage}&offset=${offset}`,
-        adminApiKey
+        adminApiKey,
       );
-      
+
       if (response.ok) {
         const data = await response.json();
         setReports(data.reports);
@@ -80,23 +81,6 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     }
   }, [adminApiKey, currentPage]);
 
-  // Fetch unique stations for filtering
-  const fetchStations = useCallback(async () => {
-    try {
-      const response = await apiGet(
-        "/api/admin/price-reports/stations",
-        adminApiKey
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        setStations(data.stations || []);
-      }
-    } catch (err) {
-      console.error("Error fetching stations:", err);
-    }
-  }, [adminApiKey]);
-
   // Fetch all reports with filtering
   const fetchAllReports = useCallback(async () => {
     setLoading(true);
@@ -104,17 +88,17 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     try {
       const offset = (currentPage - 1) * reportsPerPage;
       let url = `/api/admin/price-reports?limit=${reportsPerPage}&offset=${offset}`;
-      
+
       if (selectedFilter !== "all") {
         url += `&verified=${selectedFilter === "verified" ? "true" : "false"}`;
       }
-      
-      if (selectedStation) {
-        url += `&station_id=${selectedStation}`;
+
+      if (stationSearch) {
+        url += `&station_name=${encodeURIComponent(stationSearch)}`;
       }
 
       const response = await apiGet(url, adminApiKey);
-      
+
       if (response.ok) {
         const data = await response.json();
         setReports(data.reports);
@@ -129,15 +113,18 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [adminApiKey, currentPage, selectedFilter, selectedStation]);
+  }, [adminApiKey, currentPage, selectedFilter, stationSearch]);
 
   // Fetch statistics
   const fetchStats = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiGet("/api/admin/price-reports/stats", adminApiKey);
-      
+      const response = await apiGet(
+        "/api/admin/price-reports/stats",
+        adminApiKey,
+      );
+
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -159,7 +146,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
       const response = await apiPatch(
         `/api/price-reports/${reportId}/verify`,
         { verified_by: "admin" },
-        adminApiKey
+        adminApiKey,
       );
 
       if (response.ok) {
@@ -189,7 +176,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     try {
       const response = await apiDelete(
         `/api/admin/price-reports/${reportId}`,
-        adminApiKey
+        adminApiKey,
       );
 
       if (response.ok) {
@@ -227,9 +214,9 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     if (diffMins < 60) {
       return `${diffMins} min ago`;
     } else if (diffHours < 24) {
-      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     } else {
-      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
     }
   };
 
@@ -241,12 +228,19 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     if (activeTab === "pending") {
       fetchPendingReports();
     } else if (activeTab === "all") {
-      fetchStations();
       fetchAllReports();
     } else if (activeTab === "stats") {
       fetchStats();
     }
-  }, [activeTab, currentPage, selectedFilter, selectedStation, fetchPendingReports, fetchAllReports, fetchStats, fetchStations]);
+  }, [
+    activeTab,
+    currentPage,
+    selectedFilter,
+    stationSearch,
+    fetchPendingReports,
+    fetchAllReports,
+    fetchStats,
+  ]);
 
   // Reset page when changing tabs or filters
   useEffect(() => {
@@ -298,7 +292,10 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
               background: activeTab === tab.key ? "#2196F3" : "transparent",
               color: activeTab === tab.key ? "white" : "#666",
               border: "none",
-              borderBottom: activeTab === tab.key ? "2px solid #2196F3" : "2px solid transparent",
+              borderBottom:
+                activeTab === tab.key
+                  ? "2px solid #2196F3"
+                  : "2px solid transparent",
               cursor: "pointer",
               fontSize: "14px",
               fontWeight: 600,
@@ -312,7 +309,14 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
 
       {/* Filter for All Reports tab */}
       {activeTab === "all" && (
-        <div style={{ marginBottom: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+        <div
+          style={{
+            marginBottom: 20,
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "16px",
+          }}
+        >
           <div>
             <label
               style={{
@@ -332,7 +336,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                 border: "1px solid #ddd",
                 borderRadius: 4,
                 fontSize: "14px",
-                width: '100%',
+                width: "100%",
               }}
             >
               <option value="all">All Reports</option>
@@ -340,7 +344,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
               <option value="pending">Pending Only</option>
             </select>
           </div>
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: "relative" }}>
             <label
               style={{
                 display: "block",
@@ -351,94 +355,21 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
             >
               Filter by Station:
             </label>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: "relative" }}>
               <input
                 type="text"
                 placeholder="Search for a station..."
                 value={stationSearch}
-                onChange={(e) => {
-                  setStationSearch(e.target.value);
-                  setShowStationList(true);
-                }}
-                onFocus={() => setShowStationList(true)}
-                onBlur={() => setTimeout(() => setShowStationList(false), 200)}
+                onChange={(e) => setStationSearch(e.target.value)}
                 style={{
                   padding: "8px 12px",
                   border: "1px solid #ddd",
                   borderRadius: 4,
                   fontSize: "14px",
-                  width: '100%',
-                  boxSizing: 'border-box',
+                  width: "100%",
+                  boxSizing: "border-box",
                 }}
               />
-              {selectedStation && (
-                <div 
-                  style={{
-                    position: 'absolute',
-                    right: '8px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: '#f5f5f5',
-                    borderRadius: '50%',
-                    width: '20px',
-                    height: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedStation('');
-                    setStationSearch('');
-                    setCurrentPage(1);
-                  }}
-                >
-                  ×
-                </div>
-              )}
-              {showStationList && (
-                <div 
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    right: 0,
-                    maxHeight: '200px',
-                    overflowY: 'auto',
-                    background: 'white',
-                    border: '1px solid #ddd',
-                    borderRadius: '0 0 4px 4px',
-                    zIndex: 1000,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  }}
-                >
-                  {stations
-                    .filter(station => 
-                      station.name.toLowerCase().includes(stationSearch.toLowerCase())
-                    )
-                    .map((station) => (
-                      <div
-                        key={station.id}
-                        onClick={() => {
-                          setSelectedStation(station.id.toString());
-                          setStationSearch(station.name);
-                          setShowStationList(false);
-                          setCurrentPage(1);
-                        }}
-                        className={`station-option ${selectedStation === station.id.toString() ? 'selected' : ''}`}
-                        style={{
-                          padding: '8px 12px',
-                          cursor: 'pointer',
-                          backgroundColor: selectedStation === station.id.toString() ? '#f0f7ff' : 'white',
-                        }}
-                      >
-                        {station.name}
-                      </div>
-                    ))}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -487,12 +418,36 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
             }}
           >
             {[
-              { label: "Total Reports", value: stats.total_reports, icon: "📊" },
-              { label: "Verified Reports", value: stats.verified_reports, icon: "✅" },
-              { label: "Pending Reports", value: stats.pending_reports, icon: "⏳" },
-              { label: "Reports Today", value: stats.reports_today, icon: "📅" },
-              { label: "Unique Stations", value: stats.unique_stations_reported, icon: "⛽" },
-              { label: "Verification Rate", value: stats.verification_rate, icon: "📈" },
+              {
+                label: "Total Reports",
+                value: stats.total_reports,
+                icon: "📊",
+              },
+              {
+                label: "Verified Reports",
+                value: stats.verified_reports,
+                icon: "✅",
+              },
+              {
+                label: "Pending Reports",
+                value: stats.pending_reports,
+                icon: "⏳",
+              },
+              {
+                label: "Reports Today",
+                value: stats.reports_today,
+                icon: "📅",
+              },
+              {
+                label: "Unique Stations",
+                value: stats.unique_stations_reported,
+                icon: "⛽",
+              },
+              {
+                label: "Verification Rate",
+                value: stats.verification_rate,
+                icon: "📈",
+              },
             ].map((stat, index) => (
               <div
                 key={index}
@@ -503,11 +458,17 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "24px", marginBottom: 8 }}>{stat.icon}</div>
-                <div style={{ fontSize: "24px", fontWeight: 700, color: "#333" }}>
+                <div style={{ fontSize: "24px", marginBottom: 8 }}>
+                  {stat.icon}
+                </div>
+                <div
+                  style={{ fontSize: "24px", fontWeight: 700, color: "#333" }}
+                >
                   {stat.value}
                 </div>
-                <div style={{ fontSize: "12px", color: "#666" }}>{stat.label}</div>
+                <div style={{ fontSize: "12px", color: "#666" }}>
+                  {stat.label}
+                </div>
               </div>
             ))}
           </div>
@@ -583,43 +544,104 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                 >
                   <thead>
                     <tr style={{ background: "#f5f5f5" }}>
-                      <th style={{ padding: "12px 8px", textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                      <th
+                        style={{
+                          padding: "12px 8px",
+                          textAlign: "left",
+                          borderBottom: "2px solid #ddd",
+                        }}
+                      >
                         Station
                       </th>
-                      <th style={{ padding: "12px 8px", textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                      <th
+                        style={{
+                          padding: "12px 8px",
+                          textAlign: "left",
+                          borderBottom: "2px solid #ddd",
+                        }}
+                      >
                         Price
                       </th>
-                      <th style={{ padding: "12px 8px", textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                      <th
+                        style={{
+                          padding: "12px 8px",
+                          textAlign: "left",
+                          borderBottom: "2px solid #ddd",
+                        }}
+                      >
                         Fuel Type
                       </th>
-                      <th style={{ padding: "12px 8px", textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                      <th
+                        style={{
+                          padding: "12px 8px",
+                          textAlign: "left",
+                          borderBottom: "2px solid #ddd",
+                        }}
+                      >
                         Reporter
                       </th>
-                      <th style={{ padding: "12px 8px", textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                      <th
+                        style={{
+                          padding: "12px 8px",
+                          textAlign: "left",
+                          borderBottom: "2px solid #ddd",
+                        }}
+                      >
                         Time
                       </th>
-                      <th style={{ padding: "12px 8px", textAlign: "left", borderBottom: "2px solid #ddd" }}>
+                      <th
+                        style={{
+                          padding: "12px 8px",
+                          textAlign: "left",
+                          borderBottom: "2px solid #ddd",
+                        }}
+                      >
                         Status
                       </th>
-                      <th style={{ padding: "12px 8px", textAlign: "center", borderBottom: "2px solid #ddd" }}>
+                      <th
+                        style={{
+                          padding: "12px 8px",
+                          textAlign: "center",
+                          borderBottom: "2px solid #ddd",
+                        }}
+                      >
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {reports.map((report) => (
-                      <tr key={report.id} style={{ borderBottom: "1px solid #eee" }}>
+                      <tr
+                        key={report.id}
+                        style={{ borderBottom: "1px solid #eee" }}
+                      >
                         <td style={{ padding: "12px 8px" }}>
-                          <div style={{ fontWeight: 600 }}>{report.station_name}</div>
+                          <div style={{ fontWeight: 600 }}>
+                            {report.station_name}
+                          </div>
                           <div style={{ fontSize: "12px", color: "#666" }}>
                             {report.station_brand}
                           </div>
                         </td>
-                        <td style={{ padding: "12px 8px", fontWeight: 600, color: "#2e7d32" }}>
+                        <td
+                          style={{
+                            padding: "12px 8px",
+                            fontWeight: 600,
+                            color: "#2e7d32",
+                          }}
+                        >
                           ₱{report.price.toFixed(2)}/L
                         </td>
-                        <td style={{ padding: "12px 8px" }}>{report.fuel_type}</td>
-                        <td style={{ padding: "12px 8px", fontSize: "12px", color: "#666" }}>
+                        <td style={{ padding: "12px 8px" }}>
+                          {report.fuel_type}
+                        </td>
+                        <td
+                          style={{
+                            padding: "12px 8px",
+                            fontSize: "12px",
+                            color: "#666",
+                          }}
+                        >
                           {report.reporter_ip}
                         </td>
                         <td style={{ padding: "12px 8px" }}>
@@ -657,8 +679,16 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: "12px 8px", textAlign: "center" }}>
-                          <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
+                        <td
+                          style={{ padding: "12px 8px", textAlign: "center" }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 4,
+                              justifyContent: "center",
+                            }}
+                          >
                             {!report.is_verified && (
                               <button
                                 onClick={() => verifyReport(report.id)}
@@ -678,7 +708,9 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                               </button>
                             )}
                             <button
-                              onClick={() => deleteReport(report.id, report.station_name)}
+                              onClick={() =>
+                                deleteReport(report.id, report.station_name)
+                              }
                               style={{
                                 background: "#f44336",
                                 color: "white",
@@ -731,19 +763,24 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                   </button>
 
                   <span style={{ fontSize: "14px", color: "#666" }}>
-                    Page {currentPage} of {totalPages} ({totalReports} total reports)
+                    Page {currentPage} of {totalPages} ({totalReports} total
+                    reports)
                   </span>
 
                   <button
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    onClick={() =>
+                      setCurrentPage(Math.min(totalPages, currentPage + 1))
+                    }
                     disabled={currentPage === totalPages}
                     style={{
                       padding: "8px 12px",
-                      background: currentPage === totalPages ? "#ccc" : "#2196F3",
+                      background:
+                        currentPage === totalPages ? "#ccc" : "#2196F3",
                       color: "white",
                       border: "none",
                       borderRadius: 4,
-                      cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                      cursor:
+                        currentPage === totalPages ? "not-allowed" : "pointer",
                       fontSize: "14px",
                     }}
                   >

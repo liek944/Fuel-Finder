@@ -38,27 +38,31 @@ function rateLimit(req, res, next) {
 
 // Request deduplication middleware for image uploads
 // Prevents duplicate uploads from load balancers/reverse proxies
-const crypto = require('crypto');
+const crypto = require("crypto");
 const pendingRequests = new Map(); // requestHash -> { timestamp, promise }
 const DEDUP_WINDOW_MS = 5000; // 5 seconds window for deduplication
 
 function createRequestHash(req) {
   // Create a hash based on: method + path + body content + IP
-  const ip = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress || "unknown";
+  const ip =
+    req.ip ||
+    req.headers["x-forwarded-for"] ||
+    req.connection.remoteAddress ||
+    "unknown";
   const bodyStr = JSON.stringify(req.body || {});
   const hashInput = `${req.method}:${req.path}:${bodyStr}:${ip}`;
-  return crypto.createHash('md5').update(hashInput).digest('hex');
+  return crypto.createHash("md5").update(hashInput).digest("hex");
 }
 
 function requestDeduplication(req, res, next) {
   // Only apply to POST/PUT/PATCH requests with body content
-  if (!['POST', 'PUT', 'PATCH'].includes(req.method) || !req.body) {
+  if (!["POST", "PUT", "PATCH"].includes(req.method) || !req.body) {
     return next();
   }
 
   const requestHash = createRequestHash(req);
   const now = Date.now();
-  
+
   // Clean up old entries
   for (const [hash, entry] of pendingRequests.entries()) {
     if (now - entry.timestamp > DEDUP_WINDOW_MS) {
@@ -73,12 +77,12 @@ function requestDeduplication(req, res, next) {
     console.log(`⚠️  DUPLICATE REQUEST BLOCKED: ${req.method} ${req.path}`);
     console.log(`   Hash: ${requestHash.substring(0, 12)}...`);
     console.log(`   Time since original: ${timeSinceOriginal}ms`);
-    console.log(`   IP: ${req.ip || 'unknown'}`);
+    console.log(`   IP: ${req.ip || "unknown"}`);
     // Return 202 Accepted to indicate the request is being processed
     return res.status(202).json({
       message: "Request already being processed",
       note: "This is a duplicate request that was automatically deduplicated",
-      timeSinceOriginal: `${timeSinceOriginal}ms`
+      timeSinceOriginal: `${timeSinceOriginal}ms`,
     });
   }
 
@@ -90,9 +94,9 @@ function requestDeduplication(req, res, next) {
     pendingRequests.delete(requestHash);
   };
 
-  res.on('finish', cleanup);
-  res.on('close', cleanup);
-  res.on('error', cleanup);
+  res.on("finish", cleanup);
+  res.on("close", cleanup);
+  res.on("error", cleanup);
 
   next();
 }
@@ -108,6 +112,7 @@ try {
   require("dotenv").config();
 } catch (_) {}
 const {
+  pool,
   testConnection,
   ensurePoisTable,
   getNearbyStations,
@@ -172,7 +177,7 @@ const app = express();
 
 // Trust proxy - REQUIRED for AWS EC2 behind reverse proxy/load balancer
 // This allows Express to correctly read X-Forwarded-* headers
-app.set('trust proxy', true);
+app.set("trust proxy", true);
 
 const port = process.env.PORT || 3001;
 const OSRM_TIMEOUT_MS = parseInt(process.env.OSRM_TIMEOUT_MS || "15000", 10);
@@ -238,12 +243,15 @@ app.use(
 );
 
 // Security headers for production
-if (process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === "production") {
   app.use((req, res, next) => {
-    res.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-    res.header('X-Content-Type-Options', 'nosniff');
-    res.header('X-Frame-Options', 'DENY');
-    res.header('X-XSS-Protection', '1; mode=block');
+    res.header(
+      "Strict-Transport-Security",
+      "max-age=31536000; includeSubDomains",
+    );
+    res.header("X-Content-Type-Options", "nosniff");
+    res.header("X-Frame-Options", "DENY");
+    res.header("X-XSS-Protection", "1; mode=block");
     next();
   });
 }
@@ -345,10 +353,13 @@ app.post("/api/stations", requestDeduplication, rateLimit, async (req, res) => {
               created.id,
               fp.fuel_type,
               parseFloat(fp.price),
-              'admin'
+              "admin",
             );
           } catch (fpErr) {
-            console.error(`Failed to add ${fp.fuel_type} price:`, fpErr.message);
+            console.error(
+              `Failed to add ${fp.fuel_type} price:`,
+              fpErr.message,
+            );
           }
         }
       }
@@ -611,15 +622,7 @@ app.put("/api/pois/:id", rateLimit, async (req, res) => {
       });
     }
 
-    const {
-      name,
-      type,
-      address,
-      phone,
-      operating_hours,
-      lat,
-      lng,
-    } = req.body;
+    const { name, type, address, phone, operating_hours, lat, lng } = req.body;
 
     // Build update payload with only provided fields
     const updateData = {};
@@ -627,7 +630,8 @@ app.put("/api/pois/:id", rateLimit, async (req, res) => {
     if (type !== undefined) updateData.type = type;
     if (address !== undefined) updateData.address = address;
     if (phone !== undefined) updateData.phone = phone;
-    if (operating_hours !== undefined) updateData.operating_hours = operating_hours;
+    if (operating_hours !== undefined)
+      updateData.operating_hours = operating_hours;
     if (lat !== undefined && lng !== undefined) {
       updateData.lat = parseFloat(lat);
       updateData.lng = parseFloat(lng);
@@ -642,10 +646,10 @@ app.put("/api/pois/:id", rateLimit, async (req, res) => {
     }
 
     console.log(`✏️ POI updated: ${updated.name} (ID: ${poiId})`);
-    
+
     // Clear cache so updated data is served
     cache.clear();
-    
+
     res.json({
       success: true,
       poi: updated,
@@ -932,11 +936,13 @@ app.put("/api/stations/:id", rateLimit, async (req, res) => {
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (brand !== undefined) updateData.brand = brand;
-    if (fuel_price !== undefined) updateData.fuel_price = parseFloat(fuel_price);
+    if (fuel_price !== undefined)
+      updateData.fuel_price = parseFloat(fuel_price);
     if (services !== undefined) updateData.services = services;
     if (address !== undefined) updateData.address = address;
     if (phone !== undefined) updateData.phone = phone;
-    if (operating_hours !== undefined) updateData.operating_hours = operating_hours;
+    if (operating_hours !== undefined)
+      updateData.operating_hours = operating_hours;
     if (lat !== undefined && lng !== undefined) {
       updateData.lat = parseFloat(lat);
       updateData.lng = parseFloat(lng);
@@ -951,10 +957,10 @@ app.put("/api/stations/:id", rateLimit, async (req, res) => {
     }
 
     console.log(`✏️ Station updated: ${updated.name} (ID: ${stationId})`);
-    
+
     // Clear cache so updated data is served
     cache.clear();
-    
+
     res.json({
       success: true,
       station: updated,
@@ -1300,118 +1306,135 @@ app.post("/api/cache/clear", (req, res) => {
 // ============================================================================
 
 // Upload images for a station (base64)
-app.post("/api/stations/:id/images", requestDeduplication, rateLimit, async (req, res) => {
-  // Generate unique request ID for tracking
-  const requestId = crypto.randomBytes(8).toString('hex');
-  const timestamp = new Date().toISOString();
-  
-  try {
-    console.log(`\n🆔 [${requestId}] ${timestamp} - Image upload request started`);
-    
-    // Check API key if configured
-    if (ADMIN_API_KEY) {
-      const headerKey = req.header("x-api-key");
-      if (!headerKey || headerKey !== ADMIN_API_KEY) {
-        console.log(`🆔 [${requestId}] ❌ Unauthorized - Invalid API key`);
-        return res.status(401).json({
-          error: "Unauthorized",
-          message: "Invalid or missing API key",
-        });
+app.post(
+  "/api/stations/:id/images",
+  requestDeduplication,
+  rateLimit,
+  async (req, res) => {
+    // Generate unique request ID for tracking
+    const requestId = crypto.randomBytes(8).toString("hex");
+    const timestamp = new Date().toISOString();
+
+    try {
+      console.log(
+        `\n🆔 [${requestId}] ${timestamp} - Image upload request started`,
+      );
+
+      // Check API key if configured
+      if (ADMIN_API_KEY) {
+        const headerKey = req.header("x-api-key");
+        if (!headerKey || headerKey !== ADMIN_API_KEY) {
+          console.log(`🆔 [${requestId}] ❌ Unauthorized - Invalid API key`);
+          return res.status(401).json({
+            error: "Unauthorized",
+            message: "Invalid or missing API key",
+          });
+        }
       }
-    }
 
-    const stationId = parseInt(req.params.id);
-    if (!stationId || isNaN(stationId)) {
-      console.log(`🆔 [${requestId}] ❌ Invalid station ID`);
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
-
-    console.log(`🆔 [${requestId}] Processing upload for station ${stationId}`);
-
-    // Check if station exists
-    const station = await getStationById(stationId);
-    if (!station) {
-      console.log(`🆔 [${requestId}] ❌ Station ${stationId} not found`);
-      return res.status(404).json({
-        error: "Station not found",
-        message: `No station found with ID ${stationId}`,
-      });
-    }
-
-    console.log(`🆔 [${requestId}] 🔍 Request body:`, JSON.stringify(req.body, null, 2));
-
-    const { images } = req.body;
-    console.log(
-      "🔍 Images array:",
-      images ? `Array of ${images.length} items` : "null/undefined",
-    );
-
-    if (!images || !Array.isArray(images) || images.length === 0) {
-      console.log("❌ No images provided in request");
-      return res.status(400).json({
-        error: "No images provided",
-        message: "Please provide an array of base64 images",
-      });
-    }
-
-    if (images.length > 5) {
-      return res.status(400).json({
-        error: "Too many images",
-        message: "Maximum 5 images allowed per upload",
-      });
-    }
-
-    // Validate all images
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
-      console.log(`🔍 Image ${i + 1}:`, {
-        hasBase64: !!image.base64,
-        base64Length: image.base64 ? image.base64.length : 0,
-        filename: image.filename,
-        mimeType: image.mimeType,
-      });
-
-      if (!image.base64 || !validateBase64Image(image.base64)) {
-        console.log(`❌ Image ${i + 1} validation failed`);
+      const stationId = parseInt(req.params.id);
+      if (!stationId || isNaN(stationId)) {
+        console.log(`🆔 [${requestId}] ❌ Invalid station ID`);
         return res.status(400).json({
-          error: "Invalid image data",
-          message: `Image ${i + 1} contains invalid base64 data`,
+          error: "Invalid station ID",
+          message: "Station ID must be a valid number",
         });
       }
+
+      console.log(
+        `🆔 [${requestId}] Processing upload for station ${stationId}`,
+      );
+
+      // Check if station exists
+      const station = await getStationById(stationId);
+      if (!station) {
+        console.log(`🆔 [${requestId}] ❌ Station ${stationId} not found`);
+        return res.status(404).json({
+          error: "Station not found",
+          message: `No station found with ID ${stationId}`,
+        });
+      }
+
+      console.log(
+        `🆔 [${requestId}] 🔍 Request body:`,
+        JSON.stringify(req.body, null, 2),
+      );
+
+      const { images } = req.body;
+      console.log(
+        "🔍 Images array:",
+        images ? `Array of ${images.length} items` : "null/undefined",
+      );
+
+      if (!images || !Array.isArray(images) || images.length === 0) {
+        console.log("❌ No images provided in request");
+        return res.status(400).json({
+          error: "No images provided",
+          message: "Please provide an array of base64 images",
+        });
+      }
+
+      if (images.length > 5) {
+        return res.status(400).json({
+          error: "Too many images",
+          message: "Maximum 5 images allowed per upload",
+        });
+      }
+
+      // Validate all images
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        console.log(`🔍 Image ${i + 1}:`, {
+          hasBase64: !!image.base64,
+          base64Length: image.base64 ? image.base64.length : 0,
+          filename: image.filename,
+          mimeType: image.mimeType,
+        });
+
+        if (!image.base64 || !validateBase64Image(image.base64)) {
+          console.log(`❌ Image ${i + 1} validation failed`);
+          return res.status(400).json({
+            error: "Invalid image data",
+            message: `Image ${i + 1} contains invalid base64 data`,
+          });
+        }
+      }
+
+      console.log(
+        `🆔 [${requestId}] 📸 Uploading ${images.length} images for station ${stationId}`,
+      );
+
+      const { results, errors } = await uploadBase64Images(
+        images,
+        stationId,
+        null,
+      );
+
+      console.log(
+        `🆔 [${requestId}] ✅ Upload complete: ${results.length} success, ${errors.length} errors`,
+      );
+
+      // Clear cache so updated station data with images is served
+      cache.clear();
+      console.log(`🆔 [${requestId}] 🗑️ Cache cleared after image upload`);
+
+      res.status(201).json({
+        message: `Successfully uploaded ${results.length} images`,
+        images: results,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (err) {
+      console.error(
+        `🆔 [${requestId}] ❌ Error uploading station images:`,
+        err,
+      );
+      res.status(500).json({
+        error: "Failed to upload images",
+        message: err.message,
+      });
     }
-
-    console.log(
-      `🆔 [${requestId}] 📸 Uploading ${images.length} images for station ${stationId}`,
-    );
-
-    const { results, errors } = await uploadBase64Images(
-      images,
-      stationId,
-      null,
-    );
-
-    console.log(`🆔 [${requestId}] ✅ Upload complete: ${results.length} success, ${errors.length} errors`);
-
-    // Clear cache so updated station data with images is served
-    cache.clear();
-    console.log(`🆔 [${requestId}] 🗑️ Cache cleared after image upload`);
-
-    res.status(201).json({
-      message: `Successfully uploaded ${results.length} images`,
-      images: results,
-      errors: errors.length > 0 ? errors : undefined,
-    });
-  } catch (err) {
-    console.error(`🆔 [${requestId}] ❌ Error uploading station images:`, err);
-    res.status(500).json({
-      error: "Failed to upload images",
-      message: err.message,
-    });
-  }
-});
+  },
+);
 
 // Get images for a station
 app.get("/api/stations/:id/images", async (req, res) => {
@@ -1436,70 +1459,75 @@ app.get("/api/stations/:id/images", async (req, res) => {
 });
 
 // Upload images for a POI (base64)
-app.post("/api/pois/:id/images", requestDeduplication, rateLimit, async (req, res) => {
-  try {
-    // Check API key if configured
-    if (ADMIN_API_KEY) {
-      const headerKey = req.header("x-api-key");
-      if (!headerKey || headerKey !== ADMIN_API_KEY) {
-        return res.status(401).json({
-          error: "Unauthorized",
-          message: "Invalid or missing API key",
-        });
+app.post(
+  "/api/pois/:id/images",
+  requestDeduplication,
+  rateLimit,
+  async (req, res) => {
+    try {
+      // Check API key if configured
+      if (ADMIN_API_KEY) {
+        const headerKey = req.header("x-api-key");
+        if (!headerKey || headerKey !== ADMIN_API_KEY) {
+          return res.status(401).json({
+            error: "Unauthorized",
+            message: "Invalid or missing API key",
+          });
+        }
       }
-    }
 
-    const poiId = parseInt(req.params.id);
-    if (!poiId || isNaN(poiId)) {
-      return res.status(400).json({
-        error: "Invalid POI ID",
-        message: "POI ID must be a valid number",
-      });
-    }
-
-    const { images } = req.body;
-    if (!images || !Array.isArray(images) || images.length === 0) {
-      return res.status(400).json({
-        error: "No images provided",
-        message: "Please provide an array of base64 images",
-      });
-    }
-
-    if (images.length > 5) {
-      return res.status(400).json({
-        error: "Too many images",
-        message: "Maximum 5 images allowed per upload",
-      });
-    }
-
-    // Validate all images
-    for (let i = 0; i < images.length; i++) {
-      const image = images[i];
-      if (!image.base64 || !validateBase64Image(image.base64)) {
+      const poiId = parseInt(req.params.id);
+      if (!poiId || isNaN(poiId)) {
         return res.status(400).json({
-          error: "Invalid image data",
-          message: `Image ${i + 1} contains invalid base64 data`,
+          error: "Invalid POI ID",
+          message: "POI ID must be a valid number",
         });
       }
+
+      const { images } = req.body;
+      if (!images || !Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({
+          error: "No images provided",
+          message: "Please provide an array of base64 images",
+        });
+      }
+
+      if (images.length > 5) {
+        return res.status(400).json({
+          error: "Too many images",
+          message: "Maximum 5 images allowed per upload",
+        });
+      }
+
+      // Validate all images
+      for (let i = 0; i < images.length; i++) {
+        const image = images[i];
+        if (!image.base64 || !validateBase64Image(image.base64)) {
+          return res.status(400).json({
+            error: "Invalid image data",
+            message: `Image ${i + 1} contains invalid base64 data`,
+          });
+        }
+      }
+
+      console.log(`📸 Uploading ${images.length} images for POI ${poiId}`);
+
+      const { results, errors } = await uploadBase64Images(images, null, poiId);
+
+      res.status(201).json({
+        message: `Successfully uploaded ${results.length} images`,
+        images: results,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    } catch (err) {
+      console.error("❌ Error uploading POI images:", err);
+      res.status(500).json({
+        error: "Failed to upload images",
+        message: err.message,
+      });
     }
-
-    console.log(`📸 Uploading ${images.length} images for POI ${poiId}`);
-
-    const { results, errors } = await uploadBase64Images(images, null, poiId);
-
-    res.status(201).json({
-      message: `Successfully uploaded ${results.length} images`,
-      images: results,
-      errors: errors.length > 0 ? errors : undefined,
-    });
-  } catch (err) {
-    console.error("❌ Error uploading POI images:", err);
-    res.status(500).json({
-      error: "Failed to upload images",
-      message: err.message,
-    });
-  }
-});
+  },
+);
 
 // Get images for a POI
 app.get("/api/pois/:id/images", async (req, res) => {
@@ -1927,33 +1955,35 @@ app.get("/api/admin/price-reports/stations", rateLimit, async (req, res) => {
     if (ADMIN_API_KEY) {
       const headerKey = req.header("x-api-key");
       if (!headerKey || headerKey !== ADMIN_API_KEY) {
-        return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+        return res
+          .status(401)
+          .json({ error: "Unauthorized - Invalid API key" });
       }
     }
 
     // Query to get distinct stations that have price reports
     const query = `
-      SELECT DISTINCT s.id, s.name, s.brand 
+      SELECT DISTINCT s.id, s.name, s.brand
       FROM stations s
       INNER JOIN fuel_price_reports r ON s.id = r.station_id
       ORDER BY s.name ASC
     `;
-    
+
     const result = await pool.query(query);
-    
+
     res.json({
-      stations: result.rows.map(row => ({
+      stations: result.rows.map((row) => ({
         id: row.id,
         name: row.name,
         brand: row.brand,
-        displayName: `${row.name} (${row.brand})`
-      }))
+        displayName: `${row.name} (${row.brand})`,
+      })),
     });
   } catch (error) {
     console.error("Error fetching stations for price reports:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: "Internal server error",
-      message: error.message 
+      message: error.message,
     });
   }
 });
@@ -2037,6 +2067,7 @@ app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
     const stationId = req.query.station_id
       ? parseInt(req.query.station_id)
       : null;
+    const stationName = req.query.station_name || null;
 
     if (limit < 1 || limit > 100) {
       return res.status(400).json({
@@ -2053,6 +2084,7 @@ app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
       verified:
         verified === "true" ? true : verified === "false" ? false : null,
       stationId,
+      stationName,
     });
 
     res.json({
@@ -2069,21 +2101,19 @@ app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
         verified_by: r.verified_by,
         verified_at: r.verified_at,
         created_at: r.created_at,
+        total_count: r.total_count,
       })),
       pagination: {
         limit,
         offset,
-        total:
-          reports.length > 0
-            ? parseInt(reports[0].total_count || reports.length)
-            : 0,
+        total: reports.length > 0 ? reports[0].total_count : 0,
       },
     });
-  } catch (err) {
-    console.error("❌ Error fetching price reports:", err);
+  } catch (error) {
+    console.error("Error fetching all price reports:", error);
     res.status(500).json({
-      error: "Failed to fetch price reports",
-      message: err.message,
+      error: "Internal server error",
+      message: error.message,
     });
   }
 });
@@ -2220,119 +2250,132 @@ app.get("/api/stations/:id/fuel-prices", async (req, res) => {
 });
 
 // Update or add a fuel price for a station (admin only)
-app.put("/api/stations/:id/fuel-prices/:fuelType", rateLimit, async (req, res) => {
-  try {
-    // Check API key if configured
-    if (ADMIN_API_KEY) {
-      const apiKey = req.headers["x-api-key"];
-      if (!apiKey || apiKey !== ADMIN_API_KEY) {
-        return res.status(401).json({
-          error: "Unauthorized",
-          message: "Valid API key required for this operation",
+app.put(
+  "/api/stations/:id/fuel-prices/:fuelType",
+  rateLimit,
+  async (req, res) => {
+    try {
+      // Check API key if configured
+      if (ADMIN_API_KEY) {
+        const apiKey = req.headers["x-api-key"];
+        if (!apiKey || apiKey !== ADMIN_API_KEY) {
+          return res.status(401).json({
+            error: "Unauthorized",
+            message: "Valid API key required for this operation",
+          });
+        }
+      }
+
+      const stationId = parseInt(req.params.id);
+      const fuelType = req.params.fuelType;
+      const { price, updated_by } = req.body;
+
+      if (isNaN(stationId)) {
+        return res.status(400).json({
+          error: "Invalid station ID",
         });
       }
-    }
 
-    const stationId = parseInt(req.params.id);
-    const fuelType = req.params.fuelType;
-    const { price, updated_by } = req.body;
+      if (!price || isNaN(price) || price <= 0) {
+        return res.status(400).json({
+          error: "Invalid price",
+          message: "Price must be a positive number",
+        });
+      }
 
-    if (isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
+      // Validate fuel type: allow any non-empty string up to 50 chars
+      if (
+        !fuelType ||
+        typeof fuelType !== "string" ||
+        !fuelType.trim() ||
+        fuelType.length > 50
+      ) {
+        return res.status(400).json({
+          error: "Invalid fuel type",
+          message: "Fuel type must be a non-empty string up to 50 characters",
+        });
+      }
+
+      const updatedPrice = await updateStationFuelPrice(
+        stationId,
+        fuelType,
+        price,
+        updated_by || "admin",
+      );
+
+      // Clear cache
+      cache.clear();
+
+      res.json({
+        message: "Fuel price updated successfully",
+        fuel_price: updatedPrice,
+      });
+    } catch (err) {
+      console.error("❌ Error updating fuel price:", err);
+      res.status(500).json({
+        error: "Failed to update fuel price",
+        message: err.message,
       });
     }
-
-    if (!price || isNaN(price) || price <= 0) {
-      return res.status(400).json({
-        error: "Invalid price",
-        message: "Price must be a positive number",
-      });
-    }
-
-    // Validate fuel type: allow any non-empty string up to 50 chars
-    if (!fuelType || typeof fuelType !== 'string' || !fuelType.trim() || fuelType.length > 50) {
-      return res.status(400).json({
-        error: "Invalid fuel type",
-        message: "Fuel type must be a non-empty string up to 50 characters",
-      });
-    }
-
-    const updatedPrice = await updateStationFuelPrice(
-      stationId,
-      fuelType,
-      price,
-      updated_by || 'admin'
-    );
-
-    // Clear cache
-    cache.clear();
-
-    res.json({
-      message: "Fuel price updated successfully",
-      fuel_price: updatedPrice,
-    });
-  } catch (err) {
-    console.error("❌ Error updating fuel price:", err);
-    res.status(500).json({
-      error: "Failed to update fuel price",
-      message: err.message,
-    });
-  }
-});
+  },
+);
 
 // Delete a fuel price entry (admin only)
-app.delete("/api/stations/:id/fuel-prices/:fuelType", rateLimit, async (req, res) => {
-  try {
-    // Check API key if configured
-    if (ADMIN_API_KEY) {
-      const apiKey = req.headers["x-api-key"];
-      if (!apiKey || apiKey !== ADMIN_API_KEY) {
-        return res.status(401).json({
-          error: "Unauthorized",
-          message: "Valid API key required for this operation",
+app.delete(
+  "/api/stations/:id/fuel-prices/:fuelType",
+  rateLimit,
+  async (req, res) => {
+    try {
+      // Check API key if configured
+      if (ADMIN_API_KEY) {
+        const apiKey = req.headers["x-api-key"];
+        if (!apiKey || apiKey !== ADMIN_API_KEY) {
+          return res.status(401).json({
+            error: "Unauthorized",
+            message: "Valid API key required for this operation",
+          });
+        }
+      }
+
+      const stationId = parseInt(req.params.id);
+      const fuelType = req.params.fuelType;
+
+      if (isNaN(stationId)) {
+        return res.status(400).json({
+          error: "Invalid station ID",
         });
       }
-    }
 
-    const stationId = parseInt(req.params.id);
-    const fuelType = req.params.fuelType;
+      const deletedPrice = await deleteStationFuelPrice(stationId, fuelType);
 
-    if (isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
+      if (!deletedPrice) {
+        return res.status(404).json({
+          error: "Fuel price not found",
+        });
+      }
+
+      // Clear cache
+      cache.clear();
+
+      res.json({
+        message: "Fuel price deleted successfully",
+        deleted: deletedPrice,
+      });
+    } catch (err) {
+      console.error("❌ Error deleting fuel price:", err);
+      res.status(500).json({
+        error: "Failed to delete fuel price",
+        message: err.message,
       });
     }
-
-    const deletedPrice = await deleteStationFuelPrice(stationId, fuelType);
-
-    if (!deletedPrice) {
-      return res.status(404).json({
-        error: "Fuel price not found",
-      });
-    }
-
-    // Clear cache
-    cache.clear();
-
-    res.json({
-      message: "Fuel price deleted successfully",
-      deleted: deletedPrice,
-    });
-  } catch (err) {
-    console.error("❌ Error deleting fuel price:", err);
-    res.status(500).json({
-      error: "Failed to delete fuel price",
-      message: err.message,
-    });
-  }
-});
+  },
+);
 
 // ============================================================================
 // DONATION ENDPOINTS
 // ============================================================================
 
-const paymentService = require('./services/paymentService');
+const paymentService = require("./services/paymentService");
 
 // Create donation and generate payment link
 app.post("/api/donations/create", rateLimit, async (req, res) => {
@@ -2341,69 +2384,81 @@ app.post("/api/donations/create", rateLimit, async (req, res) => {
 
     // Validate amount
     if (!amount || isNaN(amount) || amount < 10 || amount > 10000) {
-      return res.status(400).json({ 
-        error: 'Invalid amount',
-        message: 'Amount must be between ₱10 and ₱10,000'
+      return res.status(400).json({
+        error: "Invalid amount",
+        message: "Amount must be between ₱10 and ₱10,000",
       });
     }
 
     // Validate cause
-    const validCauses = ['ambulance', 'public_transport', 'emergency', 'general'];
-    const selectedCause = cause || 'general';
+    const validCauses = [
+      "ambulance",
+      "public_transport",
+      "emergency",
+      "general",
+    ];
+    const selectedCause = cause || "general";
     if (!validCauses.includes(selectedCause)) {
       return res.status(400).json({
-        error: 'Invalid cause',
-        message: `Cause must be one of: ${validCauses.join(', ')}`
+        error: "Invalid cause",
+        message: `Cause must be one of: ${validCauses.join(", ")}`,
       });
     }
 
     // Check if PayMongo is configured
     if (!paymentService.isConfigured()) {
       return res.status(503).json({
-        error: 'Payment system not configured',
-        message: 'Donation feature is temporarily unavailable. Please contact support.'
+        error: "Payment system not configured",
+        message:
+          "Donation feature is temporarily unavailable. Please contact support.",
       });
     }
 
     // Create payment link with PayMongo
     const paymentLink = await paymentService.createPaymentLink(
       amount,
-      `Fuel Finder Donation - ${selectedCause.replace('_', ' ').toUpperCase()}`,
+      `Fuel Finder Donation - ${selectedCause.replace("_", " ").toUpperCase()}`,
       {
         remarks: notes || `Donation for ${selectedCause}`,
-        donor_name: donor_name || 'Anonymous',
-        cause: selectedCause
-      }
+        donor_name: donor_name || "Anonymous",
+        cause: selectedCause,
+      },
     );
 
     // Save donation to database
-    const donorIdentifier = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress || 'unknown';
-    
+    const donorIdentifier =
+      req.ip ||
+      req.headers["x-forwarded-for"] ||
+      req.connection.remoteAddress ||
+      "unknown";
+
     const donation = await createDonation({
       amount,
-      donor_name: donor_name || 'Anonymous',
+      donor_name: donor_name || "Anonymous",
       donor_email,
       donor_identifier: donorIdentifier,
       payment_intent_id: paymentLink.id,
-      status: 'pending',
+      status: "pending",
       cause: selectedCause,
-      notes
+      notes,
     });
 
-    console.log(`💝 Donation created: ₱${amount} for ${selectedCause} (ID: ${donation.id})`);
+    console.log(
+      `💝 Donation created: ₱${amount} for ${selectedCause} (ID: ${donation.id})`,
+    );
 
     res.json({
       success: true,
       donation_id: donation.id,
       payment_url: paymentLink.attributes.checkout_url,
       reference_number: paymentLink.attributes.reference_number,
-      expires_at: paymentLink.attributes.archived_at
+      expires_at: paymentLink.attributes.archived_at,
     });
   } catch (error) {
-    console.error('❌ Create donation error:', error);
-    res.status(500).json({ 
-      error: 'Failed to create donation',
-      message: error.message
+    console.error("❌ Create donation error:", error);
+    res.status(500).json({
+      error: "Failed to create donation",
+      message: error.message,
     });
   }
 });
@@ -2414,10 +2469,10 @@ app.get("/api/donations/stats", async (req, res) => {
     const stats = await getDonationStats();
     res.json(stats);
   } catch (error) {
-    console.error('❌ Get donation stats error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get donation statistics',
-      message: error.message
+    console.error("❌ Get donation stats error:", error);
+    res.status(500).json({
+      error: "Failed to get donation statistics",
+      message: error.message,
     });
   }
 });
@@ -2429,10 +2484,10 @@ app.get("/api/donations/recent", async (req, res) => {
     const donations = await getRecentDonations(limit);
     res.json(donations);
   } catch (error) {
-    console.error('❌ Get recent donations error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get recent donations',
-      message: error.message
+    console.error("❌ Get recent donations error:", error);
+    res.status(500).json({
+      error: "Failed to get recent donations",
+      message: error.message,
     });
   }
 });
@@ -2443,10 +2498,10 @@ app.get("/api/donations/stats/by-cause", async (req, res) => {
     const stats = await getDonationStatsByCause();
     res.json(stats);
   } catch (error) {
-    console.error('❌ Get donation stats by cause error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get donation statistics by cause',
-      message: error.message
+    console.error("❌ Get donation stats by cause error:", error);
+    res.status(500).json({
+      error: "Failed to get donation statistics by cause",
+      message: error.message,
     });
   }
 });
@@ -2458,10 +2513,10 @@ app.get("/api/donations/leaderboard", async (req, res) => {
     const leaderboard = await getDonationLeaderboard(limit);
     res.json(leaderboard);
   } catch (error) {
-    console.error('❌ Get donation leaderboard error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get donation leaderboard',
-      message: error.message
+    console.error("❌ Get donation leaderboard error:", error);
+    res.status(500).json({
+      error: "Failed to get donation leaderboard",
+      message: error.message,
     });
   }
 });
@@ -2469,25 +2524,25 @@ app.get("/api/donations/leaderboard", async (req, res) => {
 // PayMongo webhook endpoint
 app.post("/api/webhooks/paymongo", express.json(), async (req, res) => {
   try {
-    const signature = req.headers['paymongo-signature'];
-    
-    console.log('📬 Webhook received from PayMongo');
-    console.log('   - Signature present:', !!signature);
-    console.log('   - Body type:', typeof req.body);
-    console.log('   - Event type:', req.body?.data?.attributes?.type);
+    const signature = req.headers["paymongo-signature"];
+
+    console.log("📬 Webhook received from PayMongo");
+    console.log("   - Signature present:", !!signature);
+    console.log("   - Body type:", typeof req.body);
+    console.log("   - Event type:", req.body?.data?.attributes?.type);
 
     // For signature verification, we'd need the raw body
     // Skipping strict verification in test mode
     if (signature) {
-      console.log('⚠️  Webhook signature verification skipped in test mode');
+      console.log("⚠️  Webhook signature verification skipped in test mode");
     }
 
     // Parse the event (body is already JSON parsed by express.json())
     const event = req.body;
-    
+
     if (!event || !event.data) {
-      console.error('❌ Invalid webhook payload structure');
-      return res.status(400).json({ error: 'Invalid payload' });
+      console.error("❌ Invalid webhook payload structure");
+      return res.status(400).json({ error: "Invalid payload" });
     }
 
     const parsedEvent = paymentService.parseWebhookEvent(event);
@@ -2495,37 +2550,55 @@ app.post("/api/webhooks/paymongo", express.json(), async (req, res) => {
     console.log(`📬 Webhook received: ${parsedEvent.type}`);
 
     // Handle link.payment.paid event (for payment links)
-    if (parsedEvent.type === 'link.payment.paid') {
+    if (parsedEvent.type === "link.payment.paid") {
       const paymentIntentId = parsedEvent.id;
-      const paymentMethod = parsedEvent.attributes.type || 'unknown';
+      const paymentMethod = parsedEvent.attributes.type || "unknown";
 
-      const updated = await updateDonationStatus(paymentIntentId, 'succeeded', paymentMethod);
-      
+      const updated = await updateDonationStatus(
+        paymentIntentId,
+        "succeeded",
+        paymentMethod,
+      );
+
       if (updated) {
-        console.log(`✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`);
+        console.log(
+          `✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`,
+        );
       } else {
-        console.warn(`⚠️  Payment succeeded but donation not found: ${paymentIntentId}`);
+        console.warn(
+          `⚠️  Payment succeeded but donation not found: ${paymentIntentId}`,
+        );
       }
     }
 
     // Handle payment.paid event (for payment intents)
-    if (parsedEvent.type === 'payment.paid') {
-      const paymentIntentId = parsedEvent.attributes.source?.id || parsedEvent.id;
-      const paymentMethod = parsedEvent.attributes.source?.type || 'unknown';
+    if (parsedEvent.type === "payment.paid") {
+      const paymentIntentId =
+        parsedEvent.attributes.source?.id || parsedEvent.id;
+      const paymentMethod = parsedEvent.attributes.source?.type || "unknown";
 
-      const updated = await updateDonationStatus(paymentIntentId, 'succeeded', paymentMethod);
-      
+      const updated = await updateDonationStatus(
+        paymentIntentId,
+        "succeeded",
+        paymentMethod,
+      );
+
       if (updated) {
-        console.log(`✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`);
+        console.log(
+          `✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`,
+        );
       }
     }
 
     // Handle payment.failed event
-    if (parsedEvent.type === 'payment.failed' || parsedEvent.type === 'link.payment.failed') {
+    if (
+      parsedEvent.type === "payment.failed" ||
+      parsedEvent.type === "link.payment.failed"
+    ) {
       const paymentIntentId = parsedEvent.id;
 
-      const updated = await updateDonationStatus(paymentIntentId, 'failed');
-      
+      const updated = await updateDonationStatus(paymentIntentId, "failed");
+
       if (updated) {
         console.log(`❌ Donation payment failed: ${paymentIntentId}`);
       }
@@ -2533,8 +2606,8 @@ app.post("/api/webhooks/paymongo", express.json(), async (req, res) => {
 
     res.json({ received: true });
   } catch (error) {
-    console.error('❌ Webhook error:', error);
-    res.status(500).json({ error: 'Webhook processing failed' });
+    console.error("❌ Webhook error:", error);
+    res.status(500).json({ error: "Webhook processing failed" });
   }
 });
 
@@ -2551,16 +2624,16 @@ app.get("/api/admin/donations", async (req, res) => {
       cause: req.query.cause,
       start_date: req.query.start_date,
       end_date: req.query.end_date,
-      limit: req.query.limit ? parseInt(req.query.limit) : 100
+      limit: req.query.limit ? parseInt(req.query.limit) : 100,
     };
 
     const donations = await getAllDonationsAdmin(filters);
     res.json(donations);
   } catch (error) {
-    console.error('❌ Get all donations error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get donations',
-      message: error.message
+    console.error("❌ Get all donations error:", error);
+    res.status(500).json({
+      error: "Failed to get donations",
+      message: error.message,
     });
   }
 });
@@ -2577,22 +2650,22 @@ app.patch("/api/admin/donations/impact/:cause", async (req, res) => {
     const metrics = req.body.metrics;
 
     if (!metrics) {
-      return res.status(400).json({ error: 'Metrics object required' });
+      return res.status(400).json({ error: "Metrics object required" });
     }
 
     const updated = await updateDonationImpact(cause, metrics);
 
     if (!updated) {
-      return res.status(404).json({ error: 'Cause not found' });
+      return res.status(404).json({ error: "Cause not found" });
     }
 
     console.log(`📊 Impact metrics updated for ${cause}`);
     res.json(updated);
   } catch (error) {
-    console.error('❌ Update donation impact error:', error);
-    res.status(500).json({ 
-      error: 'Failed to update donation impact',
-      message: error.message
+    console.error("❌ Update donation impact error:", error);
+    res.status(500).json({
+      error: "Failed to update donation impact",
+      message: error.message,
     });
   }
 });
@@ -2608,42 +2681,51 @@ app.patch("/api/admin/donations/:id/status", async (req, res) => {
     const donationId = parseInt(req.params.id);
     const { status, payment_method } = req.body;
 
-    if (!status || !['pending', 'succeeded', 'failed', 'refunded'].includes(status)) {
-      return res.status(400).json({ error: 'Valid status required (pending, succeeded, failed, refunded)' });
+    if (
+      !status ||
+      !["pending", "succeeded", "failed", "refunded"].includes(status)
+    ) {
+      return res.status(400).json({
+        error: "Valid status required (pending, succeeded, failed, refunded)",
+      });
     }
 
     // Get donation first
-    const checkQuery = 'SELECT * FROM donations WHERE id = $1';
+    const checkQuery = "SELECT * FROM donations WHERE id = $1";
     const checkResult = await pool.query(checkQuery, [donationId]);
-    
+
     if (checkResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Donation not found' });
+      return res.status(404).json({ error: "Donation not found" });
     }
 
     const donation = checkResult.rows[0];
 
     // Update using the payment_intent_id (for trigger to work)
     const updated = await updateDonationStatus(
-      donation.payment_intent_id, 
-      status, 
-      payment_method || donation.payment_method || 'manual'
+      donation.payment_intent_id,
+      status,
+      payment_method || donation.payment_method || "manual",
     );
 
     if (!updated) {
-      return res.status(500).json({ error: 'Failed to update donation status' });
+      return res
+        .status(500)
+        .json({ error: "Failed to update donation status" });
     }
 
-    console.log(`✅ Manually updated donation #${donationId} status to: ${status}`);
+    console.log(
+      `✅ Manually updated donation #${donationId} status to: ${status}`,
+    );
     res.json({
       success: true,
       donation: updated,
-      message: `Donation status updated to ${status}`
+      message: `Donation status updated to ${status}`,
     });
   } catch (error) {
-    console.error('❌ Update donation status error:', error);
-    res.status(500).json({ 
-      error: 'Failed to update donation status',
-      message: error.message
+    console.error("❌ Update donation status error:", error);
+    res.status(500).json({
+      error: "Failed to update donation status",
+      message: error.message,
     });
   }
 });
@@ -2656,33 +2738,33 @@ app.patch("/api/admin/donations/:id/status", async (req, res) => {
 app.post("/api/user/heartbeat", async (req, res) => {
   try {
     const { sessionId, location, page, feature } = req.body;
-    
+
     // Extract user agent
-    const userAgent = req.headers['user-agent'];
-    
+    const userAgent = req.headers["user-agent"];
+
     // Record activity
     const result = userActivityTracker.recordActivity({
       sessionId,
       location,
       userAgent,
       page,
-      feature
+      feature,
     });
-    
+
     if (result.error) {
       return res.status(400).json({ error: result.error });
     }
-    
-    res.json({ 
+
+    res.json({
       success: true,
-      message: 'Activity recorded',
-      activeUsers: userActivityTracker.getActiveUserCount()
+      message: "Activity recorded",
+      activeUsers: userActivityTracker.getActiveUserCount(),
     });
   } catch (error) {
-    console.error('❌ Heartbeat error:', error);
-    res.status(500).json({ 
-      error: 'Failed to record activity',
-      message: error.message
+    console.error("❌ Heartbeat error:", error);
+    res.status(500).json({
+      error: "Failed to record activity",
+      message: error.message,
     });
   }
 });
@@ -2694,18 +2776,18 @@ app.get("/api/admin/users/stats", async (req, res) => {
     if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
       return res.status(401).json({ error: "Unauthorized - Invalid API key" });
     }
-    
+
     const stats = userActivityTracker.getStatistics();
-    
+
     res.json({
       success: true,
-      stats
+      stats,
     });
   } catch (error) {
-    console.error('❌ User stats error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get user statistics',
-      message: error.message
+    console.error("❌ User stats error:", error);
+    res.status(500).json({
+      error: "Failed to get user statistics",
+      message: error.message,
     });
   }
 });
@@ -2717,19 +2799,19 @@ app.get("/api/admin/users/active", async (req, res) => {
     if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
       return res.status(401).json({ error: "Unauthorized - Invalid API key" });
     }
-    
+
     const activeUsers = userActivityTracker.getActiveUsers();
-    
+
     res.json({
       success: true,
       count: activeUsers.length,
-      users: activeUsers
+      users: activeUsers,
     });
   } catch (error) {
-    console.error('❌ Active users error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get active users',
-      message: error.message
+    console.error("❌ Active users error:", error);
+    res.status(500).json({
+      error: "Failed to get active users",
+      message: error.message,
     });
   }
 });
@@ -2738,16 +2820,16 @@ app.get("/api/admin/users/active", async (req, res) => {
 app.get("/api/users/count", async (req, res) => {
   try {
     const count = userActivityTracker.getActiveUserCount();
-    
+
     res.json({
       success: true,
-      activeUsers: count
+      activeUsers: count,
     });
   } catch (error) {
-    console.error('❌ User count error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get user count',
-      message: error.message
+    console.error("❌ User count error:", error);
+    res.status(500).json({
+      error: "Failed to get user count",
+      message: error.message,
     });
   }
 });
@@ -2918,7 +3000,12 @@ app.listen(port, "0.0.0.0", () => {
   console.log("⚡ Cache: In-memory with " + CACHE_TTL_MS / 1000 + "s TTL");
   console.log("🌐 CORS: Enabled for frontend origins");
   console.log("💰 Community Price Reporting: Enabled");
-  console.log("💝 Fuel Donations: " + (paymentService.isConfigured() ? "Enabled (PayMongo)" : "Disabled (Configure PayMongo)"));
+  console.log(
+    "💝 Fuel Donations: " +
+      (paymentService.isConfigured()
+        ? "Enabled (PayMongo)"
+        : "Disabled (Configure PayMongo)"),
+  );
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log("🎉 Server ready to accept connections!");
 });

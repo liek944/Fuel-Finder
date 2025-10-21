@@ -48,7 +48,10 @@ async function testConnection() {
       try {
         await client.query("CREATE EXTENSION IF NOT EXISTS postgis");
         const verify = await client.query("SELECT PostGIS_Version()");
-        console.log("✅ PostGIS enabled. Version:", verify.rows[0].postgis_version);
+        console.log(
+          "✅ PostGIS enabled. Version:",
+          verify.rows[0].postgis_version,
+        );
       } catch (enableErr) {
         console.error(
           "❌ Unable to enable PostGIS automatically. Please enable PostGIS on the database:",
@@ -217,17 +220,20 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
   return result.rows;
 }
 
-async function addPoi({ name, type, lat, lng, address, phone, operating_hours }) {
+async function addPoi({
+  name,
+  type,
+  lat,
+  lng,
+  address,
+  phone,
+  operating_hours,
+}) {
   const query = `
     INSERT INTO pois (name, type, address, phone, operating_hours, geom)
     VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($7, $6), 4326))
     RETURNING id, name, type, address, phone, operating_hours, ST_X(geom) as lng, ST_Y(geom) as lat`;
-  const result = await pool.query(query, [name, type, address, phone, operating_hours, lat, lng]);
-  return result.rows[0];
-}
-
-async function updatePoi(poiId, poiData) {
-  const {
+  const result = await pool.query(query, [
     name,
     type,
     address,
@@ -235,7 +241,12 @@ async function updatePoi(poiId, poiData) {
     operating_hours,
     lat,
     lng,
-  } = poiData;
+  ]);
+  return result.rows[0];
+}
+
+async function updatePoi(poiId, poiData) {
+  const { name, type, address, phone, operating_hours, lat, lng } = poiData;
 
   const query = `
         UPDATE pois
@@ -544,11 +555,11 @@ async function submitPriceReport(reportData) {
   } = reportData;
 
   const query = `
-    INSERT INTO fuel_price_reports 
+    INSERT INTO fuel_price_reports
       (station_id, fuel_type, price, reporter_ip, reporter_identifier, notes)
     VALUES ($1, $2, $3, $4, $5, $6)
-    RETURNING 
-      id, station_id, fuel_type, price, reporter_ip, 
+    RETURNING
+      id, station_id, fuel_type, price, reporter_ip,
       is_verified, notes, created_at;
   `;
 
@@ -567,8 +578,8 @@ async function submitPriceReport(reportData) {
 // Get recent price reports for a station
 async function getPriceReports(stationId, limit = 10) {
   const query = `
-    SELECT 
-      id, station_id, fuel_type, price, 
+    SELECT
+      id, station_id, fuel_type, price,
       is_verified, verified_by, verified_at,
       notes, created_at
     FROM fuel_price_reports
@@ -584,8 +595,8 @@ async function getPriceReports(stationId, limit = 10) {
 // Get latest verified price report for a station
 async function getLatestVerifiedPrice(stationId) {
   const query = `
-    SELECT 
-      id, station_id, fuel_type, price, 
+    SELECT
+      id, station_id, fuel_type, price,
       verified_by, verified_at, created_at
     FROM fuel_price_reports
     WHERE station_id = $1 AND is_verified = true
@@ -600,14 +611,14 @@ async function getLatestVerifiedPrice(stationId) {
 // Get average price from recent reports (last 7 days)
 async function getAveragePriceFromReports(stationId, days = 7) {
   const query = `
-    SELECT 
+    SELECT
       fuel_type,
       AVG(price) as avg_price,
       COUNT(*) as report_count,
       MIN(price) as min_price,
       MAX(price) as max_price
     FROM fuel_price_reports
-    WHERE station_id = $1 
+    WHERE station_id = $1
       AND created_at >= NOW() - INTERVAL '${days} days'
     GROUP BY fuel_type;
   `;
@@ -633,7 +644,10 @@ async function verifyPriceReport(reportId, verifiedBy) {
       RETURNING station_id, price, fuel_type;
     `;
 
-    const verifyResult = await client.query(verifyQuery, [reportId, verifiedBy]);
+    const verifyResult = await client.query(verifyQuery, [
+      reportId,
+      verifiedBy,
+    ]);
 
     if (verifyResult.rows.length === 0) {
       throw new Error("Price report not found");
@@ -645,8 +659,8 @@ async function verifyPriceReport(reportId, verifiedBy) {
     const updateFuelPriceQuery = `
       INSERT INTO fuel_prices (station_id, fuel_type, price, price_updated_at, price_updated_by)
       VALUES ($1, $2, $3, NOW(), 'community')
-      ON CONFLICT (station_id, fuel_type) 
-      DO UPDATE SET 
+      ON CONFLICT (station_id, fuel_type)
+      DO UPDATE SET
         price = $3,
         price_updated_at = NOW(),
         price_updated_by = 'community'
@@ -693,7 +707,7 @@ async function verifyPriceReport(reportId, verifiedBy) {
 async function cleanupOldReports(daysOld = 30) {
   const query = `
     DELETE FROM fuel_price_reports
-    WHERE is_verified = false 
+    WHERE is_verified = false
       AND created_at < NOW() - INTERVAL '${daysOld} days'
     RETURNING id;
   `;
@@ -705,7 +719,7 @@ async function cleanupOldReports(daysOld = 30) {
 // Get price report statistics for a station
 async function getPriceReportStats(stationId) {
   const query = `
-    SELECT 
+    SELECT
       COUNT(*) as total_reports,
       COUNT(CASE WHEN is_verified THEN 1 END) as verified_reports,
       AVG(price) as avg_price,
@@ -728,7 +742,7 @@ async function getPriceReportStats(stationId) {
 // Get all pending (unverified) price reports with station details
 async function getAllPendingPriceReports(limit = 50, offset = 0) {
   const query = `
-    SELECT 
+    SELECT
       fpr.*,
       s.name as station_name,
       s.brand as station_brand,
@@ -746,8 +760,14 @@ async function getAllPendingPriceReports(limit = 50, offset = 0) {
 
 // Get all price reports with filtering options
 async function getAllPriceReportsAdmin(options = {}) {
-  const { limit = 50, offset = 0, verified = null, stationId = null } = options;
-  
+  const {
+    limit = 50,
+    offset = 0,
+    verified = null,
+    stationId = null,
+    stationName = null,
+  } = options;
+
   let whereConditions = [];
   let queryParams = [];
   let paramIndex = 1;
@@ -765,10 +785,17 @@ async function getAllPriceReportsAdmin(options = {}) {
     paramIndex++;
   }
 
-  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+  if (stationName) {
+    whereConditions.push(`s.name ILIKE $${paramIndex}`);
+    queryParams.push(`%${stationName}%`);
+    paramIndex++;
+  }
+
+  const whereClause =
+    whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
 
   const query = `
-    SELECT 
+    SELECT
       fpr.*,
       s.name as station_name,
       s.brand as station_brand,
@@ -804,7 +831,7 @@ async function deletePriceReport(reportId) {
 // Get all fuel prices for a station
 async function getStationFuelPrices(stationId) {
   const query = `
-    SELECT 
+    SELECT
       id,
       station_id,
       fuel_type,
@@ -822,29 +849,42 @@ async function getStationFuelPrices(stationId) {
 }
 
 // Update or add a fuel price for a station
-async function updateStationFuelPrice(stationId, fuelType, price, updatedBy = 'admin') {
+async function updateStationFuelPrice(
+  stationId,
+  fuelType,
+  price,
+  updatedBy = "admin",
+) {
   const query = `
     INSERT INTO fuel_prices (station_id, fuel_type, price, price_updated_at, price_updated_by)
     VALUES ($1, $2, $3, NOW(), $4)
-    ON CONFLICT (station_id, fuel_type) 
-    DO UPDATE SET 
+    ON CONFLICT (station_id, fuel_type)
+    DO UPDATE SET
       price = $3,
       price_updated_at = NOW(),
       price_updated_by = $4
     RETURNING *;
   `;
 
-  const result = await pool.query(query, [stationId, fuelType, price, updatedBy]);
-  
+  const result = await pool.query(query, [
+    stationId,
+    fuelType,
+    price,
+    updatedBy,
+  ]);
+
   // Update the legacy fuel_price column in stations table
-  await pool.query(`
+  await pool.query(
+    `
     UPDATE stations
     SET fuel_price = (SELECT MIN(price) FROM fuel_prices WHERE station_id = $1),
         price_updated_at = NOW(),
         price_updated_by = $2
     WHERE id = $1
-  `, [stationId, updatedBy]);
-  
+  `,
+    [stationId, updatedBy],
+  );
+
   return result.rows[0];
 }
 
@@ -857,14 +897,17 @@ async function deleteStationFuelPrice(stationId, fuelType) {
   `;
 
   const result = await pool.query(query, [stationId, fuelType]);
-  
+
   // Update the legacy fuel_price column
-  await pool.query(`
+  await pool.query(
+    `
     UPDATE stations
     SET fuel_price = (SELECT MIN(price) FROM fuel_prices WHERE station_id = $1)
     WHERE id = $1
-  `, [stationId]);
-  
+  `,
+    [stationId],
+  );
+
   return result.rows[0];
 }
 
@@ -872,7 +915,7 @@ async function deleteStationFuelPrice(stationId, fuelType) {
 async function getPriceReportingStats() {
   const query = `
     WITH report_stats AS (
-      SELECT 
+      SELECT
         COUNT(*) as total_reports,
         COUNT(CASE WHEN is_verified THEN 1 END) as verified_reports,
         COUNT(CASE WHEN NOT is_verified THEN 1 END) as pending_reports,
@@ -883,7 +926,7 @@ async function getPriceReportingStats() {
       FROM fuel_price_reports
     ),
     most_reported AS (
-      SELECT 
+      SELECT
         s.name as station_name,
         COUNT(*) as report_count
       FROM fuel_price_reports fpr
@@ -892,7 +935,7 @@ async function getPriceReportingStats() {
       ORDER BY COUNT(*) DESC
       LIMIT 1
     )
-    SELECT 
+    SELECT
       rs.*,
       mr.station_name as most_reported_station,
       mr.report_count as most_reported_station_count
@@ -922,15 +965,15 @@ async function createDonation(donationData) {
 
   const values = [
     donationData.amount,
-    donationData.currency || 'PHP',
-    donationData.donor_name || 'Anonymous',
+    donationData.currency || "PHP",
+    donationData.donor_name || "Anonymous",
     donationData.donor_email,
     donationData.donor_identifier,
     donationData.payment_intent_id,
     donationData.payment_method,
-    donationData.status || 'pending',
-    donationData.cause || 'general',
-    donationData.notes
+    donationData.status || "pending",
+    donationData.cause || "general",
+    donationData.notes,
   ];
 
   const result = await pool.query(query, values);
@@ -940,7 +983,11 @@ async function createDonation(donationData) {
 /**
  * Update donation status (e.g., when payment succeeds or fails)
  */
-async function updateDonationStatus(paymentIntentId, status, paymentMethod = null) {
+async function updateDonationStatus(
+  paymentIntentId,
+  status,
+  paymentMethod = null,
+) {
   const query = `
     UPDATE donations
     SET status = $1::VARCHAR(50),
@@ -950,7 +997,11 @@ async function updateDonationStatus(paymentIntentId, status, paymentMethod = nul
     RETURNING *
   `;
 
-  const result = await pool.query(query, [status, paymentMethod, paymentIntentId]);
+  const result = await pool.query(query, [
+    status,
+    paymentMethod,
+    paymentIntentId,
+  ]);
   return result.rows[0];
 }
 
@@ -976,16 +1027,18 @@ async function getDonationStats() {
   `;
 
   const result = await pool.query(query);
-  return result.rows[0] || {
-    total_donations: 0,
-    total_amount: 0,
-    donations_this_month: 0,
-    amount_this_month: 0,
-    donations_this_week: 0,
-    amount_this_week: 0,
-    average_donation: 0,
-    unique_donors: 0
-  };
+  return (
+    result.rows[0] || {
+      total_donations: 0,
+      total_amount: 0,
+      donations_this_month: 0,
+      amount_this_month: 0,
+      donations_this_week: 0,
+      amount_this_week: 0,
+      average_donation: 0,
+      unique_donors: 0,
+    }
+  );
 }
 
 /**
@@ -993,7 +1046,7 @@ async function getDonationStats() {
  */
 async function getRecentDonations(limit = 10) {
   const query = `
-    SELECT 
+    SELECT
       id,
       amount,
       COALESCE(donor_name, 'Anonymous') as donor_name,
@@ -1015,7 +1068,7 @@ async function getRecentDonations(limit = 10) {
  */
 async function getDonationStatsByCause() {
   const query = `
-    SELECT 
+    SELECT
       di.cause,
       di.beneficiary_name,
       di.total_amount,
@@ -1037,7 +1090,10 @@ async function getDonationStatsByCause() {
  * Get donation leaderboard (top donors)
  */
 async function getDonationLeaderboard(limit = 10) {
-  const result = await pool.query('SELECT * FROM get_donation_leaderboard($1)', [limit]);
+  const result = await pool.query(
+    "SELECT * FROM get_donation_leaderboard($1)",
+    [limit],
+  );
   return result.rows;
 }
 
@@ -1046,7 +1102,7 @@ async function getDonationLeaderboard(limit = 10) {
  */
 async function getAllDonationsAdmin(filters = {}) {
   let query = `
-    SELECT 
+    SELECT
       d.*,
       di.beneficiary_name
     FROM donations d
