@@ -2068,6 +2068,8 @@ app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
       ? parseInt(req.query.station_id)
       : null;
     const stationName = req.query.station_name || null;
+    const startDate = req.query.start_date || null;
+    const endDate = req.query.end_date || null;
 
     if (limit < 1 || limit > 100) {
       return res.status(400).json({
@@ -2085,6 +2087,8 @@ app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
         verified === "true" ? true : verified === "false" ? false : null,
       stationId,
       stationName,
+      startDate,
+      endDate,
     });
 
     res.json({
