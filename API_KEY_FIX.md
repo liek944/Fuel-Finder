@@ -1,6 +1,9 @@
 # API Key Authentication Fix After Modularization
 
-## 🐛 Problem Identified
+> **⚠️ IMPORTANT UPDATE:** There were TWO bugs causing the sign-in issue!
+> See **API_KEY_SIGNIN_FIX_COMPLETE.md** for the complete fix including the frontend bug.
+
+## 🐛 Problem Identified (Backend Only - Part 1 of 2)
 
 After modularization, the admin dashboard API key authentication was not working because the `.env` file was not being loaded correctly.
 

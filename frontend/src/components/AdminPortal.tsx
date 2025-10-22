@@ -682,10 +682,13 @@ const AdminPortal: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        if (data.keysMatch) {
+        console.log("🔍 API Key validation response:", data);
+        
+        // Backend returns "keyMatch" (singular), not "keysMatch" (plural)
+        if (data.keyMatch) {
           return true;
         } else {
-          alert(`Invalid API key.`);
+          alert(`Invalid API key. Please check your key and try again.`);
           return false;
         }
       } else {
