@@ -39,7 +39,7 @@ interface PriceReportsManagementProps {
 
 import "../styles/PriceReportsManagement.css";
 
-const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
+export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   adminApiKey,
 }) => {
   const [activeTab, setActiveTab] = useState<"pending" | "all" | "stats">(
