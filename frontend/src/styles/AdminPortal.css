@@ -228,8 +228,8 @@
         margin-top: 8px;
     }
     .admin-controls-panel {
-        top: 180px; /* Further adjust for taller nav */
-        max-height: calc(100vh - 200px);
+        top: 240px; /* Further adjust for taller nav */
+        max-height: calc(100vh - 260px);
     }
     .poi-form-container {
         padding: 15px;
