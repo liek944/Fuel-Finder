@@ -244,6 +244,8 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
         padding: "20px",
         borderRadius: 8,
         boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+        maxHeight: "80vh",
+        overflowY: "auto",
       }}
     >
       <div
@@ -620,7 +622,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
           </div>
 
           {/* Fuel Price Trend Chart */}
-          <div style={{ marginTop: 20 }}>
+          <div style={{ marginTop: 20, height: "500px", overflowY: "auto" }}>
             <FuelPriceTrendChart adminApiKey={adminApiKey} />
           </div>
         </div>

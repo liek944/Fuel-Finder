@@ -1497,13 +1497,7 @@ const AdminPortal: React.FC = () => {
 
       {/* Conditional Content Based on Current View */}
       {currentAdminView === "price-reports" ? (
-        <div
-          style={{
-            height: "calc(100vh - 80px)",
-            overflowY: "auto",
-            marginTop: "80px",
-          }}
-        >
+        <div style={{ height: "100%", overflow: "auto", paddingTop: "80px" }}>
           <PriceReportsManagement adminApiKey={adminApiKey} />
         </div>
       ) : currentAdminView === "user-analytics" ? (
