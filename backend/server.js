@@ -151,6 +151,7 @@ const {
   getDonationLeaderboard,
   getAllDonationsAdmin,
   updateDonationImpact,
+  getPriceReportTrends,
 } = require("./database/db");
 
 // Import image service
@@ -1981,6 +1982,39 @@ app.get("/api/admin/price-reports/stations", rateLimit, async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching stations for price reports:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+});
+
+// Get price report trends for charting (admin only)
+app.get("/api/admin/price-reports/trends", rateLimit, async (req, res) => {
+  try {
+    // Check API key if configured
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res
+          .status(401)
+          .json({ error: "Unauthorized - Invalid API key" });
+      }
+    }
+
+    const days = parseInt(req.query.days || "30", 10);
+    if (isNaN(days) || days < 1 || days > 365) {
+      return res.status(400).json({
+        error: "Invalid days parameter",
+        message: "Days must be a number between 1 and 365",
+      });
+    }
+
+    const trends = await getPriceReportTrends(days);
+
+    res.json(trends);
+  } catch (error) {
+    console.error("Error fetching price report trends:", error);
     res.status(500).json({
       error: "Internal server error",
       message: error.message,

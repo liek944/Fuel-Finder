@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { apiGet, apiDelete, apiPatch } from "../utils/api";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import FuelPriceTrendChart from "./FuelPriceTrendChart";
 
 // Types
 interface PriceReport {
@@ -618,6 +619,11 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                 {stats.most_reported_station_count} reports
               </div>
             </div>
+          </div>
+
+          {/* Fuel Price Trend Chart */}
+          <div style={{ marginTop: 20 }}>
+            <FuelPriceTrendChart adminApiKey={adminApiKey} />
           </div>
         </div>
       )}
