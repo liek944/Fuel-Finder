@@ -3,8 +3,15 @@
  * Functions to transform database data to API response format
  */
 
-const { getImageUrl } = require("../services/imageService");
 const { getSupabaseImageUrl, isSupabaseStorageAvailable } = require("../services/supabaseStorage");
+
+/**
+ * Helper function to generate image URL
+ */
+function getImageUrl(filename, type = "stations") {
+  const baseUrl = process.env.API_BASE_URL || `http://localhost:${process.env.PORT || 3001}`;
+  return `${baseUrl}/api/images/${type}/${filename}`;
+}
 
 /**
  * Transform station data for API response
