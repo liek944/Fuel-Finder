@@ -24,16 +24,25 @@ After modularizing the Fuel Finder backend, several bugs were introduced that pr
 **Fix:** Wrapped coordinates in `location: { lat, lng }`  
 **Documentation:** `STATION_CREATION_400_FIX.md`
 
+### 4. ✅ Supabase Images Not Displaying (Backend)
+**File:** `backend/utils/transformers.js`  
+**Problem:** Missing folder prefix in Supabase image paths (sent `filename.jpeg` instead of `stations/filename.jpeg`)  
+**Fix:** Added folder prefix to all Supabase URL generation  
+**Documentation:** `SUPABASE_IMAGE_DISPLAY_FIX.md`
+
 ## 📋 Complete Fix Checklist
 
 - [x] Backend: Fix .env loading path
 - [x] Backend: Verify ADMIN_API_KEY is loaded
 - [x] Frontend: Fix keyMatch property check
 - [x] Frontend: Fix location payload format
+- [x] Backend: Fix Supabase image URL generation
 - [x] Frontend: Rebuild application
-- [ ] Deploy frontend to production
+- [ ] Deploy backend to production (EC2)
+- [ ] Deploy frontend to production (Vercel)
 - [ ] Test admin sign-in on production
 - [ ] Test station creation on production
+- [ ] Test image display on production
 
 ## 🚀 Deployment Steps
 
@@ -98,17 +107,19 @@ After deployment, verify:
 ### Backend Files
 1. `backend/config/environment.js` - Fixed .env path
 2. `backend/server.js` - Removed redundant dotenv
+3. `backend/utils/transformers.js` - Fixed Supabase image URL paths
 
 ### Frontend Files  
 1. `frontend/src/components/AdminPortal.tsx` - Fixed keyMatch check and location payload
 
 ## 🔍 Root Causes
 
-All three issues stemmed from the modularization process:
+All four issues stemmed from the modularization process:
 
 1. **Moving config to subdirectory** broke relative path resolution
 2. **Property name mismatch** between frontend/backend (typo)
 3. **API contract change** - backend changed to nested `location` object
+4. **Supabase path format** - missing folder prefix in image URL generation
 
 ## 💡 Lessons Learned
 
@@ -123,6 +134,7 @@ All three issues stemmed from the modularization process:
 - `API_KEY_FIX.md` - Backend .env loading fix
 - `API_KEY_SIGNIN_FIX_COMPLETE.md` - Complete API key authentication fix
 - `STATION_CREATION_400_FIX.md` - Station creation payload fix
+- `SUPABASE_IMAGE_DISPLAY_FIX.md` - Supabase image URL fix
 - `MODULARIZATION_FIXES_SUMMARY.md` - This file (overview)
 
 ## ⚠️ Note About Supabase
