@@ -12,12 +12,7 @@ const dns = require("dns");
 const path = require("path");
 const crypto = require("crypto");
 
-// Load environment variables from .env
-try {
-  require("dotenv").config();
-} catch (_) {}
-
-// Import modular components
+// Import modular components (environment.js handles .env loading)
 const config = require("./config/environment");
 const { pool, testConnection } = require("./config/database");
 

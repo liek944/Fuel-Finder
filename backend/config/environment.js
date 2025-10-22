@@ -3,9 +3,12 @@
  * Centralizes all environment variables and provides defaults
  */
 
+const path = require("path");
+
 // Load environment variables from .env
+// Specify path explicitly since this file is in a subdirectory
 try {
-  require("dotenv").config();
+  require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 } catch (_) {}
 
 const config = {
