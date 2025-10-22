@@ -41,6 +41,10 @@ const {
   getAveragePriceFromReports,
   verifyPriceReport,
   getPriceReportStats,
+  getPriceReportTrends,
+  getAllPendingPriceReports,
+  getAllPriceReportsAdmin,
+  deletePriceReport,
   // Fuel Prices Management
   getStationFuelPrices,
   updateStationFuelPrice,
@@ -55,7 +59,6 @@ const {
   getDonationLeaderboard,
   getAllDonationsAdmin,
   updateDonationImpact,
-  getPriceReportTrends,
 } = require("./database/db");
 
 // Import image service
@@ -882,12 +885,199 @@ app.get("/api/admin/price-reports/trends", rateLimit, async (req, res) => {
       }
     }
 
-    const days = parseInt(req.query.days || "7");
+    const days = parseInt(req.query.days || "30", 10);
+    if (isNaN(days) || days < 1 || days > 365) {
+      return res.status(400).json({
+        error: "Invalid days parameter",
+        message: "Days must be a number between 1 and 365",
+      });
+    }
+
     const trends = await getPriceReportTrends(days);
-    res.json({ trends });
+    res.json(trends);
   } catch (err) {
     console.error("Error fetching price trends:", err);
-    res.status(500).json({ error: "Failed to fetch trends" });
+    res.status(500).json({ error: "Failed to fetch trends", message: err.message });
+  }
+});
+
+// Get unique stations for price reports filtering (admin only)
+app.get("/api/admin/price-reports/stations", rateLimit, async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+      }
+    }
+
+    // Query to get distinct stations that have price reports
+    const query = `
+      SELECT DISTINCT s.id, s.name, s.brand
+      FROM stations s
+      INNER JOIN fuel_price_reports r ON s.id = r.station_id
+      ORDER BY s.name ASC
+    `;
+
+    const result = await pool.query(query);
+
+    res.json({
+      stations: result.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        brand: row.brand,
+        displayName: `${row.name} (${row.brand})`,
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching stations for price reports:", error);
+    res.status(500).json({ error: "Internal server error", message: error.message });
+  }
+});
+
+// Get all pending (unverified) price reports (admin only)
+app.get("/api/admin/price-reports/pending", rateLimit, async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({ error: "Unauthorized", message: "Invalid or missing API key" });
+      }
+    }
+
+    const limit = parseInt(req.query.limit || "50");
+    const offset = parseInt(req.query.offset || "0");
+
+    if (limit < 1 || limit > 100) {
+      return res.status(400).json({ error: "Invalid limit", message: "Limit must be between 1 and 100" });
+    }
+
+    const reports = await getAllPendingPriceReports(limit, offset);
+
+    res.json({
+      reports: reports.map((r) => ({
+        id: r.id,
+        station_id: r.station_id,
+        station_name: r.station_name,
+        station_brand: r.station_brand,
+        fuel_type: r.fuel_type,
+        price: parseFloat(r.price),
+        reporter: r.reporter_identifier || r.reporter_ip,
+        notes: r.notes,
+        created_at: r.created_at,
+        is_verified: r.is_verified,
+      })),
+      pagination: {
+        limit,
+        offset,
+        total: reports.length > 0 ? parseInt(reports[0].total_count || reports.length) : 0,
+      },
+    });
+  } catch (err) {
+    console.error("❌ Error fetching pending price reports:", err);
+    res.status(500).json({ error: "Failed to fetch pending reports", message: err.message });
+  }
+});
+
+// Get all price reports with filtering (admin only)
+app.get("/api/admin/price-reports", rateLimit, async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({ error: "Unauthorized", message: "Invalid or missing API key" });
+      }
+    }
+
+    const limit = parseInt(req.query.limit || "50");
+    const offset = parseInt(req.query.offset || "0");
+    const verified = req.query.verified; // 'true', 'false', or undefined for all
+    const stationId = req.query.station_id ? parseInt(req.query.station_id) : null;
+    const stationName = req.query.station_name || null;
+    const startDate = req.query.start_date || null;
+    const endDate = req.query.end_date || null;
+
+    if (limit < 1 || limit > 100) {
+      return res.status(400).json({ error: "Invalid limit", message: "Limit must be between 1 and 100" });
+    }
+
+    const reports = await getAllPriceReportsAdmin({
+      limit,
+      offset,
+      verified: verified === "true" ? true : verified === "false" ? false : null,
+      stationId,
+      stationName,
+      startDate,
+      endDate,
+    });
+
+    res.json({
+      reports: reports.map((r) => ({
+        id: r.id,
+        station_id: r.station_id,
+        station_name: r.station_name,
+        station_brand: r.station_brand,
+        fuel_type: r.fuel_type,
+        price: parseFloat(r.price),
+        reporter: r.reporter_identifier || r.reporter_ip,
+        notes: r.notes,
+        is_verified: r.is_verified,
+        verified_by: r.verified_by,
+        verified_at: r.verified_at,
+        created_at: r.created_at,
+        total_count: r.total_count,
+      })),
+      pagination: {
+        limit,
+        offset,
+        total: reports.length > 0 ? reports[0].total_count : 0,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching all price reports:", error);
+    res.status(500).json({ error: "Internal server error", message: error.message });
+  }
+});
+
+// Delete a price report (admin only)
+app.delete("/api/admin/price-reports/:id", rateLimit, async (req, res) => {
+  try {
+    if (ADMIN_API_KEY) {
+      const headerKey = req.header("x-api-key");
+      if (!headerKey || headerKey !== ADMIN_API_KEY) {
+        return res.status(401).json({ error: "Unauthorized", message: "Invalid or missing API key" });
+      }
+    }
+
+    const reportId = parseInt(req.params.id);
+    if (!reportId || isNaN(reportId)) {
+      return res.status(400).json({ error: "Invalid report ID", message: "Report ID must be a valid number" });
+    }
+
+    const deletedReport = await deletePriceReport(reportId);
+
+    if (!deletedReport) {
+      return res.status(404).json({ error: "Report not found", message: "No price report found with the specified ID" });
+    }
+
+    console.log(`🗑️ Price report ${reportId} deleted by admin`);
+
+    // Clear cache if it exists
+    if (typeof cache !== 'undefined' && cache.clear) {
+      cache.clear();
+    }
+
+    res.json({
+      message: "Price report deleted successfully",
+      report: {
+        id: deletedReport.id,
+        fuel_type: deletedReport.fuel_type,
+        price: deletedReport.price,
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting price report:", error);
+    res.status(500).json({ error: "Internal server error", message: error.message });
   }
 });
 
