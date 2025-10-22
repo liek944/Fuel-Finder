@@ -27,13 +27,16 @@ function transformStationData(stations) {
         // Generate URLs for each image
         const localUrl = getImageUrl(img.filename, "stations");
         const supabaseUrl = isSupabaseStorageAvailable()
-          ? getSupabaseImageUrl(img.filename, "stations")
+          ? getSupabaseImageUrl(`stations/${img.filename}`)
+          : null;
+        const supabaseThumbnailUrl = isSupabaseStorageAvailable()
+          ? getSupabaseImageUrl(`thumbnails/thumb_${img.filename}`)
           : null;
 
         return {
           ...img,
           url: supabaseUrl || localUrl, // Prefer Supabase URL if available
-          thumbnailUrl: supabaseUrl || localUrl, // Use same URL for thumbnail for now
+          thumbnailUrl: supabaseThumbnailUrl || supabaseUrl || localUrl,
         };
       });
 
@@ -76,13 +79,16 @@ function transformPoiData(pois) {
         // Generate URLs for each image
         const localUrl = getImageUrl(img.filename, "pois");
         const supabaseUrl = isSupabaseStorageAvailable()
-          ? getSupabaseImageUrl(img.filename, "pois")
+          ? getSupabaseImageUrl(`pois/${img.filename}`)
+          : null;
+        const supabaseThumbnailUrl = isSupabaseStorageAvailable()
+          ? getSupabaseImageUrl(`thumbnails/thumb_${img.filename}`)
           : null;
 
         return {
           ...img,
           url: supabaseUrl || localUrl, // Prefer Supabase URL if available
-          thumbnailUrl: supabaseUrl || localUrl, // Use same URL for thumbnail for now
+          thumbnailUrl: supabaseThumbnailUrl || supabaseUrl || localUrl,
         };
       });
 
