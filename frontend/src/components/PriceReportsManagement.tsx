@@ -244,8 +244,6 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
         padding: "20px",
         borderRadius: 8,
         boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-        maxHeight: "80vh",
-        overflowY: "auto",
       }}
     >
       <div
