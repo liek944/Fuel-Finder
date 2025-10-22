@@ -1,0 +1,262 @@
+/* /frontend/src/styles/AdminPortal.css */
+
+/* Base Styles */
+.admin-portal {
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+        Arial, sans-serif;
+}
+
+.admin-portal-navigation {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 1000;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 10px 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    flex-wrap: wrap; /* Allow wrapping on small screens */
+}
+
+.back-to-map-button {
+    text-decoration: none;
+    background: #2196f3;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.admin-portal-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1; /* Allow header to take up space */
+}
+
+.admin-portal-logo {
+    height: 48px;
+    width: auto;
+}
+
+.admin-portal-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+}
+
+.view-switcher {
+    display: flex;
+    gap: 8px;
+    margin-right: 16px;
+    flex-wrap: wrap; /* Allow wrapping */
+}
+
+.view-switcher-button {
+    padding: 6px 12px;
+    background: #f5f5f5;
+    color: #666;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.view-switcher-button.active {
+    background: #2196f3;
+    color: white;
+}
+
+.admin-status {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.admin-status.enabled {
+    color: #4caf50;
+}
+
+.admin-status.disabled {
+    color: #f44336;
+}
+
+.admin-content {
+    height: 100%;
+    overflow: auto;
+}
+
+.admin-content-offset {
+    height: 80px;
+}
+
+.user-analytics-container {
+    height: 100%;
+    overflow: auto;
+    background: #f5f5f5;
+}
+
+.map-container-wrapper {
+    height: 100%;
+    width: 100%;
+}
+
+.admin-controls-panel {
+    position: absolute;
+    top: 80px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    z-index: 1100;
+    width: 320px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+}
+
+.poi-form-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.poi-form-container {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90%;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive Media Queries */
+
+/* Large Desktops */
+@media (min-width: 1200px) {
+    .admin-controls-panel {
+        width: 360px;
+    }
+}
+
+/* Small Laptops and Tablets (Landscape) */
+@media (max-width: 1024px) {
+    .admin-portal-title {
+        font-size: 18px;
+    }
+    .admin-controls-panel {
+        width: 280px;
+        top: 70px;
+        left: 15px;
+    }
+    .poi-form-container {
+        max-width: 450px;
+    }
+}
+
+/* Tablets (Portrait) */
+@media (max-width: 768px) {
+    .admin-portal-navigation {
+        padding: 10px;
+        gap: 8px;
+    }
+    .admin-portal-header {
+        gap: 8px;
+    }
+    .admin-portal-logo {
+        height: 40px;
+    }
+    .view-switcher {
+        margin-right: 0;
+    }
+    .admin-controls-panel {
+        width: 90%;
+        max-width: 300px;
+        left: 5%;
+        top: 120px; /* Adjust based on nav height */
+        max-height: calc(100vh - 140px);
+    }
+    .poi-form-container {
+        width: 95%;
+    }
+}
+
+/* Mobile Devices */
+@media (max-width: 480px) {
+    .admin-portal-navigation {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .admin-portal-header {
+        width: 100%;
+    }
+    .view-switcher {
+        width: 100%;
+        justify-content: space-between;
+    }
+    .view-switcher-button {
+        flex-grow: 1;
+        text-align: center;
+        font-size: 11px;
+    }
+    .admin-status {
+        width: 100%;
+        text-align: center;
+        margin-top: 8px;
+    }
+    .admin-controls-panel {
+        top: 180px; /* Further adjust for taller nav */
+        max-height: calc(100vh - 200px);
+    }
+    .poi-form-container {
+        padding: 15px;
+    }
+    .poi-form-container h3 {
+        font-size: 18px;
+    }
+}
+
+/* iPhone 7 and smaller */
+@media (max-width: 400px) {
+    .admin-portal-logo {
+        height: 36px;
+    }
+    .admin-portal-title {
+        font-size: 16px;
+    }
+    .back-to-map-button {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+    .view-switcher-button {
+        padding: 5px 8px;
+        font-size: 10px;
+    }
+    .admin-controls-panel {
+        width: 94%;
+        left: 3%;
+    }
+}

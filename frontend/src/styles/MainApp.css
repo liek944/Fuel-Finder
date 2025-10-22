@@ -1,55 +1,313 @@
 /* MainApp Component Styles */
 
+.main-header {
+    position: absolute;
+    top: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    max-width: calc(100vw - 2rem);
+    width: auto;
+}
+
+.main-header-content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.main-header-logo {
+    height: 3rem;
+    width: auto;
+}
+
+.main-header-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.location-accuracy-indicator {
+    position: absolute;
+    top: 5rem;
+    left: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.7rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    border: 2px solid #4caf50;
+    min-width: 8.75rem;
+}
+
+.location-accuracy-header {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.location-accuracy-dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: #4caf50;
+    animation: pulse 0.6s ease-out;
+}
+
+.location-accuracy-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #333;
+}
+
+.location-accuracy-timestamp {
+    font-size: 0.5rem;
+    color: #666;
+    margin-top: 0.125rem;
+}
+
+.search-controls {
+    position: absolute;
+    top: 5rem;
+    left: 1rem;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 0.625rem;
+    border-radius: 0.375rem;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    z-index: 1100;
+    width: 15rem;
+    max-height: calc(100vh - 6.25rem);
+    overflow-y: auto;
+    font-size: 0.8rem;
+}
+
+.search-controls-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.625rem;
+}
+
+.search-controls-header h3 {
+    margin: 0;
+    color: #333;
+    font-size: 0.875rem;
+}
+
+.search-controls-header button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.125rem;
+    border-radius: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.search-bar {
+    margin-bottom: 0.625rem;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.search-radius {
+    margin-bottom: 0.625rem;
+}
+
+.search-radius label {
+    display: block;
+    margin-bottom: 0.1875rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.search-radius input {
+    width: 100%;
+}
+
+.brand-filter {
+    margin-bottom: 0.625rem;
+}
+
+.brand-filter label {
+    display: block;
+    margin-bottom: 0.1875rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.brand-filter select {
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+}
+
+.price-filter {
+    margin-bottom: 0.625rem;
+}
+
+.price-filter label {
+    display: block;
+    margin-bottom: 0.1875rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.price-filter input {
+    width: 100%;
+}
+
+.results-summary {
+    background: #f5f5f5;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.7rem;
+    color: #666;
+}
+
+.results-summary-header {
+    font-weight: 600;
+    margin-bottom: 0.125rem;
+    font-size: 0.75rem;
+}
+
+.route-to-nearest {
+    margin-top: 0.625rem;
+}
+
+.route-to-nearest label {
+    display: block;
+    margin-bottom: 0.3125rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.route-to-nearest select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.route-to-nearest button {
+    width: 100%;
+    padding: 0.5rem;
+    background: #4caf50;
+    color: white;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    opacity: 1;
+    transition: all 0.2s ease;
+}
+
+.route-to-nearest button:hover {
+    background: #45a049;
+}
+
+.collapsed-summary {
+    font-size: 0.75rem;
+    color: #666;
+    text-align: center;
+}
+
+.collapsed-summary div {
+    margin-bottom: 0.25rem;
+}
+
+.donation-button {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem 1.5rem;
+    border-radius: 3.125rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 0.25rem 1.25rem rgba(102, 126, 234, 0.4);
+    z-index: 999;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.donation-button:hover {
+    transform: translateY(-0.25rem);
+    box-shadow: 0 0.5rem 1.75rem rgba(102, 126, 234, 0.5);
+}
+
 /* Location accuracy indicator pulse animation */
 @keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.4);
-    opacity: 0.6;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.4);
+        opacity: 0.6;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 /* Animated route dashed line */
 @keyframes dash {
-  to {
-    stroke-dashoffset: -1000;
-  }
+    to {
+        stroke-dashoffset: -1000;
+    }
 }
 
 .animated-route {
-  animation: dash 30s linear infinite;
+    animation: dash 30s linear infinite;
 }
 
 /* Smooth transitions for location updates */
 .location-updating {
-  transition: all 0.3s ease-out;
+    transition: all 0.3s ease-out;
 }
 
 /* Accuracy indicator color states */
 .accuracy-excellent {
-  border-color: #4CAF50 !important;
+    border-color: #4caf50 !important;
 }
 
 .accuracy-good {
-  border-color: #FF9800 !important;
+    border-color: #ff9800 !important;
 }
 
 .accuracy-poor {
-  border-color: #F44336 !important;
-}
-
-/* Mobile responsive adjustments */
-@media (max-width: 600px) {
-  .location-accuracy-indicator {
-    font-size: 10px;
-    padding: 6px 10px;
-    min-width: 120px;
-  }
+    border-color: #f44336 !important;
 }

@@ -19,6 +19,7 @@ import {
 } from "../utils/api";
 import PriceReportsManagement from "./PriceReportsManagement";
 import UserAnalytics from "./UserAnalytics";
+import "../styles/AdminPortal.css";
 
 // Canvas-based markers are created dynamically - no static image imports needed
 
@@ -564,9 +565,8 @@ const AdminPortal: React.FC = () => {
   const [manualLat, setManualLat] = useState<string>("");
   const [manualLng, setManualLng] = useState<string>("");
   const [manualCoords, setManualCoords] = useState<string>(""); // Single field for coordinates
-  const [coordinateSource, setCoordinateSource] = useState<"map" | "manual">(
-    "map",
-  );
+  const [coordinateSource, setCoordinateSource] = useState<"map" | "manual">
+    ("map");
 
   const [position, setPosition] = useState<[number, number] | null>(null);
 
@@ -946,7 +946,9 @@ const AdminPortal: React.FC = () => {
     // Check if using single coordinate field
     if (manualCoords.trim()) {
       // Parse single coordinate input (e.g., "12.5966, 121.5258" or "12.5966,121.5258")
-      const coords = manualCoords.trim().replace(/[\s]+/g, "").split(",");
+      const coords = manualCoords.trim().replace(/[
+
+	 ]+/g, "").split(",");
 
       if (coords.length !== 2) {
         alert(
@@ -1350,159 +1352,57 @@ const AdminPortal: React.FC = () => {
 
   if (!position) {
     return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "18px",
-          color: "#666",
-        }}
-      >
+      <div className="loading-container">
         Loading admin portal...
       </div>
     );
   }
 
   return (
-    <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
+    <div className="admin-portal">
       {/* Navigation */}
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          right: 10,
-          zIndex: 1000,
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          background: "rgba(255,255,255,0.95)",
-          padding: "10px 15px",
-          borderRadius: 8,
-          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-        }}
-      >
-        <a
-          href="/"
-          style={{
-            textDecoration: "none",
-            background: "#2196F3",
-            color: "white",
-            padding: "8px 16px",
-            borderRadius: 4,
-            fontSize: "14px",
-            fontWeight: 600,
-            transition: "background 0.2s",
-            cursor: "pointer",
-          }}
-        >
+      <div className="admin-portal-navigation">
+        <a href="/" className="back-to-map-button">
           ← Back to Map
         </a>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flex: 1,
-          }}
-        >
-          <img
-            src="/logo.jpeg"
-            alt="Fuel Finder Logo"
-            style={{
-              height: "48px",
-              width: "auto",
-            }}
-          />
-          <h1
-            style={{
-              margin: 0,
-              fontSize: "20px",
-              fontWeight: 700,
-              color: "#333",
-            }}
-          >
-            Admin Portal
-          </h1>
+        <div className="admin-portal-header">
+          <img src="/logo.jpeg" alt="Fuel Finder Logo" className="admin-portal-logo" />
+          <h1 className="admin-portal-title">Admin Portal</h1>
         </div>
 
         {/* View Switcher */}
         {isAdminEnabled && (
-          <div style={{ display: "flex", gap: 8, marginRight: 16 }}>
+          <div className="view-switcher">
             <button
               onClick={() => setCurrentAdminView("map")}
-              style={{
-                padding: "6px 12px",
-                background: currentAdminView === "map" ? "#2196F3" : "#f5f5f5",
-                color: currentAdminView === "map" ? "white" : "#666",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                fontSize: "12px",
-                fontWeight: 600,
-              }}
-            >
+              className={`view-switcher-button ${currentAdminView === "map" ? "active" : ""}`}>
               🗺️ Map View
             </button>
             <button
               onClick={() => setCurrentAdminView("price-reports")}
-              style={{
-                padding: "6px 12px",
-                background:
-                  currentAdminView === "price-reports" ? "#2196F3" : "#f5f5f5",
-                color: currentAdminView === "price-reports" ? "white" : "#666",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 600,
-                transition: "all 0.2s ease",
-              }}
-            >
+              className={`view-switcher-button ${currentAdminView === "price-reports" ? "active" : ""}`}>
               💰 Price Reports
             </button>
             <button
               onClick={() => setCurrentAdminView("user-analytics")}
-              style={{
-                padding: "6px 12px",
-                background:
-                  currentAdminView === "user-analytics" ? "#2196F3" : "#f5f5f5",
-                color: currentAdminView === "user-analytics" ? "white" : "#666",
-                border: "none",
-                borderRadius: 4,
-                cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 600,
-                transition: "all 0.2s ease",
-              }}
-            >
+              className={`view-switcher-button ${currentAdminView === "user-analytics" ? "active" : ""}`}>
               👥 User Analytics
             </button>
           </div>
         )}
-        <div
-          style={{
-            fontSize: "14px",
-            color: isAdminEnabled ? "#4CAF50" : "#f44336",
-            fontWeight: 600,
-          }}
-        >
+        <div className={`admin-status ${isAdminEnabled ? "enabled" : "disabled"}`}>
           {isAdminEnabled ? "✅ Admin Enabled" : "❌ Admin Disabled"}
         </div>
       </div>
 
       {/* Conditional Content Based on Current View */}
       {currentAdminView === "price-reports" ? (
-        <div style={{ height: "100%", overflow: "auto" }}>
-          <div style={{ height: "80px" }} />
+        <div className="admin-content">
+          <div className="admin-content-offset" />
           <PriceReportsManagement adminApiKey={adminApiKey} />
         </div>
       ) : currentAdminView === "user-analytics" ? (
-        <div
-          style={{ height: "100%", overflow: "auto", background: "#f5f5f5" }}
-        >
+        <div className="user-analytics-container">
           <UserAnalytics />
         </div>
       ) : (
@@ -1511,7 +1411,7 @@ const AdminPortal: React.FC = () => {
           <MapContainer
             center={position}
             zoom={12}
-            style={{ height: "100%", width: "100%" }}
+            className="map-container-wrapper"
           >
             {/* Layer Control for switching between Street and Satellite views */}
             <LayersControl position="bottomleft">
@@ -1786,7 +1686,8 @@ const AdminPortal: React.FC = () => {
                                   setEditFormData({
                                     ...editFormData,
                                     operating_hours: {
-                                      open: editPrevOpenRef.current || "08:00",
+                                      open:
+                                        editPrevOpenRef.current || "08:00",
                                       close:
                                         editPrevCloseRef.current || "20:00",
                                     },
@@ -2679,21 +2580,7 @@ const AdminPortal: React.FC = () => {
 
       {/* Admin Controls Panel - Only show in map view */}
       {currentAdminView === "map" && (
-        <div
-          style={{
-            position: "absolute",
-            top: 80,
-            left: 20,
-            background: "rgba(255,255,255,0.95)",
-            padding: "15px",
-            borderRadius: 8,
-            boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-            zIndex: 1100,
-            width: 320,
-            maxHeight: "calc(100vh - 100px)",
-            overflowY: "auto",
-          }}
-        >
+        <div className="admin-controls-panel">
           <h3
             style={{
               margin: "0 0 15px 0",
@@ -2786,8 +2673,8 @@ const AdminPortal: React.FC = () => {
               {adminValidating
                 ? "🔄 Validating API key..."
                 : isAdminEnabled
-                  ? "✅ Admin features are now active"
-                  : "❌ Enter API key to enable admin features"}
+                ? "✅ Admin features are now active"
+                : "❌ Enter API key to enable admin features"}
             </div>
           </div>
 
@@ -3121,32 +3008,8 @@ const AdminPortal: React.FC = () => {
 
       {/* POI Form Overlay */}
       {isAdminEnabled && addingMode && pendingLatLng && (
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            zIndex: 2000,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              background: "white",
-              padding: "20px",
-              borderRadius: 8,
-              width: "90%",
-              maxWidth: "500px",
-              maxHeight: "90%",
-              overflowY: "auto",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-            }}
-          >
+        <div className="poi-form-overlay">
+          <div className="poi-form-container">
             <h3
               style={{
                 margin: "0 0 20px 0",
@@ -3583,11 +3446,6 @@ const AdminPortal: React.FC = () => {
                       prevCloseTimeRef.current = formCloseTime;
                       setFormOpenTime("00:00");
                       setFormCloseTime("23:59");
-                      setUnknownTime(false);
-                    } else {
-                      // Restore previous values
-                      setFormOpenTime(prevOpenTimeRef.current || "08:00");
-                      setFormCloseTime(prevCloseTimeRef.current || "20:00");
                     }
                   }}
                   disabled={unknownTime}
@@ -3892,8 +3750,8 @@ const AdminPortal: React.FC = () => {
                 {formSubmitting
                   ? "⏳ Adding POI..."
                   : uploadingImages
-                    ? "📷 Uploading Images..."
-                    : "✅ Add POI"}
+                  ? "📷 Uploading Images..."
+                  : "✅ Add POI"}
               </button>
             </div>
           </div>

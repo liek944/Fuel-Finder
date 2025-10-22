@@ -153,7 +153,11 @@ const createUserLocationIcon = () => {
 const DefaultIcon = createUserLocationIcon();
 
 // Function to create brand-specific fuel station markers with sharp points
-const createFuelStationIcon = (brand: string, proximity?: number, isClosed: boolean = false) => {
+const createFuelStationIcon = (
+  brand: string,
+  proximity?: number,
+  isClosed: boolean = false,
+) => {
   const brandColors: { [key: string]: string } = {
     Shell: "#FFCC00",
     Petron: "#FF0000",
@@ -165,7 +169,9 @@ const createFuelStationIcon = (brand: string, proximity?: number, isClosed: bool
     default: "#ff6b6b",
   };
 
-  const baseSize = proximity ? Math.max(24, Math.min(36, 36 - proximity * 8)) : 32;
+  const baseSize = proximity
+    ? Math.max(24, Math.min(36, 36 - proximity * 8))
+    : 32;
   const width = baseSize;
   const height = baseSize * 1.4; // Pin height ratio
   const canvas = document.createElement("canvas");
@@ -175,7 +181,9 @@ const createFuelStationIcon = (brand: string, proximity?: number, isClosed: bool
 
   if (ctx) {
     // Use gray for closed stations
-    const color = isClosed ? "#9E9E9E" : (brandColors[brand] || brandColors.default);
+    const color = isClosed
+      ? "#9E9E9E"
+      : brandColors[brand] || brandColors.default;
     const centerX = (width + 10) / 2;
     const radius = width / 2 - 2;
     const circleY = 5 + radius;
@@ -223,7 +231,7 @@ const createFuelStationIcon = (brand: string, proximity?: number, isClosed: bool
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("⛽", centerX, circleY);
-    
+
     // Add "CLOSED" text below for closed stations
     if (isClosed) {
       ctx.fillStyle = "#f44336";
@@ -349,25 +357,40 @@ interface PriceReport {
   created_at: string;
 }
 
+import "../styles/PriceReportWidget.css";
+
 // PriceReportWidget Component
-const PriceReportWidget: React.FC<{ stationId: number; stationName: string; availableFuelTypes?: string[] }> = ({
+const PriceReportWidget: React.FC<{
+  stationId: number;
+  stationName: string;
+  availableFuelTypes?: string[];
+}> = ({
   stationId,
   stationName,
   availableFuelTypes = ["Regular", "Premium", "Diesel"],
 }) => {
   const [showForm, setShowForm] = useState(false);
-  const defaultFuel = availableFuelTypes && availableFuelTypes.length > 0 ? availableFuelTypes[0] : "Regular";
+  const defaultFuel =
+    availableFuelTypes && availableFuelTypes.length > 0
+      ? availableFuelTypes[0]
+      : "Regular";
   const [fuelType, setFuelType] = useState(defaultFuel);
   const [price, setPrice] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
   const [recentReports, setRecentReports] = useState<PriceReport[]>([]);
   const [showReports, setShowReports] = useState(false);
 
   // Reset selected fuel when station or available fuels change
   useEffect(() => {
-    const nextDefault = availableFuelTypes && availableFuelTypes.length > 0 ? availableFuelTypes[0] : "Regular";
+    const nextDefault =
+      availableFuelTypes && availableFuelTypes.length > 0
+        ? availableFuelTypes[0]
+        : "Regular";
     setFuelType(nextDefault);
   }, [stationId, availableFuelTypes]);
 
@@ -375,7 +398,9 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const response = await fetch(getApiUrl(`/api/stations/${stationId}/price-reports?limit=5`));
+        const response = await fetch(
+          getApiUrl(`/api/stations/${stationId}/price-reports?limit=5`),
+        );
         if (response.ok) {
           const data = await response.json();
           setRecentReports(data.reports || []);
@@ -393,7 +418,7 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const priceNum = parseFloat(price);
     if (isNaN(priceNum) || priceNum <= 0) {
       setMessage({ type: "error", text: "Please enter a valid price" });
@@ -409,20 +434,26 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
     setMessage(null);
 
     try {
-      const response = await fetch(getApiUrl(`/api/stations/${stationId}/report-price`), {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        getApiUrl(`/api/stations/${stationId}/report-price`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fuel_type: fuelType,
+            price: priceNum,
+            notes: notes.trim() || null,
+          }),
         },
-        body: JSON.stringify({
-          fuel_type: fuelType,
-          price: priceNum,
-          notes: notes.trim() || null,
-        }),
-      });
+      );
 
       if (response.ok) {
-        setMessage({ type: "success", text: "Price reported successfully! Thank you for contributing." });
+        setMessage({
+          type: "success",
+          text: "Price reported successfully! Thank you for contributing.",
+        });
         setPrice("");
         setNotes("");
         setFuelType("Regular");
@@ -432,7 +463,10 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
         }, 2000);
       } else {
         const errorData = await response.json();
-        setMessage({ type: "error", text: errorData.message || "Failed to submit report" });
+        setMessage({
+          type: "error",
+          text: errorData.message || "Failed to submit report",
+        });
       }
     } catch (err) {
       setMessage({ type: "error", text: "Network error. Please try again." });
@@ -450,34 +484,22 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
     const diffDays = Math.floor(diffHours / 24);
 
     if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
     return date.toLocaleDateString();
   };
 
   return (
-    <div 
-      style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #e0e0e0" }}
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="price-report-widget" onClick={(e) => e.stopPropagation()}>
       {!showForm && !showReports && (
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="price-report-widget-buttons">
           <button
             onClick={(e) => {
               e.stopPropagation();
               setShowForm(true);
             }}
-            style={{
-              background: "#FF9800",
-              color: "white",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 600,
-              flex: 1,
-            }}
+            className="report-price-button"
           >
             💰 Report Price
           </button>
@@ -486,16 +508,7 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
               e.stopPropagation();
               setShowReports(true);
             }}
-            style={{
-              background: "#2196F3",
-              color: "white",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontSize: 12,
-              fontWeight: 600,
-            }}
+            className="view-reports-button"
           >
             📊 View Reports
           </button>
@@ -504,58 +517,46 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
 
       {showForm && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <strong style={{ fontSize: 13 }}>Report Fuel Price</strong>
+          <div className="price-report-widget-header">
+            <strong>Report Fuel Price</strong>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowForm(false);
                 setMessage(null);
               }}
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 16,
-                color: "#666",
-              }}
+              className="close-button"
             >
               ✕
             </button>
           </div>
 
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleSubmit(e);
-          }}>
-            <div style={{ marginBottom: 8 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>
-                Fuel Type:
-              </label>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSubmit(e);
+            }}
+          >
+            <div className="form-group">
+              <label>Fuel Type:</label>
               <select
                 value={fuelType}
                 onChange={(e) => setFuelType(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "4px 8px",
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                  fontSize: 12,
-                }}
               >
                 {(availableFuelTypes && availableFuelTypes.length > 0
                   ? availableFuelTypes
-                  : ["Regular", "Premium", "Diesel"]).map((ft) => (
-                  <option key={ft} value={ft}>{ft}</option>
+                  : ["Regular", "Premium", "Diesel"]
+                ).map((ft) => (
+                  <option key={ft} value={ft}>
+                    {ft}
+                  </option>
                 ))}
               </select>
             </div>
 
-            <div style={{ marginBottom: 8 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>
-                Price per Liter (₱):
-              </label>
+            <div className="form-group">
+              <label>Price per Liter (₱):</label>
               <input
                 type="number"
                 step="0.01"
@@ -563,66 +564,27 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="e.g., 58.50"
                 required
-                style={{
-                  width: "100%",
-                  padding: "4px 8px",
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                  fontSize: 12,
-                }}
               />
             </div>
 
-            <div style={{ marginBottom: 8 }}>
-              <label style={{ fontSize: 11, fontWeight: 600, display: "block", marginBottom: 4 }}>
-                Notes (optional):
-              </label>
+            <div className="form-group">
+              <label>Notes (optional):</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Any additional info..."
                 maxLength={200}
-                style={{
-                  width: "100%",
-                  padding: "4px 8px",
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                  fontSize: 12,
-                  resize: "vertical",
-                  minHeight: 50,
-                }}
               />
             </div>
 
             {message && (
-              <div
-                style={{
-                  padding: "6px 8px",
-                  borderRadius: 4,
-                  marginBottom: 8,
-                  fontSize: 11,
-                  background: message.type === "success" ? "#e8f5e8" : "#ffebee",
-                  color: message.type === "success" ? "#2e7d32" : "#c62828",
-                }}
-              >
-                {message.text}
-              </div>
+              <div className={`message ${message.type}`}>{message.text}</div>
             )}
 
             <button
               type="submit"
               disabled={submitting}
-              style={{
-                width: "100%",
-                background: submitting ? "#ccc" : "#4CAF50",
-                color: "white",
-                border: "none",
-                padding: "8px 12px",
-                borderRadius: 4,
-                cursor: submitting ? "not-allowed" : "pointer",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
+              className="submit-button"
             >
               {submitting ? "Submitting..." : "Submit Report"}
             </button>
@@ -632,58 +594,43 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
 
       {showReports && (
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <strong style={{ fontSize: 13 }}>Recent Price Reports</strong>
+          <div className="price-report-widget-header">
+            <strong>Recent Price Reports</strong>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 setShowReports(false);
               }}
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 16,
-                color: "#666",
-              }}
+              className="close-button"
             >
               ✕
             </button>
           </div>
 
           {recentReports.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#666", padding: "8px 0" }}>
+            <div className="no-reports">
               No price reports yet. Be the first to contribute!
             </div>
           ) : (
-            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+            <div className="reports-list">
               {recentReports.map((report) => (
                 <div
                   key={report.id}
-                  style={{
-                    padding: "6px 8px",
-                    marginBottom: 6,
-                    background: report.is_verified ? "#e8f5e8" : "#f5f5f5",
-                    borderRadius: 4,
-                    border: `1px solid ${report.is_verified ? "#81c784" : "#e0e0e0"}`,
-                    fontSize: 11,
-                  }}
+                  className={`report-item ${report.is_verified ? "verified" : ""}`}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                    <span style={{ fontWeight: 600 }}>
+                  <div className="report-item-header">
+                    <span>
                       {report.fuel_type}: ₱{report.price.toFixed(2)}
                     </span>
                     {report.is_verified && (
-                      <span style={{ color: "#2e7d32", fontSize: 10 }}>✓ Verified</span>
+                      <span className="verified-badge">✓ Verified</span>
                     )}
                   </div>
-                  <div style={{ color: "#666", fontSize: 10 }}>
+                  <div className="report-item-timestamp">
                     {formatDate(report.created_at)}
                   </div>
                   {report.notes && (
-                    <div style={{ marginTop: 2, fontSize: 10, fontStyle: "italic" }}>
-                      "{report.notes}"
-                    </div>
+                    <div className="report-item-notes">"{report.notes}"</div>
                   )}
                 </div>
               ))}
@@ -696,18 +643,7 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
               setShowReports(false);
               setShowForm(true);
             }}
-            style={{
-              width: "100%",
-              background: "#FF9800",
-              color: "white",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-              marginTop: 8,
-            }}
+            className="add-new-report-button"
           >
             + Add New Report
           </button>
@@ -716,6 +652,8 @@ const PriceReportWidget: React.FC<{ stationId: number; stationName: string; avai
     </div>
   );
 };
+
+import "../styles/ImageSlideshow.css";
 
 // ImageSlideshow component
 interface ImageSlideshowProps {
@@ -753,26 +691,11 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
   };
 
   return (
-    <div style={{ marginTop: 12, marginBottom: 8 }}>
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: 200,
-          backgroundColor: "#f5f5f5",
-          borderRadius: 8,
-          overflow: "hidden",
-          border: "1px solid #ddd",
-        }}
-      >
+    <div className="image-slideshow">
+      <div className="image-container">
         <img
           src={getImageUrl(currentImage.url)}
           alt={currentImage.alt_text || currentImage.original_filename}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          }}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = getImageUrl(currentImage.thumbnailUrl);
@@ -781,77 +704,20 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
 
         {images.length > 1 && (
           <>
-            <button
-              onClick={prevImage}
-              style={{
-                position: "absolute",
-                left: 8,
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "rgba(0,0,0,0.5)",
-                color: "white",
-                border: "none",
-                borderRadius: "50%",
-                width: 32,
-                height: 32,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-              }}
-            >
+            <button onClick={prevImage} className="prev-button">
               ←
             </button>
 
-            <button
-              onClick={nextImage}
-              style={{
-                position: "absolute",
-                right: 8,
-                top: "50%",
-                transform: "translateY(-50%)",
-                background: "rgba(0,0,0,0.5)",
-                color: "white",
-                border: "none",
-                borderRadius: "50%",
-                width: 32,
-                height: 32,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 14,
-              }}
-            >
+            <button onClick={nextImage} className="next-button">
               →
             </button>
 
-            <div
-              style={{
-                position: "absolute",
-                bottom: 8,
-                left: "50%",
-                transform: "translateX(-50%)",
-                display: "flex",
-                gap: 4,
-              }}
-            >
+            <div className="dots-container">
               {images.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => goToImage(index)}
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    border: "none",
-                    background:
-                      index === currentIndex
-                        ? "white"
-                        : "rgba(255,255,255,0.5)",
-                    cursor: "pointer",
-                  }}
+                  className={`dot ${index === currentIndex ? "active" : ""}`}
                 />
               ))}
             </div>
@@ -860,14 +726,7 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
       </div>
 
       {images.length > 1 && (
-        <div
-          style={{
-            textAlign: "center",
-            fontSize: 12,
-            color: "#666",
-            marginTop: 4,
-          }}
-        >
+        <div className="image-counter">
           {currentIndex + 1} of {images.length}
         </div>
       )}
@@ -889,17 +748,19 @@ const MainApp: React.FC = () => {
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] =
     useState<boolean>(false);
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
-  
+
   // Trip replay states
   // const [showTripHistory, setShowTripHistory] = useState<boolean>(false);
   // const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
-  
+
   // Donation widget state
   const [showDonations, setShowDonations] = useState<boolean>(false);
-  
+
   // Location tracking states
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
-  const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(Date.now());
+  const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(
+    Date.now(),
+  );
   const [isLocationUpdating, setIsLocationUpdating] = useState<boolean>(false);
   const lastUpdateRef = useRef<number>(0);
   const UPDATE_THROTTLE = 3000; // 3 seconds minimum between position updates
@@ -907,7 +768,7 @@ const MainApp: React.FC = () => {
   // Helper function to format time ago
   const getTimeAgo = (timestamp: number): string => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 10) return 'just now';
+    if (seconds < 10) return "just now";
     if (seconds < 60) return `${seconds}s ago`;
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
@@ -918,10 +779,10 @@ const MainApp: React.FC = () => {
   // Continuous location tracking with watchPosition
   useEffect(() => {
     let watchId: number | null = null;
-    
+
     setLoading(true);
-    console.log('🌍 Starting continuous location tracking...');
-    
+    console.log("🌍 Starting continuous location tracking...");
+
     // Start watching position with high accuracy
     watchId = navigator.geolocation.watchPosition(
       (pos) => {
@@ -930,65 +791,65 @@ const MainApp: React.FC = () => {
           pos.coords.latitude,
           pos.coords.longitude,
         ];
-        
+
         // Smart throttling: only update if enough time passed or moved significantly
         const timeSinceUpdate = now - lastUpdateRef.current;
         let shouldUpdate = timeSinceUpdate >= UPDATE_THROTTLE;
-        
+
         if (position && timeSinceUpdate < UPDATE_THROTTLE) {
           const distanceKm = calculateDistance(
             position[0],
             position[1],
             newPosition[0],
-            newPosition[1]
+            newPosition[1],
           );
           const distanceMeters = distanceKm * 1000;
           // Update if moved more than 20 meters even within throttle period
           shouldUpdate = distanceMeters > 20;
         }
-        
+
         if (!position || shouldUpdate) {
-          console.log('📍 Location updated:', {
+          console.log("📍 Location updated:", {
             lat: newPosition[0].toFixed(6),
             lng: newPosition[1].toFixed(6),
             accuracy: `±${Math.round(pos.coords.accuracy)}m`,
           });
-          
+
           setPosition(newPosition);
           setLocationAccuracy(pos.coords.accuracy);
           setLastLocationUpdate(now);
           lastUpdateRef.current = now;
-          
+
           // Visual feedback
           setIsLocationUpdating(true);
           setTimeout(() => setIsLocationUpdating(false), 600);
         }
-        
+
         setLoading(false);
       },
       (err) => {
         console.warn("Geolocation error:", err.message);
-        
+
         // Only set default location if we don't have a position yet
         if (!position) {
-          console.log('📍 Using default location (Oriental Mindoro)');
+          console.log("📍 Using default location (Oriental Mindoro)");
           setPosition([12.5966, 121.5258]);
         }
-        
+
         setLoading(false);
       },
       {
         enableHighAccuracy: true, // Use GPS for better accuracy
-        maximumAge: 10000,        // Accept cached position up to 10s old
-        timeout: 15000,           // 15 second timeout
-      }
+        maximumAge: 10000, // Accept cached position up to 10s old
+        timeout: 15000, // 15 second timeout
+      },
     );
-    
+
     // Cleanup: stop watching position when component unmounts
     return () => {
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
-        console.log('🛑 Stopped location tracking');
+        console.log("🛑 Stopped location tracking");
       }
     };
   }, []); // Only run once on mount, but sets up continuous watching
@@ -1037,8 +898,8 @@ const MainApp: React.FC = () => {
   // Initialize user activity tracking
   useEffect(() => {
     // Start tracking when component mounts
-    userTracking.startTracking('main');
-    
+    userTracking.startTracking("main");
+
     // Stop tracking when component unmounts
     return () => {
       userTracking.stopTracking();
@@ -1049,12 +910,13 @@ const MainApp: React.FC = () => {
   const filteredStations = stations.filter((station) => {
     const matchesBrand =
       selectedBrand === "All" || station.brand === selectedBrand;
-    
+
     // Check if any fuel type matches the price filter
-    const matchesPrice = station.fuel_prices && station.fuel_prices.length > 0
-      ? station.fuel_prices.some(fp => fp.price <= maxPrice)
-      : station.fuel_price <= maxPrice; // Fallback to legacy price
-    
+    const matchesPrice =
+      station.fuel_prices && station.fuel_prices.length > 0
+        ? station.fuel_prices.some((fp) => fp.price <= maxPrice)
+        : station.fuel_price <= maxPrice; // Fallback to legacy price
+
     const matchesSearch =
       searchQuery === "" ||
       (station.name &&
@@ -1104,9 +966,11 @@ const MainApp: React.FC = () => {
     }
 
     const now = new Date();
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    
-    return currentTime >= operatingHours.open && currentTime <= operatingHours.close;
+    const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    return (
+      currentTime >= operatingHours.open && currentTime <= operatingHours.close
+    );
   };
 
   // Route to nearest POI of selected type
@@ -1119,17 +983,19 @@ const MainApp: React.FC = () => {
     if (selectedRouteType === "gas") {
       locations = filteredStations;
     } else {
-      locations = pois.filter(poi => poi.type === selectedRouteType);
+      locations = pois.filter((poi) => poi.type === selectedRouteType);
     }
 
     if (locations.length === 0) {
-      alert(`No ${selectedRouteType === "gas" ? "gas stations" : selectedRouteType.replace("_", " ")} found in the area.`);
+      alert(
+        `No ${selectedRouteType === "gas" ? "gas stations" : selectedRouteType.replace("_", " ")} found in the area.`,
+      );
       return;
     }
 
     // Sort by distance and check open status
     const sortedLocations = [...locations]
-      .map(loc => ({
+      .map((loc) => ({
         location: loc,
         distance: calculateDistance(
           position[0],
@@ -1137,15 +1003,15 @@ const MainApp: React.FC = () => {
           loc.location.lat,
           loc.location.lng,
         ),
-        isOpen: isLocationOpen(loc.operating_hours)
+        isOpen: isLocationOpen(loc.operating_hours),
       }))
       .sort((a, b) => a.distance - b.distance);
 
     // Find the first open location and count skipped closed ones
     let targetLocation = null;
     let targetIndex = -1;
-    let skippedClosed: Array<{name: string, distance: number}> = [];
-    
+    let skippedClosed: Array<{ name: string; distance: number }> = [];
+
     for (let i = 0; i < sortedLocations.length; i++) {
       const item = sortedLocations[i];
       if (item.isOpen) {
@@ -1155,7 +1021,7 @@ const MainApp: React.FC = () => {
       } else {
         skippedClosed.push({
           name: item.location.name,
-          distance: item.distance
+          distance: item.distance,
         });
       }
     }
@@ -1163,11 +1029,19 @@ const MainApp: React.FC = () => {
     // Provide detailed feedback about the routing decision
     if (!targetLocation && sortedLocations.length > 0) {
       targetLocation = sortedLocations[0].location;
-      alert(`⚠️ All ${sortedLocations.length} nearby locations appear to be closed.\n\nRouting to: ${targetLocation.name} (${sortedLocations[0].distance.toFixed(1)}km)`);
+      alert(
+        `⚠️ All ${sortedLocations.length} nearby locations appear to be closed.\n\nRouting to: ${targetLocation.name} (${sortedLocations[0].distance.toFixed(1)}km)`,
+      );
     } else if (targetLocation && skippedClosed.length > 0) {
-      const skippedNames = skippedClosed.slice(0, 2).map(s => `${s.name} (${s.distance.toFixed(1)}km)`).join(", ");
-      const moreText = skippedClosed.length > 2 ? ` and ${skippedClosed.length - 2} more` : "";
-      alert(`ℹ️ Skipping ${skippedClosed.length} closed location${skippedClosed.length > 1 ? 's' : ''}:\n${skippedNames}${moreText}\n\nRouting to: ${targetLocation.name} (${sortedLocations[targetIndex].distance.toFixed(1)}km)`);
+      const skippedNames = skippedClosed
+        .slice(0, 2)
+        .map((s) => `${s.name} (${s.distance.toFixed(1)}km)`)
+        .join(", ");
+      const moreText =
+        skippedClosed.length > 2 ? ` and ${skippedClosed.length - 2} more` : "";
+      alert(
+        `ℹ️ Skipping ${skippedClosed.length} closed location${skippedClosed.length > 1 ? "s" : ""}:\n${skippedNames}${moreText}\n\nRouting to: ${targetLocation.name} (${sortedLocations[targetIndex].distance.toFixed(1)}km)`,
+      );
     }
 
     if (targetLocation) {
@@ -1197,113 +1071,33 @@ const MainApp: React.FC = () => {
     );
   }
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 600;
+  const isMobile = typeof window !== "undefined" && window.innerWidth <= 600;
 
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
       {/* Header */}
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 1000,
-          display: "flex",
-          gap: 10,
-          alignItems: "center",
-          background: "rgba(255,255,255,0.95)",
-          padding: isMobile ? "8px 12px" : "10px 15px",
-          borderRadius: 8,
-          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-          maxWidth: "calc(100vw - 20px)",
-          width: "auto",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flex: 1,
-          }}
-        >
-          <img 
-            src="/logo.jpeg" 
-            alt="Fuel Finder Logo" 
-            style={{
-              height: isMobile ? "36px" : "48px",
-              width: "auto",
-            }}
+      <div className="main-header">
+        <div className="main-header-content">
+          <img
+            src="/logo.jpeg"
+            alt="Fuel Finder Logo"
+            className="main-header-logo"
           />
-          <h1
-            style={{
-              margin: 0,
-              fontSize: isMobile ? "16px" : "20px",
-              fontWeight: 700,
-              color: "#333",
-            }}
-          >
-            Fuel Finder
-          </h1>
+          <h1 className="main-header-title">Fuel Finder</h1>
         </div>
-        
-        {/* Trip History Button - Commented out */}
-        {/*
-        <button
-          onClick={() => setShowTripHistory(!showTripHistory)}
-          style={{
-            background: showTripHistory ? '#667eea' : 'white',
-            color: showTripHistory ? 'white' : '#667eea',
-            border: '2px solid #667eea',
-            padding: isMobile ? '6px 10px' : '8px 16px',
-            borderRadius: 6,
-            cursor: 'pointer',
-            fontSize: isMobile ? '12px' : '14px',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            transition: 'all 0.2s',
-          }}
-        >
-          📍 Trip History
-        </button>
-        */}
       </div>
 
       {/* Location Accuracy Indicator */}
       {locationAccuracy !== null && (
-        <div
-          style={{
-            position: "absolute",
-            top: 80,
-            left: 10,
-            background: "rgba(255, 255, 255, 0.95)",
-            padding: "8px 12px",
-            borderRadius: 8,
-            fontSize: 11,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            zIndex: 1000,
-            border: `2px solid ${locationAccuracy < 20 ? '#4CAF50' : locationAccuracy < 50 ? '#FF9800' : '#F44336'}`,
-            minWidth: 140,
-          }}
-        >
-          <div style={{ fontWeight: 600, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ 
-              display: 'inline-block', 
-              width: 8, 
-              height: 8, 
-              borderRadius: '50%', 
-              background: locationAccuracy < 20 ? '#4CAF50' : locationAccuracy < 50 ? '#FF9800' : '#F44336',
-              animation: isLocationUpdating ? 'pulse 0.6s ease-out' : 'none',
-            }} />
+        <div className="location-accuracy-indicator">
+          <div className="location-accuracy-header">
+            <span className="location-accuracy-dot" />
             GPS Accuracy
           </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#333' }}>
+          <div className="location-accuracy-value">
             ±{Math.round(locationAccuracy)}m
           </div>
-          <div style={{ fontSize: 9, color: '#666', marginTop: 2 }}>
+          <div className="location-accuracy-timestamp">
             Updated {getTimeAgo(lastLocationUpdate)}
           </div>
         </div>
@@ -1324,7 +1118,7 @@ const MainApp: React.FC = () => {
               crossOrigin="anonymous"
             />
           </LayersControl.BaseLayer>
-          
+
           <LayersControl.BaseLayer name="Satellite">
             <TileLayer
               url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -1348,10 +1142,7 @@ const MainApp: React.FC = () => {
         />
 
         {/* User location */}
-        <Marker 
-          position={position} 
-          icon={DefaultIcon}
-        >
+        <Marker position={position} icon={DefaultIcon}>
           <Popup>
             <div>
               <b>📍 Your Location</b>
@@ -1362,7 +1153,14 @@ const MainApp: React.FC = () => {
                 {position[0].toFixed(6)}, {position[1].toFixed(6)}
               </div>
               {locationAccuracy && (
-                <div style={{ marginTop: 4, fontSize: 10, color: "#666", fontWeight: 600 }}>
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontSize: 10,
+                    color: "#666",
+                    fontWeight: 600,
+                  }}
+                >
                   Accuracy: ±{Math.round(locationAccuracy)}m
                 </div>
               )}
@@ -1424,7 +1222,7 @@ const MainApp: React.FC = () => {
           const proximity = Math.min(1, distance / 5); // 0-1 scale based on 5km max
 
           const isOpen = isLocationOpen(station.operating_hours);
-          
+
           return (
             <Marker
               key={`station-${station.id}`}
@@ -1481,10 +1279,24 @@ const MainApp: React.FC = () => {
                     {station.fuel_prices && station.fuel_prices.length > 0 ? (
                       <div style={{ marginLeft: 8, marginTop: 4 }}>
                         {station.fuel_prices.map((fp) => (
-                          <div key={fp.fuel_type} style={{ fontSize: 12, marginBottom: 2 }}>
-                            <span style={{ fontWeight: 500 }}>{fp.fuel_type}:</span> ₱{fp.price.toFixed(2)}/L
-                            {fp.price_updated_by === 'community' && (
-                              <span style={{ fontSize: 10, color: '#666', marginLeft: 4 }}>(community)</span>
+                          <div
+                            key={fp.fuel_type}
+                            style={{ fontSize: 12, marginBottom: 2 }}
+                          >
+                            <span style={{ fontWeight: 500 }}>
+                              {fp.fuel_type}:
+                            </span>{" "}
+                            ₱{fp.price.toFixed(2)}/L
+                            {fp.price_updated_by === "community" && (
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  color: "#666",
+                                  marginLeft: 4,
+                                }}
+                              >
+                                (community)
+                              </span>
                             )}
                           </div>
                         ))}
@@ -1512,8 +1324,11 @@ const MainApp: React.FC = () => {
                     </div>
                   )}
                   {station.operating_hours && (
-                    <div style={{ marginBottom: 8, fontSize: 12, color: "#666" }}>
-                      <strong>🕐 Hours:</strong> {station.operating_hours.open} - {station.operating_hours.close}
+                    <div
+                      style={{ marginBottom: 8, fontSize: 12, color: "#666" }}
+                    >
+                      <strong>🕐 Hours:</strong> {station.operating_hours.open}{" "}
+                      - {station.operating_hours.close}
                     </div>
                   )}
 
@@ -1586,9 +1401,15 @@ const MainApp: React.FC = () => {
                   <PriceReportWidget
                     stationId={station.id}
                     stationName={station.name}
-                    availableFuelTypes={station.fuel_prices && station.fuel_prices.length > 0
-                      ? Array.from(new Set(station.fuel_prices.map(fp => fp.fuel_type)))
-                      : ["Regular", "Premium", "Diesel"]}
+                    availableFuelTypes={
+                      station.fuel_prices && station.fuel_prices.length > 0
+                        ? Array.from(
+                            new Set(
+                              station.fuel_prices.map((fp) => fp.fuel_type),
+                            ),
+                          )
+                        : ["Regular", "Premium", "Diesel"]
+                    }
                   />
                 </div>
               </Popup>
@@ -1731,46 +1552,11 @@ const MainApp: React.FC = () => {
       </MapContainer>
 
       {/* Search Controls */}
-      <div
-        style={{
-          position: "absolute",
-          top: 80,
-          left: 10,
-          background: "rgba(255,255,255,0.95)",
-          padding: "10px",
-          borderRadius: 6,
-          boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
-          zIndex: 1100,
-          width: isSearchPanelCollapsed ? 150 : 240,
-          maxHeight: "calc(100vh - 100px)",
-          overflowY: "auto",
-          fontSize: "13px",
-          // Mobile optimizations
-          maxWidth: window.innerWidth <= 480 ? "calc(100vw - 20px)" : "none",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 10,
-          }}
-        >
-          <h3 style={{ margin: 0, color: "#333", fontSize: "14px" }}>🔍 Filter</h3>
+      <div className="search-controls">
+        <div className="search-controls-header">
+          <h3>🔍 Filter</h3>
           <button
             onClick={() => setIsSearchPanelCollapsed(!isSearchPanelCollapsed)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: "14px",
-              padding: "2px",
-              borderRadius: 4,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
             title={isSearchPanelCollapsed ? "Expand panel" : "Collapse panel"}
           >
             {isSearchPanelCollapsed ? "⬇️" : "⬆️"}
@@ -1780,29 +1566,18 @@ const MainApp: React.FC = () => {
         {!isSearchPanelCollapsed && (
           <>
             {/* Search bar */}
-            <div style={{ marginBottom: 10 }}>
+            <div className="search-bar">
               <input
                 type="text"
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "6px 8px",
-                  border: "1px solid #ddd",
-                  borderRadius: 4,
-                  fontSize: "12px",
-                }}
               />
             </div>
 
             {/* Search radius */}
-            <div style={{ marginBottom: 10 }}>
-              <label
-                style={{ display: "block", marginBottom: 3, fontWeight: 600, fontSize: "12px" }}
-              >
-                Radius: {(radiusMeters / 1000).toFixed(1)} km
-              </label>
+            <div className="search-radius">
+              <label>Radius: {(radiusMeters / 1000).toFixed(1)} km</label>
               <input
                 type="range"
                 min={500}
@@ -1810,27 +1585,15 @@ const MainApp: React.FC = () => {
                 step={500}
                 value={radiusMeters}
                 onChange={(e) => setRadiusMeters(Number(e.target.value))}
-                style={{ width: "100%" }}
               />
             </div>
 
             {/* Brand filter */}
-            <div style={{ marginBottom: 10 }}>
-              <label
-                style={{ display: "block", marginBottom: 3, fontWeight: 600, fontSize: "12px" }}
-              >
-                Brand
-              </label>
+            <div className="brand-filter">
+              <label>Brand</label>
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "6px 8px",
-                  border: "1px solid #ddd",
-                  borderRadius: 4,
-                  fontSize: "12px",
-                }}
               >
                 <option value="All">All Brands</option>
                 {uniqueBrands.map((brand) => (
@@ -1842,12 +1605,8 @@ const MainApp: React.FC = () => {
             </div>
 
             {/* Price filter */}
-            <div style={{ marginBottom: 10 }}>
-              <label
-                style={{ display: "block", marginBottom: 3, fontWeight: 600, fontSize: "12px" }}
-              >
-                Max: ₱{maxPrice}/L
-              </label>
+            <div className="price-filter">
+              <label>Max: ₱{maxPrice}/L</label>
               <input
                 type="range"
                 min={50}
@@ -1855,43 +1614,22 @@ const MainApp: React.FC = () => {
                 step={1}
                 value={maxPrice}
                 onChange={(e) => setMaxPrice(Number(e.target.value))}
-                style={{ width: "100%" }}
               />
             </div>
 
             {/* Results summary */}
-            <div
-              style={{
-                background: "#f5f5f5",
-                padding: "8px",
-                borderRadius: 4,
-                fontSize: 11,
-                color: "#666",
-              }}
-            >
-              <div style={{ fontWeight: 600, marginBottom: 2, fontSize: "12px" }}>📊 Results</div>
+            <div className="results-summary">
+              <div className="results-summary-header">📊 Results</div>
               <div>⛽ {filteredStations.length} stations</div>
               <div>📍 {pois.length} POIs</div>
             </div>
 
             {/* Route to Nearest POI Section */}
-            <div style={{ marginTop: 10 }}>
-              <label
-                style={{ display: "block", marginBottom: 5, fontWeight: 600, fontSize: "12px" }}
-              >
-                🧭 Route To
-              </label>
+            <div className="route-to-nearest">
+              <label>🧭 Route To</label>
               <select
                 value={selectedRouteType}
                 onChange={(e) => setSelectedRouteType(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #ddd",
-                  borderRadius: 4,
-                  fontSize: "12px",
-                  marginBottom: 8,
-                }}
               >
                 <option value="gas">⛽ Gas Station</option>
                 <option value="convenience">🏪 Convenience Store</option>
@@ -1899,33 +1637,7 @@ const MainApp: React.FC = () => {
                 <option value="car_wash">🚗 Car Wash</option>
                 <option value="motor_shop">🏍️ Motor Shop</option>
               </select>
-              <button
-                onClick={routeToNearestPOI}
-                disabled={loading}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  background: "#4CAF50",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 4,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  opacity: loading ? 0.7 : 1,
-                  transition: "all 0.2s ease",
-                }}
-                onMouseOver={(e) => {
-                  if (!loading) {
-                    e.currentTarget.style.background = "#45a049";
-                  }
-                }}
-                onMouseOut={(e) => {
-                  if (!loading) {
-                    e.currentTarget.style.background = "#4CAF50";
-                  }
-                }}
-              >
+              <button onClick={routeToNearestPOI} disabled={loading}>
                 🚗 Go to Nearest
               </button>
             </div>
@@ -1934,16 +1646,10 @@ const MainApp: React.FC = () => {
 
         {/* Collapsed view summary */}
         {isSearchPanelCollapsed && (
-          <div
-            style={{
-              fontSize: 12,
-              color: "#666",
-              textAlign: "center",
-            }}
-          >
+          <div className="collapsed-summary">
             <div>⛽ {filteredStations.length} stations</div>
             <div>📍 {pois.length} POIs</div>
-            <div style={{ fontSize: 10, marginTop: 4 }}>
+            <div>
               {(radiusMeters / 1000).toFixed(1)}km • {selectedBrand} • ₱
               {maxPrice}/L
             </div>
@@ -2007,35 +1713,10 @@ const MainApp: React.FC = () => {
       <PWAInstallButton />
 
       {/* Floating Donation Button */}
+
       <button
         onClick={() => setShowDonations(true)}
-        style={{
-          position: "fixed",
-          bottom: 24,
-          left: 24,
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          color: "white",
-          border: "none",
-          padding: "14px 24px",
-          borderRadius: 50,
-          fontSize: 15,
-          fontWeight: 600,
-          cursor: "pointer",
-          boxShadow: "0 4px 20px rgba(102, 126, 234, 0.4)",
-          zIndex: 999,
-          transition: "all 0.3s ease",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.transform = "translateY(-4px)";
-          e.currentTarget.style.boxShadow = "0 8px 28px rgba(102, 126, 234, 0.5)";
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 4px 20px rgba(102, 126, 234, 0.4)";
-        }}
+        className="donation-button"
       >
         💝 Support Community
       </button>
@@ -2044,7 +1725,6 @@ const MainApp: React.FC = () => {
       {showDonations && (
         <DonationWidget onClose={() => setShowDonations(false)} />
       )}
-
     </div>
   );
 };
