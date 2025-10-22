@@ -739,6 +739,23 @@ async function getPriceReportStats(stationId) {
 // ADMIN PRICE REPORT MANAGEMENT FUNCTIONS
 // ============================================================================
 
+// Get price report trends for charting
+async function getPriceReportTrends(days = 30) {
+  const query = `
+    SELECT
+      DATE_TRUNC('day', created_at) as report_date,
+      fuel_type,
+      AVG(price) as average_price
+    FROM fuel_price_reports
+    WHERE created_at >= NOW() - INTERVAL '1 day' * $1
+    GROUP BY report_date, fuel_type
+    ORDER BY report_date, fuel_type;
+  `;
+
+  const result = await pool.query(query, [days]);
+  return result.rows;
+}
+
 // Get all pending (unverified) price reports with station details
 async function getAllPendingPriceReports(limit = 50, offset = 0) {
   const query = `
@@ -1228,6 +1245,7 @@ module.exports = {
   getAllPriceReportsAdmin,
   deletePriceReport,
   getPriceReportingStats,
+  getPriceReportTrends,
   getDatabaseStats,
   // Fuel Prices Management
   getStationFuelPrices,
