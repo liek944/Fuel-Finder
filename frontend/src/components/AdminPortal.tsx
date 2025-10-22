@@ -17,7 +17,7 @@ import {
   apiPostBase64Images,
   getImageUrl,
 } from "../utils/api";
-import PriceReportsManagement from "./PriceReportsManagement";
+import { PriceReportsManagement } from "./PriceReportsManagement";
 import UserAnalytics from "./UserAnalytics";
 import "../styles/AdminPortal.css";
 
@@ -385,13 +385,9 @@ interface ImageSlideshowProps {
     thumbnailUrl: string;
     alt_text?: string;
   }>;
-  entityId: string;
 }
 
-const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
-  images,
-  entityId,
-}) => {
+const ImageSlideshow: React.FC<ImageSlideshowProps> = ({ images }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   if (!images || images.length === 0) return null;
@@ -565,8 +561,9 @@ const AdminPortal: React.FC = () => {
   const [manualLat, setManualLat] = useState<string>("");
   const [manualLng, setManualLng] = useState<string>("");
   const [manualCoords, setManualCoords] = useState<string>(""); // Single field for coordinates
-  const [coordinateSource, setCoordinateSource] = useState<"map" | "manual">
-    ("map");
+  const [coordinateSource, setCoordinateSource] = useState<"map" | "manual">(
+    "map",
+  );
 
   const [position, setPosition] = useState<[number, number] | null>(null);
 
@@ -946,9 +943,7 @@ const AdminPortal: React.FC = () => {
     // Check if using single coordinate field
     if (manualCoords.trim()) {
       // Parse single coordinate input (e.g., "12.5966, 121.5258" or "12.5966,121.5258")
-      const coords = manualCoords.trim().replace(/[
-
-	 ]+/g, "").split(",");
+      const coords = manualCoords.trim().replace(/\s+/g, "").split(",");
 
       if (coords.length !== 2) {
         alert(
@@ -1351,11 +1346,7 @@ const AdminPortal: React.FC = () => {
   };
 
   if (!position) {
-    return (
-      <div className="loading-container">
-        Loading admin portal...
-      </div>
-    );
+    return <div className="loading-container">Loading admin portal...</div>;
   }
 
   return (
@@ -1366,7 +1357,11 @@ const AdminPortal: React.FC = () => {
           ← Back to Map
         </a>
         <div className="admin-portal-header">
-          <img src="/logo.jpeg" alt="Fuel Finder Logo" className="admin-portal-logo" />
+          <img
+            src="/logo.jpeg"
+            alt="Fuel Finder Logo"
+            className="admin-portal-logo"
+          />
           <h1 className="admin-portal-title">Admin Portal</h1>
         </div>
 
@@ -1375,22 +1370,27 @@ const AdminPortal: React.FC = () => {
           <div className="view-switcher">
             <button
               onClick={() => setCurrentAdminView("map")}
-              className={`view-switcher-button ${currentAdminView === "map" ? "active" : ""}`}>
+              className={`view-switcher-button ${currentAdminView === "map" ? "active" : ""}`}
+            >
               🗺️ Map View
             </button>
             <button
               onClick={() => setCurrentAdminView("price-reports")}
-              className={`view-switcher-button ${currentAdminView === "price-reports" ? "active" : ""}`}>
+              className={`view-switcher-button ${currentAdminView === "price-reports" ? "active" : ""}`}
+            >
               💰 Price Reports
             </button>
             <button
               onClick={() => setCurrentAdminView("user-analytics")}
-              className={`view-switcher-button ${currentAdminView === "user-analytics" ? "active" : ""}`}>
+              className={`view-switcher-button ${currentAdminView === "user-analytics" ? "active" : ""}`}
+            >
               👥 User Analytics
             </button>
           </div>
         )}
-        <div className={`admin-status ${isAdminEnabled ? "enabled" : "disabled"}`}>
+        <div
+          className={`admin-status ${isAdminEnabled ? "enabled" : "disabled"}`}
+        >
           {isAdminEnabled ? "✅ Admin Enabled" : "❌ Admin Disabled"}
         </div>
       </div>
@@ -1686,8 +1686,7 @@ const AdminPortal: React.FC = () => {
                                   setEditFormData({
                                     ...editFormData,
                                     operating_hours: {
-                                      open:
-                                        editPrevOpenRef.current || "08:00",
+                                      open: editPrevOpenRef.current || "08:00",
                                       close:
                                         editPrevCloseRef.current || "20:00",
                                     },
@@ -1948,10 +1947,7 @@ const AdminPortal: React.FC = () => {
 
                         {/* Station Images */}
                         {station.images && station.images.length > 0 && (
-                          <ImageSlideshow
-                            images={station.images}
-                            entityId={`station-${station.id}`}
-                          />
+                          <ImageSlideshow images={station.images} />
                         )}
                       </>
                     )}
@@ -2458,10 +2454,7 @@ const AdminPortal: React.FC = () => {
 
                         {/* POI Images */}
                         {poi.images && poi.images.length > 0 && (
-                          <ImageSlideshow
-                            images={poi.images}
-                            entityId={`poi-${poi.id}`}
-                          />
+                          <ImageSlideshow images={poi.images} />
                         )}
                       </>
                     )}
@@ -2673,8 +2666,8 @@ const AdminPortal: React.FC = () => {
               {adminValidating
                 ? "🔄 Validating API key..."
                 : isAdminEnabled
-                ? "✅ Admin features are now active"
-                : "❌ Enter API key to enable admin features"}
+                  ? "✅ Admin features are now active"
+                  : "❌ Enter API key to enable admin features"}
             </div>
           </div>
 
@@ -3750,8 +3743,8 @@ const AdminPortal: React.FC = () => {
                 {formSubmitting
                   ? "⏳ Adding POI..."
                   : uploadingImages
-                  ? "📷 Uploading Images..."
-                  : "✅ Add POI"}
+                    ? "📷 Uploading Images..."
+                    : "✅ Add POI"}
               </button>
             </div>
           </div>
