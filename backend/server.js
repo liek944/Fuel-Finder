@@ -81,6 +81,9 @@ const {
 // Import user activity tracker
 const userActivityTracker = require("./services/userActivityTracker");
 
+// Import payment service for donations
+const paymentService = require("./services/paymentService");
+
 // Import modular middleware
 const rateLimit = require("./middleware/rateLimiter");
 const requestDeduplication = require("./middleware/deduplication");
@@ -1143,6 +1146,432 @@ app.delete("/api/stations/:id/fuel-prices/:fuel_type", rateLimit, async (req, re
   } catch (err) {
     console.error("Error deleting fuel price:", err);
     res.status(500).json({ error: "Failed to delete fuel price" });
+  }
+});
+
+// ============================================================================
+// DONATION ENDPOINTS
+// ============================================================================
+
+// Create donation and generate payment link
+app.post("/api/donations/create", rateLimit, async (req, res) => {
+  try {
+    const { amount, donor_name, donor_email, cause, notes } = req.body;
+
+    // Validate amount
+    if (!amount || isNaN(amount) || amount < 10 || amount > 10000) {
+      return res.status(400).json({
+        error: "Invalid amount",
+        message: "Amount must be between ₱10 and ₱10,000",
+      });
+    }
+
+    // Validate cause
+    const validCauses = ["ambulance", "public_transport", "emergency", "general"];
+    const selectedCause = cause || "general";
+    if (!validCauses.includes(selectedCause)) {
+      return res.status(400).json({
+        error: "Invalid cause",
+        message: `Cause must be one of: ${validCauses.join(", ")}`,
+      });
+    }
+
+    // Check if PayMongo is configured
+    if (!paymentService.isConfigured()) {
+      return res.status(503).json({
+        error: "Payment system not configured",
+        message: "Donation feature is temporarily unavailable. Please contact support.",
+      });
+    }
+
+    // Create payment link with PayMongo
+    const paymentLink = await paymentService.createPaymentLink(
+      amount,
+      `Fuel Finder Donation - ${selectedCause.replace("_", " ").toUpperCase()}`,
+      {
+        remarks: notes || `Donation for ${selectedCause}`,
+        donor_name: donor_name || "Anonymous",
+        cause: selectedCause,
+      }
+    );
+
+    // Save donation to database
+    const donorIdentifier = req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress || "unknown";
+
+    const donation = await createDonation({
+      amount,
+      donor_name: donor_name || "Anonymous",
+      donor_email,
+      donor_identifier: donorIdentifier,
+      payment_intent_id: paymentLink.id,
+      status: "pending",
+      cause: selectedCause,
+      notes,
+    });
+
+    console.log(`💝 Donation created: ₱${amount} for ${selectedCause} (ID: ${donation.id})`);
+
+    res.json({
+      success: true,
+      donation_id: donation.id,
+      payment_url: paymentLink.attributes.checkout_url,
+      reference_number: paymentLink.attributes.reference_number,
+      expires_at: paymentLink.attributes.archived_at,
+    });
+  } catch (error) {
+    console.error("❌ Create donation error:", error);
+    res.status(500).json({ error: "Failed to create donation", message: error.message });
+  }
+});
+
+// Get donation statistics (public)
+app.get("/api/donations/stats", async (req, res) => {
+  try {
+    const stats = await getDonationStats();
+    res.json(stats);
+  } catch (error) {
+    console.error("❌ Get donation stats error:", error);
+    res.status(500).json({ error: "Failed to get donation statistics", message: error.message });
+  }
+});
+
+// Get recent donations (public, anonymized)
+app.get("/api/donations/recent", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const donations = await getRecentDonations(limit);
+    res.json(donations);
+  } catch (error) {
+    console.error("❌ Get recent donations error:", error);
+    res.status(500).json({ error: "Failed to get recent donations", message: error.message });
+  }
+});
+
+// Get donation statistics by cause (public)
+app.get("/api/donations/stats/by-cause", async (req, res) => {
+  try {
+    const stats = await getDonationStatsByCause();
+    res.json(stats);
+  } catch (error) {
+    console.error("❌ Get donation stats by cause error:", error);
+    res.status(500).json({ error: "Failed to get donation statistics by cause", message: error.message });
+  }
+});
+
+// Get donation leaderboard (public)
+app.get("/api/donations/leaderboard", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const leaderboard = await getDonationLeaderboard(limit);
+    res.json(leaderboard);
+  } catch (error) {
+    console.error("❌ Get donation leaderboard error:", error);
+    res.status(500).json({ error: "Failed to get donation leaderboard", message: error.message });
+  }
+});
+
+// PayMongo webhook endpoint
+app.post("/api/webhooks/paymongo", express.json(), async (req, res) => {
+  try {
+    const signature = req.headers["paymongo-signature"];
+
+    console.log("📬 Webhook received from PayMongo");
+    console.log("   - Signature present:", !!signature);
+    console.log("   - Event type:", req.body?.data?.attributes?.type);
+
+    // Parse the event (body is already JSON parsed by express.json())
+    const event = req.body;
+
+    if (!event || !event.data) {
+      console.error("❌ Invalid webhook payload structure");
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+
+    const parsedEvent = paymentService.parseWebhookEvent(event);
+    console.log(`📬 Webhook received: ${parsedEvent.type}`);
+
+    // Handle link.payment.paid event (for payment links)
+    if (parsedEvent.type === "link.payment.paid") {
+      const paymentIntentId = parsedEvent.id;
+      const paymentMethod = parsedEvent.attributes.type || "unknown";
+
+      const updated = await updateDonationStatus(paymentIntentId, "succeeded", paymentMethod);
+
+      if (updated) {
+        console.log(`✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`);
+      } else {
+        console.warn(`⚠️  Payment succeeded but donation not found: ${paymentIntentId}`);
+      }
+    }
+
+    // Handle payment.paid event (for payment intents)
+    if (parsedEvent.type === "payment.paid") {
+      const paymentIntentId = parsedEvent.attributes.source?.id || parsedEvent.id;
+      const paymentMethod = parsedEvent.attributes.source?.type || "unknown";
+
+      const updated = await updateDonationStatus(paymentIntentId, "succeeded", paymentMethod);
+
+      if (updated) {
+        console.log(`✅ Donation payment succeeded: ${paymentIntentId} (₱${updated.amount})`);
+      }
+    }
+
+    // Handle payment.failed event
+    if (parsedEvent.type === "payment.failed" || parsedEvent.type === "link.payment.failed") {
+      const paymentIntentId = parsedEvent.id;
+      const updated = await updateDonationStatus(paymentIntentId, "failed");
+
+      if (updated) {
+        console.log(`❌ Donation payment failed: ${paymentIntentId}`);
+      }
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error("❌ Webhook error:", error);
+    res.status(500).json({ error: "Webhook processing failed" });
+  }
+});
+
+// Admin: Get all donations with filters (protected)
+app.get("/api/admin/donations", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+
+    const filters = {
+      status: req.query.status,
+      cause: req.query.cause,
+      start_date: req.query.start_date,
+      end_date: req.query.end_date,
+      limit: req.query.limit ? parseInt(req.query.limit) : 100,
+    };
+
+    const donations = await getAllDonationsAdmin(filters);
+    res.json(donations);
+  } catch (error) {
+    console.error("❌ Get all donations error:", error);
+    res.status(500).json({ error: "Failed to get donations", message: error.message });
+  }
+});
+
+// Admin: Update donation impact metrics (protected)
+app.patch("/api/admin/donations/impact/:cause", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+
+    const cause = req.params.cause;
+    const metrics = req.body.metrics;
+
+    if (!metrics) {
+      return res.status(400).json({ error: "Metrics object required" });
+    }
+
+    const updated = await updateDonationImpact(cause, metrics);
+
+    if (!updated) {
+      return res.status(404).json({ error: "Cause not found" });
+    }
+
+    console.log(`📊 Impact metrics updated for ${cause}`);
+    res.json(updated);
+  } catch (error) {
+    console.error("❌ Update donation impact error:", error);
+    res.status(500).json({ error: "Failed to update donation impact", message: error.message });
+  }
+});
+
+// Admin: Manually update donation status (for testing without webhooks)
+app.patch("/api/admin/donations/:id/status", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+
+    const donationId = parseInt(req.params.id);
+    const { status, payment_method } = req.body;
+
+    if (!status || !["pending", "succeeded", "failed", "refunded"].includes(status)) {
+      return res.status(400).json({
+        error: "Valid status required (pending, succeeded, failed, refunded)",
+      });
+    }
+
+    // Get donation first
+    const checkQuery = "SELECT * FROM donations WHERE id = $1";
+    const checkResult = await pool.query(checkQuery, [donationId]);
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: "Donation not found" });
+    }
+
+    const donation = checkResult.rows[0];
+
+    // Update using the payment_intent_id (for trigger to work)
+    const updated = await updateDonationStatus(
+      donation.payment_intent_id,
+      status,
+      payment_method || donation.payment_method || "manual"
+    );
+
+    if (!updated) {
+      return res.status(404).json({ error: "Failed to update donation" });
+    }
+
+    console.log(`💰 Donation ${donationId} status updated to ${status} by admin`);
+    res.json({
+      success: true,
+      donation: updated,
+      message: `Donation status updated to ${status}`,
+    });
+  } catch (error) {
+    console.error("❌ Update donation status error:", error);
+    res.status(500).json({ error: "Failed to update donation status", message: error.message });
+  }
+});
+
+// ============================================================================
+// USER ACTIVITY TRACKING
+// ============================================================================
+
+// Heartbeat endpoint for tracking active users (public, no auth required)
+app.post("/api/user/heartbeat", async (req, res) => {
+  try {
+    const { sessionId, location, page, feature } = req.body;
+
+    // Extract user agent
+    const userAgent = req.headers["user-agent"];
+
+    // Record activity
+    const result = userActivityTracker.recordActivity({
+      sessionId,
+      location,
+      userAgent,
+      page,
+      feature,
+    });
+
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json({
+      success: true,
+      message: "Activity recorded",
+      activeUsers: userActivityTracker.getActiveUserCount(),
+    });
+  } catch (error) {
+    console.error("❌ Heartbeat error:", error);
+    res.status(500).json({ error: "Failed to record activity", message: error.message });
+  }
+});
+
+// Get active user statistics (admin only)
+app.get("/api/admin/users/stats", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+
+    const stats = userActivityTracker.getStatistics();
+
+    res.json({
+      success: true,
+      stats,
+    });
+  } catch (error) {
+    console.error("❌ User stats error:", error);
+    res.status(500).json({ error: "Failed to get user statistics", message: error.message });
+  }
+});
+
+// Get active users list (admin only)
+app.get("/api/admin/users/active", async (req, res) => {
+  try {
+    // Check API key
+    if (ADMIN_API_KEY && req.headers["x-api-key"] !== ADMIN_API_KEY) {
+      return res.status(401).json({ error: "Unauthorized - Invalid API key" });
+    }
+
+    const activeUsers = userActivityTracker.getActiveUsers();
+
+    res.json({
+      success: true,
+      count: activeUsers.length,
+      users: activeUsers,
+    });
+  } catch (error) {
+    console.error("❌ Active users error:", error);
+    res.status(500).json({ error: "Failed to get active users", message: error.message });
+  }
+});
+
+// Get active user count (lightweight, public)
+app.get("/api/users/count", async (req, res) => {
+  try {
+    const count = userActivityTracker.getActiveUserCount();
+
+    res.json({
+      success: true,
+      activeUsers: count,
+    });
+  } catch (error) {
+    console.error("❌ User count error:", error);
+    res.status(500).json({ error: "Failed to get user count", message: error.message });
+  }
+});
+
+// ============================================================================
+// DEBUG ENDPOINTS
+// ============================================================================
+
+// Debug endpoint to list uploaded image files
+app.get("/api/debug/images", async (req, res) => {
+  try {
+    const fs = require("fs");
+    const path = require("path");
+    const uploadsDir = path.join(__dirname, "uploads");
+
+    if (!fs.existsSync(uploadsDir)) {
+      return res.json({
+        message: "Uploads directory does not exist",
+        path: uploadsDir,
+        images: [],
+      });
+    }
+
+    const files = fs.readdirSync(uploadsDir);
+    const imageFiles = files.filter(file => {
+      const ext = path.extname(file).toLowerCase();
+      return [".jpg", ".jpeg", ".png", ".gif", ".webp"].includes(ext);
+    });
+
+    const imageDetails = imageFiles.map(file => {
+      const filePath = path.join(uploadsDir, file);
+      const stats = fs.statSync(filePath);
+      return {
+        filename: file,
+        size: stats.size,
+        created: stats.birthtime,
+        modified: stats.mtime,
+      };
+    });
+
+    res.json({
+      uploadsDir,
+      totalImages: imageDetails.length,
+      images: imageDetails,
+    });
+  } catch (error) {
+    console.error("❌ Debug images error:", error);
+    res.status(500).json({ error: "Failed to list images", message: error.message });
   }
 });
 
