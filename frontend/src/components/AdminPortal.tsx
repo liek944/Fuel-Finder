@@ -550,6 +550,7 @@ const AdminPortal: React.FC = () => {
   const [formOpenTime, setFormOpenTime] = useState<string>("08:00");
   const [formCloseTime, setFormCloseTime] = useState<string>("20:00");
   const [open24Hours, setOpen24Hours] = useState<boolean>(false);
+  const [unknownTime, setUnknownTime] = useState<boolean>(false);
   // Preserve previous times when toggling 24h mode
   const prevOpenTimeRef = useRef<string>("08:00");
   const prevCloseTimeRef = useRef<string>("20:00");
@@ -1057,10 +1058,8 @@ const AdminPortal: React.FC = () => {
       services: station.services,
       address: station.address || "",
       phone: station.phone || "",
-      operating_hours: station.operating_hours || {
-        open: "08:00",
-        close: "20:00",
-      },
+      operating_hours: station.operating_hours,
+      unknownTime: !station.operating_hours,
       lat: station.location.lat,
       lng: station.location.lng,
       fuel_prices: (station.fuel_prices || []).map((fp) => ({
@@ -1080,10 +1079,8 @@ const AdminPortal: React.FC = () => {
       type: poi.type,
       address: (poi as any).address || "",
       phone: (poi as any).phone || "",
-      operating_hours: (poi as any).operating_hours || {
-        open: "08:00",
-        close: "20:00",
-      },
+      operating_hours: (poi as any).operating_hours,
+      unknownTime: !(poi as any).operating_hours,
     });
   };
 
@@ -1097,8 +1094,12 @@ const AdminPortal: React.FC = () => {
     setEditSubmitting(true);
     try {
       // Split general fields vs fuel prices
-      const { fuel_prices, _originalFuelTypes, ...general } =
+      const { fuel_prices, _originalFuelTypes, unknownTime, ...general } =
         editFormData || {};
+
+      if (unknownTime) {
+        general.operating_hours = null;
+      }
 
       // 1) Update general station fields
       const res = await apiPut(
@@ -1174,11 +1175,11 @@ const AdminPortal: React.FC = () => {
   const submitEditPoi = async (poiId: number) => {
     setEditSubmitting(true);
     try {
-      const res = await apiPut(
-        `/api/pois/${poiId}`,
-        editFormData,
-        adminApiKey.trim(),
-      );
+      const { unknownTime, ...rest } = editFormData;
+      if (unknownTime) {
+        rest.operating_hours = null;
+      }
+      const res = await apiPut(`/api/pois/${poiId}`, rest, adminApiKey.trim());
 
       if (res.ok) {
         alert("POI updated successfully!");
@@ -1225,11 +1226,8 @@ const AdminPortal: React.FC = () => {
             fuel_type: fp.fuel_type.trim(),
             price: parseFloat(fp.price),
           }));
-        payload.services = formServices;
-        payload.address = formAddress;
-        payload.phone = formPhone;
-        // Add operating hours if both are set
-        if (formOpenTime && formCloseTime) {
+        // Add operating hours if not unknown and both are set
+        if (!unknownTime && formOpenTime && formCloseTime) {
           payload.operating_hours = {
             open: formOpenTime,
             close: formCloseTime,
@@ -1693,19 +1691,22 @@ const AdminPortal: React.FC = () => {
                                 })
                               }
                               disabled={
-                                editFormData?.operating_hours?.open ===
+                                editFormData.unknownTime ||
+                                (editFormData?.operating_hours?.open ===
                                   "00:00" &&
-                                editFormData?.operating_hours?.close === "23:59"
+                                  editFormData?.operating_hours?.close ===
+                                    "23:59")
                               }
                               style={{
                                 flex: 1,
                                 padding: 4,
                                 fontSize: 11,
                                 backgroundColor:
-                                  editFormData?.operating_hours?.open ===
+                                  editFormData.unknownTime ||
+                                  (editFormData?.operating_hours?.open ===
                                     "00:00" &&
-                                  editFormData?.operating_hours?.close ===
-                                    "23:59"
+                                    editFormData?.operating_hours?.close ===
+                                      "23:59")
                                     ? "#f5f5f5"
                                     : undefined,
                               }}
@@ -1726,19 +1727,22 @@ const AdminPortal: React.FC = () => {
                                 })
                               }
                               disabled={
-                                editFormData?.operating_hours?.open ===
+                                editFormData.unknownTime ||
+                                (editFormData?.operating_hours?.open ===
                                   "00:00" &&
-                                editFormData?.operating_hours?.close === "23:59"
+                                  editFormData?.operating_hours?.close ===
+                                    "23:59")
                               }
                               style={{
                                 flex: 1,
                                 padding: 4,
                                 fontSize: 11,
                                 backgroundColor:
-                                  editFormData?.operating_hours?.open ===
+                                  editFormData.unknownTime ||
+                                  (editFormData?.operating_hours?.open ===
                                     "00:00" &&
-                                  editFormData?.operating_hours?.close ===
-                                    "23:59"
+                                    editFormData?.operating_hours?.close ===
+                                      "23:59")
                                     ? "#f5f5f5"
                                     : undefined,
                               }}
@@ -1756,6 +1760,7 @@ const AdminPortal: React.FC = () => {
                             <input
                               type="checkbox"
                               checked={
+                                !editFormData.unknownTime &&
                                 editFormData?.operating_hours?.open ===
                                   "00:00" &&
                                 editFormData?.operating_hours?.close === "23:59"
@@ -1775,6 +1780,7 @@ const AdminPortal: React.FC = () => {
                                       open: "00:00",
                                       close: "23:59",
                                     },
+                                    unknownTime: false,
                                   });
                                 } else {
                                   setEditFormData({
@@ -1787,8 +1793,39 @@ const AdminPortal: React.FC = () => {
                                   });
                                 }
                               }}
+                              disabled={editFormData.unknownTime}
                             />
                             Open 24 hours
+                          </label>
+                          <label
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                              fontSize: 11,
+                              marginTop: 4,
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={editFormData.unknownTime}
+                              onChange={(e) => {
+                                const checked = e.target.checked;
+                                setEditFormData({
+                                  ...editFormData,
+                                  unknownTime: checked,
+                                  operating_hours: checked
+                                    ? null
+                                    : {
+                                        open:
+                                          editPrevOpenRef.current || "08:00",
+                                        close:
+                                          editPrevCloseRef.current || "20:00",
+                                      },
+                                });
+                              }}
+                            />
+                            Unknown time
                           </label>
                           {/* Fuel types & prices editor */}
                           <div
@@ -3482,14 +3519,15 @@ const AdminPortal: React.FC = () => {
                     step="60"
                     value={formOpenTime}
                     onChange={(e) => setFormOpenTime(e.target.value)}
-                    disabled={open24Hours}
+                    disabled={open24Hours || unknownTime}
                     style={{
                       width: "100%",
                       padding: "10px",
                       border: "1px solid #ddd",
                       borderRadius: 4,
                       fontSize: "14px",
-                      backgroundColor: open24Hours ? "#f5f5f5" : undefined,
+                      backgroundColor:
+                        open24Hours || unknownTime ? "#f5f5f5" : undefined,
                     }}
                   />
                 </div>
@@ -3509,14 +3547,15 @@ const AdminPortal: React.FC = () => {
                     step="60"
                     value={formCloseTime}
                     onChange={(e) => setFormCloseTime(e.target.value)}
-                    disabled={open24Hours}
+                    disabled={open24Hours || unknownTime}
                     style={{
                       width: "100%",
                       padding: "10px",
                       border: "1px solid #ddd",
                       borderRadius: 4,
                       fontSize: "14px",
-                      backgroundColor: open24Hours ? "#f5f5f5" : undefined,
+                      backgroundColor:
+                        open24Hours || unknownTime ? "#f5f5f5" : undefined,
                     }}
                   />
                 </div>
@@ -3544,18 +3583,40 @@ const AdminPortal: React.FC = () => {
                       prevCloseTimeRef.current = formCloseTime;
                       setFormOpenTime("00:00");
                       setFormCloseTime("23:59");
+                      setUnknownTime(false);
                     } else {
                       // Restore previous values
                       setFormOpenTime(prevOpenTimeRef.current || "08:00");
                       setFormCloseTime(prevCloseTimeRef.current || "20:00");
                     }
                   }}
+                  disabled={unknownTime}
                 />
                 <label
                   htmlFor="open24h-toggle"
                   style={{ fontSize: "13px", color: "#555" }}
                 >
                   Open 24 hours
+                </label>
+
+                <input
+                  id="unknown-time-toggle"
+                  type="checkbox"
+                  checked={unknownTime}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setUnknownTime(checked);
+                    if (checked) {
+                      setOpen24Hours(false);
+                    }
+                  }}
+                  style={{ marginLeft: "16px" }}
+                />
+                <label
+                  htmlFor="unknown-time-toggle"
+                  style={{ fontSize: "13px", color: "#555" }}
+                >
+                  Unknown time
                 </label>
               </div>
             </div>
@@ -3785,6 +3846,7 @@ const AdminPortal: React.FC = () => {
                   setFormOpenTime("08:00");
                   setFormCloseTime("20:00");
                   setOpen24Hours(false);
+                  setUnknownTime(false);
                   setManualLat("");
                   setManualLng("");
                   setCoordinateSource("map");
