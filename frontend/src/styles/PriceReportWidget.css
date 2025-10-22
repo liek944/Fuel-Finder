@@ -1,0 +1,172 @@
+/* PriceReportWidget.css */
+
+.price-report-widget {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e0e0e0;
+}
+
+.price-report-widget-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.report-price-button,
+.view-reports-button {
+    background: #ff9800;
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.view-reports-button {
+    background: #2196f3;
+}
+
+.price-report-widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.price-report-widget-header strong {
+    font-size: 0.8125rem;
+}
+
+.close-button {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #666;
+}
+
+.form-group {
+    margin-bottom: 0.5rem;
+}
+
+.form-group label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.form-group select,
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    border: 1px solid #ccc;
+    font-size: 0.75rem;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 3.125rem;
+}
+
+.message {
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.7rem;
+}
+
+.message.success {
+    background: #e8f5e8;
+    color: #2e7d32;
+}
+
+.message.error {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.submit-button {
+    width: 100%;
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.submit-button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.no-reports {
+    font-size: 0.75rem;
+    color: #666;
+    padding: 0.5rem 0;
+}
+
+.reports-list {
+    max-height: 12.5rem;
+    overflow-y: auto;
+}
+
+.report-item {
+    padding: 0.375rem 0.5rem;
+    margin-bottom: 0.375rem;
+    background: #f5f5f5;
+    border-radius: 0.25rem;
+    border: 1px solid #e0e0e0;
+    font-size: 0.7rem;
+}
+
+.report-item.verified {
+    background: #e8f5e8;
+    border-color: #81c784;
+}
+
+.report-item-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.125rem;
+}
+
+.report-item-header span {
+    font-weight: 600;
+}
+
+.verified-badge {
+    color: #2e7d32;
+    font-size: 0.625rem;
+}
+
+.report-item-timestamp {
+    color: #666;
+    font-size: 0.625rem;
+}
+
+.report-item-notes {
+    margin-top: 0.125rem;
+    font-size: 0.625rem;
+    font-style: italic;
+}
+
+.add-new-report-button {
+    width: 100%;
+    background: #ff9800;
+    color: white;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}

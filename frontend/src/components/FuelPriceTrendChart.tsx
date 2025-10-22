@@ -11,6 +11,7 @@ import {
   Legend,
 } from "chart.js";
 import { apiGet } from "../utils/api";
+import "../styles/FuelPriceTrendChart.css";
 
 ChartJS.register(
   CategoryScale,
@@ -120,13 +121,9 @@ const FuelPriceTrendChart: React.FC<{ adminApiKey: string }> = ({
   }
 
   return (
-    <div
-      style={{ padding: "20px", background: "#f9f9f9", borderRadius: "8px" }}
-    >
-      <h3 style={{ textAlign: "center", marginBottom: "20px" }}>
-        Fuel Price Trends
-      </h3>
-      <div style={{ marginBottom: "20px", textAlign: "center" }}>
+    <div className="fuel-price-trend-chart-container">
+      <h3 className="chart-title">Fuel Price Trends</h3>
+      <div className="time-range-selector">
         <label htmlFor="days-select">Time Range: </label>
         <select
           id="days-select"

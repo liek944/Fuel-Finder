@@ -1,25 +1,26 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import "./index.css";
+import "./styles/responsive.css";
+import App from "./App";
+import reportWebVitals from "./reportWebVitals";
 
 // Capture beforeinstallprompt event BEFORE React mounts
 // This ensures we don't miss the event if it fires early
-window.addEventListener('beforeinstallprompt', (e) => {
-  console.log('✅ beforeinstallprompt event captured globally!');
+window.addEventListener("beforeinstallprompt", (e) => {
+  console.log("✅ beforeinstallprompt event captured globally!");
   e.preventDefault();
   // Store it globally so PWAInstallButton can access it
   (window as any).deferredPrompt = e;
 });
 
 const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
+  document.getElementById("root") as HTMLElement,
 );
 root.render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </React.StrictMode>,
 );
 
 // If you want to start measuring performance in your app, pass a function
@@ -28,13 +29,16 @@ root.render(
 reportWebVitals();
 
 // Register service worker for PWA offline support
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register('/sw.js')
+      .register("/sw.js")
       .then((registration) => {
-        console.log('✅ Service Worker registered successfully:', registration.scope);
-        
+        console.log(
+          "✅ Service Worker registered successfully:",
+          registration.scope,
+        );
+
         // Check for updates periodically
         setInterval(() => {
           registration.update();
@@ -42,7 +46,7 @@ if ('serviceWorker' in navigator) {
       })
       .catch((err) => {
         // Avoid crashing if registration fails
-        console.warn('❌ Service worker registration failed:', err);
+        console.warn("❌ Service worker registration failed:", err);
       });
   });
 }
