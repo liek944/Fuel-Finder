@@ -622,7 +622,7 @@ const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
           </div>
 
           {/* Fuel Price Trend Chart */}
-          <div style={{ marginTop: 20, height: "500px", overflowY: "auto" }}>
+          <div style={{ marginTop: 20 }}>
             <FuelPriceTrendChart adminApiKey={adminApiKey} />
           </div>
         </div>
