@@ -1212,8 +1212,10 @@ const AdminPortal: React.FC = () => {
       // Prepare the payload based on POI type
       const payload: any = {
         name: formName,
-        lat: pendingLatLng.lat,
-        lng: pendingLatLng.lng,
+        location: {
+          lat: pendingLatLng.lat,
+          lng: pendingLatLng.lng,
+        },
       };
 
       if (isGasStation) {
