@@ -25,7 +25,7 @@ async function getAllStations(req, res) {
 async function getNearbyStations(req, res) {
   const lat = parseFloat(req.query.lat);
   const lng = parseFloat(req.query.lng);
-  const radius = parseInt(req.query.radius) || 3000;
+  const radius = parseInt(req.query.radiusMeters || req.query.radius) || 3000;
 
   if (isNaN(lat) || isNaN(lng)) {
     return res.status(400).json({
