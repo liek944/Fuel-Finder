@@ -4,7 +4,7 @@
  * Creates owner record and links station
  */
 
-const db = require('./database/db');
+const { pool } = require('./database/db');
 
 async function setupIfuelOwner() {
   console.log('🚀 Setting up iFuel Dangay Station as owner...\n');
@@ -12,7 +12,7 @@ async function setupIfuelOwner() {
   try {
     // Step 1: Create the owner
     console.log('📝 Creating owner record...');
-    const ownerResult = await db.query(`
+    const ownerResult = await pool.query(`
       INSERT INTO owners (name, domain, api_key, email, contact_person, phone)
       VALUES (
         'iFuel Dangay Station',
@@ -29,7 +29,7 @@ async function setupIfuelOwner() {
 
     if (ownerResult.rows.length === 0) {
       console.log('ℹ️  Owner already exists, fetching details...');
-      const existingOwner = await db.query(
+      const existingOwner = await pool.query(
         'SELECT id, name, domain, api_key, email FROM owners WHERE domain = $1',
         ['ifuel-dangay']
       );
@@ -59,7 +59,7 @@ async function setupIfuelOwner() {
 
     // Step 2: Find iFuel station
     console.log('\n🔍 Finding iFuel Dangay station...');
-    const stationResult = await db.query(`
+    const stationResult = await pool.query(`
       SELECT id, name, brand, address, owner_id
       FROM stations 
       WHERE name ILIKE '%iFuel%Dangay%' OR name ILIKE '%iFUEL%Dangay%'
@@ -76,7 +76,7 @@ async function setupIfuelOwner() {
 
     // Step 3: Link station to owner
     console.log('\n🔗 Linking station to owner...');
-    await db.query(`
+    await pool.query(`
       UPDATE stations 
       SET owner_id = (SELECT id FROM owners WHERE domain = 'ifuel-dangay')
       WHERE id = $1
@@ -86,7 +86,7 @@ async function setupIfuelOwner() {
 
     // Step 4: Verify the setup
     console.log('\n🔍 Verifying setup...');
-    const verifyResult = await db.query(`
+    const verifyResult = await pool.query(`
       SELECT 
         s.id as station_id,
         s.name as station_name,
@@ -127,7 +127,7 @@ async function setupIfuelOwner() {
     console.error('❌ Error during setup:', error.message);
     throw error;
   } finally {
-    await db.end();
+    await pool.end();
   }
 }
 
