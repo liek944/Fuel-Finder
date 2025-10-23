@@ -4,6 +4,7 @@
  */
 
 const stationRepository = require("../repositories/stationRepository");
+const priceRepository = require("../repositories/priceRepository");
 const { transformStationData } = require("../utils/transformers");
 
 /**
@@ -247,6 +248,126 @@ async function getStationsByBrand(req, res) {
   res.json(data);
 }
 
+/**
+ * Submit a fuel price report (public endpoint)
+ */
+async function submitPriceReport(req, res) {
+  const stationId = parseInt(req.params.id);
+
+  if (!stationId || isNaN(stationId)) {
+    return res.status(400).json({
+      error: "Invalid station ID",
+      message: "Station ID must be a valid number",
+    });
+  }
+
+  // Check if station exists
+  const station = await stationRepository.getStationById(stationId);
+  if (!station) {
+    return res.status(404).json({
+      error: "Station not found",
+      message: `No station found with ID ${stationId}`,
+    });
+  }
+
+  const { fuel_type = "Regular", price, notes } = req.body;
+
+  // Validate price
+  if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+    return res.status(400).json({
+      error: "Invalid price",
+      message: "Price must be a positive number",
+    });
+  }
+
+  // Validate price range (reasonable limits for Philippine fuel prices)
+  const priceNum = parseFloat(price);
+  if (priceNum < 30 || priceNum > 200) {
+    return res.status(400).json({
+      error: "Invalid price range",
+      message: "Price must be between ₱30 and ₱200 per liter",
+    });
+  }
+
+  // Get reporter IP
+  const reporter_ip =
+    req.ip ||
+    req.headers["x-forwarded-for"] ||
+    req.connection.remoteAddress ||
+    "unknown";
+
+  console.log(`💰 Submitting price report for station ${stationId}: ₱${priceNum} (${fuel_type})`);
+
+  // Submit report with anonymous reporter if not provided
+  const report = await priceRepository.submitPriceReport({
+    station_id: stationId,
+    fuel_type,
+    price: priceNum,
+    reporter_name: "Anonymous",
+    reporter_contact: reporter_ip,
+    photo_url: notes || null,
+  });
+
+  console.log(`✅ Price report submitted (ID: ${report.id})`);
+
+  res.status(201).json({
+    success: true,
+    message: "Price report submitted successfully. Thank you for contributing!",
+    report: {
+      id: report.id,
+      station_id: report.station_id,
+      fuel_type: report.fuel_type,
+      price: report.price,
+      created_at: report.created_at,
+    },
+  });
+}
+
+/**
+ * Get price reports for a station
+ */
+async function getPriceReportsForStation(req, res) {
+  const stationId = parseInt(req.params.id);
+  const limit = parseInt(req.query.limit || "10");
+
+  if (!stationId || isNaN(stationId)) {
+    return res.status(400).json({
+      error: "Invalid station ID",
+      message: "Station ID must be a valid number",
+    });
+  }
+
+  console.log(`📊 Fetching price reports for station ${stationId}...`);
+
+  const reports = await priceRepository.getPriceReports(stationId, limit);
+
+  console.log(`✅ Found ${reports.length} price reports`);
+
+  res.json({ reports });
+}
+
+/**
+ * Get average price from recent reports
+ */
+async function getAveragePriceFromReports(req, res) {
+  const stationId = parseInt(req.params.id);
+  const fuelType = req.query.fuel_type || "Regular";
+  const days = parseInt(req.query.days || "7");
+
+  if (!stationId || isNaN(stationId)) {
+    return res.status(400).json({
+      error: "Invalid station ID",
+      message: "Station ID must be a valid number",
+    });
+  }
+
+  console.log(`📊 Calculating average price for station ${stationId} (${fuelType})...`);
+
+  const stats = await priceRepository.getAveragePriceFromReports(stationId, fuelType, days);
+
+  res.json(stats);
+}
+
 module.exports = {
   getAllStations,
   getNearbyStations,
@@ -255,5 +376,8 @@ module.exports = {
   updateStation,
   deleteStation,
   searchStations,
-  getStationsByBrand
+  getStationsByBrand,
+  submitPriceReport,
+  getPriceReportsForStation,
+  getAveragePriceFromReports
 };
