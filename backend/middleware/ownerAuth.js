@@ -52,7 +52,7 @@ async function verifyOwnerApiKey(req, res, next) {
     }
 
     // Fetch owner's API key from database
-    const result = await db.query(
+    const result = await pool.query(
       "SELECT api_key, is_active FROM owners WHERE id = $1",
       [req.ownerData.id]
     );
@@ -150,7 +150,7 @@ async function logOwnerActivity(
   errorMessage = null
 ) {
   try {
-    await db.query(
+    await pool.query(
       `INSERT INTO owner_activity_logs 
        (owner_id, action_type, station_id, request_ip, user_agent, details, success, error_message)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
@@ -197,7 +197,7 @@ function enforceOwnerStationAccess(req, res, next) {
  */
 async function checkStationOwnership(ownerId, stationId) {
   try {
-    const result = await db.query(
+    const result = await pool.query(
       "SELECT id FROM stations WHERE id = $1 AND owner_id = $2",
       [stationId, ownerId]
     );
