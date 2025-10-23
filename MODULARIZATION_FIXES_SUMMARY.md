@@ -30,11 +30,12 @@ After modularizing the Fuel Finder backend, several bugs were introduced that pr
 **Fix:** Added folder prefix to all Supabase URL generation  
 **Documentation:** `SUPABASE_IMAGE_DISPLAY_FIX.md`
 
-### 5. ✅ PostGIS Radius Query Bug (Backend)
-**Files:** `backend/repositories/stationRepository.js`, `backend/repositories/poiRepository.js`  
-**Problem:** Missing `::geography` cast in ST_DWithin query - radius interpreted as degrees instead of meters  
-**Impact:** User interface only showed 8 stations instead of all 41 stations within selected radius  
-**Fix:** Added `::geography` cast to both geometry columns in ST_DWithin query  
+### 5. ✅ Query Parameter Name Mismatch (Backend Controllers)
+**Files:** `backend/controllers/stationController.js`, `backend/controllers/poiController.js`  
+**Problem:** Controllers read `req.query.radius` but frontend sends `req.query.radiusMeters` - always defaulted to 3000m  
+**Impact:** User interface only showed 8 stations (within 3km) regardless of selected radius  
+**Fix:** Changed to read `req.query.radiusMeters || req.query.radius` for backward compatibility  
+**PM2 Logs Revealed:** `GET /api/stations/nearby?radiusMeters=10500` but backend used 3000m  
 **Documentation:** `DOCUMENTATIONS AND CONTEXT/FIXES/POSTGIS_RADIUS_FIX.md`
 
 ## 📋 Complete Fix Checklist
@@ -44,7 +45,7 @@ After modularizing the Fuel Finder backend, several bugs were introduced that pr
 - [x] Frontend: Fix keyMatch property check
 - [x] Frontend: Fix location payload format
 - [x] Backend: Fix Supabase image URL generation
-- [x] Backend: Fix PostGIS geography cast in radius queries
+- [x] Backend: Fix query parameter name (radiusMeters vs radius)
 - [x] Frontend: Rebuild application
 - [ ] Deploy backend to production (EC2)
 - [ ] Deploy frontend to production (Vercel)
@@ -117,8 +118,8 @@ After deployment, verify:
 1. `backend/config/environment.js` - Fixed .env path
 2. `backend/server.js` - Removed redundant dotenv
 3. `backend/utils/transformers.js` - Fixed Supabase image URL paths
-4. `backend/repositories/stationRepository.js` - Fixed PostGIS geography cast
-5. `backend/repositories/poiRepository.js` - Fixed PostGIS geography cast
+4. `backend/controllers/stationController.js` - Fixed query parameter name (radiusMeters)
+5. `backend/controllers/poiController.js` - Fixed query parameter name (radiusMeters)
 
 ### Frontend Files  
 1. `frontend/src/components/AdminPortal.tsx` - Fixed keyMatch check and location payload
@@ -131,7 +132,7 @@ All five issues stemmed from the modularization process:
 2. **Property name mismatch** between frontend/backend (typo)
 3. **API contract change** - backend changed to nested `location` object
 4. **Supabase path format** - missing folder prefix in image URL generation
-5. **PostGIS query syntax** - missing `::geography` cast in ST_DWithin spatial queries
+5. **Query parameter mismatch** - controllers read `radius` but frontend sends `radiusMeters`
 
 ## 💡 Lessons Learned
 

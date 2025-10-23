@@ -1,4 +1,4 @@
-# PostGIS Radius Query Fix - Geography Cast Missing
+# Nearby Stations Radius Bug - Query Parameter Mismatch
 
 **Date:** Oct 23, 2025 - 8:15am UTC+8  
 **Status:** ✅ FIXED  
@@ -8,66 +8,70 @@
 
 After backend modularization, the user interface only displayed 8 stations despite the database containing 41 stations. The admin portal correctly showed all 41 stations.
 
+### PM2 Logs Revealed the Issue
+```
+GET /api/stations/nearby?radiusMeters=10500
+🔍 Finding stations near [12.596, 121.525] within 3000m...
+```
+Frontend sends `radiusMeters=10500` but backend always used **3000m** default!
+
 ## 🔍 Root Cause
 
-The modularized `stationRepository.js` and `poiRepository.js` were missing the `::geography` cast in the PostGIS `ST_DWithin` spatial query.
+The modularized controllers were reading the wrong query parameter name.
 
-### Old Code (database/db.js) - CORRECT ✅
-```sql
-WHERE ST_DWithin(
-  s.geom, 
-  ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, 
-  $3
-)
+### Frontend API Call (MainApp.tsx)
+```javascript
+fetch(`/api/stations/nearby?lat=${lat}&lng=${lng}&radiusMeters=${radiusMeters}`)
 ```
 
-### New Code (repositories) - INCORRECT ❌
-```sql
-WHERE ST_DWithin(
-  s.geom,
-  ST_SetSRID(ST_MakePoint($2, $1), 4326),
-  $3
-)
+### Backend Controller (BEFORE FIX) - INCORRECT ❌
+```javascript
+const radius = parseInt(req.query.radius) || 3000;  // Always defaults to 3000!
+```
+
+### Backend Controller (AFTER FIX) - CORRECT ✅
+```javascript
+const radius = parseInt(req.query.radiusMeters || req.query.radius) || 3000;
 ```
 
 ## 💡 Technical Explanation
 
-PostGIS `ST_DWithin` behavior:
+The controller parameter mismatch:
 
-| Type | Distance Unit | Example |
-|------|---------------|---------|
-| **geometry** (no cast) | Degrees | `15000` = 15000 degrees ≈ 1.67 million km |
-| **geography** (with cast) | Meters | `15000` = 15000 meters = 15 km |
+| Frontend Parameter | Backend Reads | Result |
+|-------------------|---------------|---------|
+| `radiusMeters=15000` | `req.query.radius` = `undefined` | Falls back to `3000` default |
+| `radius=15000` | `req.query.radius` = `15000` | Works correctly |
 
-Without the `::geography` cast:
-- User sets radius to 15000 meters (15 km)
-- PostGIS interprets as 15000 degrees
-- Only stations within ~0.15 degrees (~16 km) match
-- Result: 8 stations instead of expected ~30+ stations
+**What happened:**
+1. User adjusts radius slider to 15 km (15000 meters)
+2. Frontend sends: `?radiusMeters=15000`
+3. Backend controller reads: `req.query.radius` (undefined)
+4. Falls back to default: `3000` meters
+5. Only shows 8 stations within 3 km, ignoring user's 15 km selection
 
-With the `::geography` cast:
-- User sets radius to 15000 meters (15 km)  
-- PostGIS correctly interprets as 15000 meters
-- All stations within 15 km match
-- Result: All stations within radius display correctly
+**The fix accepts both parameter names** for backward compatibility:
+```javascript
+req.query.radiusMeters || req.query.radius
+```
 
 ## ✅ Fix Applied
 
 ### Files Changed
 
-1. **backend/repositories/stationRepository.js** (Line 61-65)
-2. **backend/repositories/poiRepository.js** (Line 108-112)
+1. **backend/controllers/stationController.js** (Line 28)
+2. **backend/controllers/poiController.js** (Line 24)
 
 ### Changes Made
 
-Added `::geography` cast to both geometry columns:
+Fixed query parameter name to accept `radiusMeters` (frontend) and `radius` (backward compatibility):
 
-```sql
-WHERE ST_DWithin(
-  s.geom::geography,                                      -- Added cast
-  ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,     -- Added cast
-  $3
-)
+```javascript
+// BEFORE
+const radius = parseInt(req.query.radius) || 3000;
+
+// AFTER  
+const radius = parseInt(req.query.radiusMeters || req.query.radius) || 3000;
 ```
 
 ## 🧪 Testing
@@ -108,19 +112,22 @@ curl "http://localhost:3000/api/stations/nearby?lat=13.0&lng=121.0&radiusMeters=
 
 ## ⚠️ Lesson Learned
 
-When refactoring PostGIS queries:
-1. Always preserve `::geography` casts for distance-based operations
-2. Test spatial queries with known distances
-3. Compare results with original implementation
-4. Document PostGIS-specific query patterns
+When refactoring API controllers:
+1. **Check parameter names match between frontend and backend**
+2. Always test with non-default values (don't rely on defaults)
+3. Use PM2 logs to verify actual parameter values received
+4. Consider using TypeScript shared types for API contracts
+5. Add API parameter validation tests
 
 ## 🚀 Deployment Checklist
 
-- [x] Fix applied to stationRepository.js
-- [x] Fix applied to poiRepository.js
+- [x] Fix applied to stationController.js
+- [x] Fix applied to poiController.js  
+- [ ] Commit and push changes to Git
+- [ ] SSH to EC2 and git pull
 - [ ] Restart backend server (PM2)
-- [ ] Verify nearby stations endpoint returns correct count
-- [ ] Test user interface displays all stations within radius
+- [ ] Test with different radius values in user interface
+- [ ] Verify PM2 logs show correct radiusMeters value
 - [ ] Update MODULARIZATION_FIXES_SUMMARY.md
 
 ---
