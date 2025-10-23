@@ -30,7 +30,7 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000, owner
         ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography
       ) AS distance_meters,
       COALESCE(
-        JSON_AGG(
+        JSON_AGG(DISTINCT
           JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
@@ -92,7 +92,7 @@ async function getAllStations(ownerFilter = null) {
       ST_X(s.geom) AS lng,
       ST_Y(s.geom) AS lat,
       COALESCE(
-        JSON_AGG(
+        JSON_AGG(DISTINCT
           JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
@@ -144,7 +144,7 @@ async function getStationById(id) {
       ST_X(s.geom) AS lng,
       ST_Y(s.geom) AS lat,
       COALESCE(
-        JSON_AGG(
+        JSON_AGG(DISTINCT
           JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
