@@ -6,7 +6,7 @@
  * accesses the system through their own subdomain (e.g., castillonfuels.fuelfinder.com)
  */
 
-const db = require("../database/db");
+const { pool } = require("../config/database");
 
 /**
  * Extract subdomain from hostname
@@ -125,7 +125,7 @@ async function optionalOwnerDetection(req, res, next) {
     const subdomain = extractSubdomain(req.hostname);
     
     if (subdomain) {
-      const result = await db.query(
+      const result = await pool.query(
         `SELECT id, name, domain, email, is_active 
          FROM owners 
          WHERE domain = $1 AND is_active = TRUE`,
