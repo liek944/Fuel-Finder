@@ -11,11 +11,13 @@ const stationRoutes = require("./stationRoutes");
 const poiRoutes = require("./poiRoutes");
 const healthRoutes = require("./healthRoutes");
 const ownerRoutes = require("./ownerRoutes");
+const adminRoutes = require("./adminRoutes");
 
 // Register routes
 router.use("/stations", stationRoutes);
 router.use("/pois", poiRoutes);
 router.use("/owner", ownerRoutes);
+router.use("/admin", adminRoutes);
 
 // Health and stats routes
 router.use("/", healthRoutes);

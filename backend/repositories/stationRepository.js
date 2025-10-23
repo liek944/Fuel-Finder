@@ -315,7 +315,7 @@ async function getDatabaseStats() {
       (SELECT COUNT(DISTINCT brand) FROM stations) AS unique_brands,
       (SELECT COUNT(*) FROM pois) AS total_pois,
       (SELECT COUNT(*) FROM images) AS total_images,
-      (SELECT COUNT(*) FROM price_reports) AS total_price_reports,
+      (SELECT COUNT(*) FROM fuel_price_reports) AS total_price_reports,
       (SELECT pg_size_pretty(pg_database_size(current_database()))) AS database_size
   `;
   
