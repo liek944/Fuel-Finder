@@ -1,0 +1,74 @@
+docs: Reorganize documentation after modularization
+
+Complete documentation cleanup and reorganization following backend
+modularization. All scattered files now properly organized into logical
+categories with comprehensive guides and updated cross-references.
+
+## Changes Made
+
+### New Structure Created
+- Created MODULARIZATION/ directory for architecture documentation
+- Created DEPLOYMENT/scripts/ for automation scripts
+- Created ARCHIVE/ for obsolete documentation
+
+### Files Organized (19 files)
+Modularization docs (4):
+  - MODULARIZATION_PLAN.md → MODULARIZATION/
+  - MIGRATION_GUIDE.md → MODULARIZATION/
+  - SETUP_INSTRUCTIONS.md → MODULARIZATION/
+  - MODULARIZATION_FIXES_SUMMARY.md → MODULARIZATION/
+
+Fix documentation (7):
+  - API_KEY_FIX.md → FIXES/
+  - API_KEY_SIGNIN_FIX_COMPLETE.md → FIXES/
+  - COORDINATE_ACCURACY_FIX.md → FIXES/
+  - STATION_CREATION_400_FIX.md → FIXES/
+  - SUPABASE_IMAGE_DISPLAY_FIX.md → FIXES/
+  - URGENT_FIX_COMPLETE.md → FIXES/
+  - WEBHOOK_FIX_SUMMARY.md → FIXES/
+
+Deployment scripts (5):
+  - debug-upload-issue.sh → DEPLOYMENT/scripts/
+  - deploy-donations.sh → DEPLOYMENT/scripts/
+  - deploy-webhook-fix.sh → DEPLOYMENT/scripts/
+  - verify-donation-stats.sh → DEPLOYMENT/scripts/
+  - verify-pm2-status.sh → DEPLOYMENT/scripts/
+
+Archived (1):
+  - DEPRECATED_MODULES_MIGRATION_PLAN.md → ARCHIVE/
+
+### Files Renamed (2)
+- QUICK_FIX_GUIDE.md → FIXES/COORDINATE_ACCURACY_QUICK_FIX.md
+- FIXES/QUICK_FIX_GUIDE.md → FIXES/IMAGE_UPLOAD_QUICK_FIX.md
+
+### New Documentation Created (4)
+- MODULARIZATION/README.md - Documentation index
+- MODULARIZATION/CLEANUP_GUIDE.md - Cleanup instructions
+- MODULARIZATION/MODULARIZATION_COMPLETE.md - Consolidated summary
+- MODULARIZATION/DOCUMENTATION_CLEANUP_COMPLETE.md - Completion report
+
+### Documentation Updated (2)
+- DOCUMENTATIONS AND CONTEXT/README.md - Added MODULARIZATION section
+- WARP.md - Updated to reflect modular architecture
+
+### Automation Created (1)
+- cleanup-docs.sh - Automated cleanup script
+
+## Benefits
+- Clean root directory with only essential files
+- Logical organization by category
+- No duplicate file names
+- Comprehensive navigation and indexes
+- Professional documentation structure
+- Easy for new developers to navigate
+- Improved maintainability
+
+## Statistics
+- Files moved: 19
+- Files renamed: 2
+- Directories created: 3
+- Documentation updated: 2
+- New guides created: 4
+- Total changes: 30+
+
+Co-authored-by: Documentation Cleanup Task

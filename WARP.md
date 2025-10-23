@@ -22,17 +22,28 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 ### Backend (`/backend/`)
 - **Runtime**: Node.js with Express
 - **Database**: PostgreSQL with PostGIS extension
-- **Services**: Modular service architecture in `services/`
-  - `imageService.js` - Image upload/processing with Sharp
-  - `supabaseStorage.js` - Cloud storage integration
-  - `paymentService.js` - PayMongo payment processing
-  - `anonymizationService.js` - Data anonymization
+- **Architecture**: Modularized layered architecture
+  - `config/` - Environment and database configuration
+  - `middleware/` - Authentication, rate limiting, error handling
+  - `routes/` - API endpoint definitions
+  - `controllers/` - Business logic layer
+  - `repositories/` - Database access layer
+  - `services/` - External integrations
+    - `imageService.js` - Image upload/processing with Sharp
+    - `supabaseStorage.js` - Cloud storage integration
+    - `paymentService.js` - PayMongo payment processing
+    - `anonymizationService.js` - Data anonymization
+  - `utils/` - Data transformers and helpers
 
 ### Database Layer
-- **Location**: `backend/database/`
-- **Main file**: `db.js` - All database operations and queries
+- **Location**: `backend/database/` and `backend/repositories/`
+- **Database Module**: `db.js` - Core database operations
+- **Repositories**: Organized data access by domain
+  - `stationRepository.js` - Station data operations
+  - `poiRepository.js` - POI data operations
+  - `priceRepository.js` - Price report operations
 - **Spatial queries**: Uses PostGIS functions for geospatial operations
-- **Connection pooling**: PostgreSQL connection pool management
+- **Connection**: Managed via `config/database.js`
 
 ## 🚀 Development Commands
 
@@ -126,20 +137,56 @@ cd backend && node test-upload-deduplication.js
 │   └── examples/           # Example components
 ├── backend/
 │   ├── server.js           # Express server entry point
-│   ├── database/
-│   │   ├── db.js          # All database operations
-│   │   └── init.js        # Database initialization
-│   └── services/          # Business logic services
+│   ├── config/             # Configuration layer
+│   ├── middleware/         # Express middleware
+│   ├── routes/             # API routes
+│   ├── controllers/        # Business logic
+│   ├── repositories/       # Database operations
+│   ├── services/           # External integrations
+│   ├── utils/              # Transformers and helpers
+│   └── database/
+│       ├── db.js          # Core database operations
+│       └── init.js        # Database initialization
 └── DOCUMENTATIONS AND CONTEXT/  # Project documentation
+    ├── MODULARIZATION/    # Backend architecture docs
+    ├── DEPLOYMENT/        # Deployment guides
+    ├── FIXES/             # Bug fix documentation
+    └── ... (8 more categories)
 ```
 
 ## 🔧 Common Development Tasks
 
 ### Adding New API Endpoints
-1. Add route handler in `backend/server.js`
-2. Implement database operations in `backend/database/db.js`  
-3. Update frontend API calls in `frontend/src/utils/api.ts`
-4. Test with appropriate test files in `backend/`
+1. Create repository in `backend/repositories/yourFeatureRepository.js`
+2. Create controller in `backend/controllers/yourFeatureController.js`
+3. Create routes in `backend/routes/yourFeatureRoutes.js`
+4. Register route in `backend/routes/index.js`
+5. Update frontend API calls in `frontend/src/utils/api.ts`
+6. Test with appropriate test files
+
+**Example:**
+```javascript
+// 1. Repository
+const pool = require('../config/database');
+async function getData() {
+  const result = await pool.query('SELECT ...');
+  return result.rows;
+}
+
+// 2. Controller
+const repository = require('../repositories/yourRepository');
+async function getAll(req, res) {
+  const data = await repository.getData();
+  res.json(data);
+}
+
+// 3. Routes
+const controller = require('../controllers/yourController');
+router.get('/', controller.getAll);
+
+// 4. Register
+router.use('/your-feature', yourFeatureRoutes);
+```
 
 ### Database Schema Changes
 ```bash
@@ -156,8 +203,12 @@ npm run db:check
 - **Storage**: Primary: Supabase, Fallback: Local filesystem
 
 ### Deployment Scripts
+All scripts now located in `DOCUMENTATIONS AND CONTEXT/DEPLOYMENT/scripts/`:
 - `deploy-webhook-fix.sh` - Deploy PayMongo webhook fixes
 - `deploy-donations.sh` - Deploy donation system updates
+- `debug-upload-issue.sh` - Debug image upload problems
+- `verify-donation-stats.sh` - Verify donation statistics
+- `verify-pm2-status.sh` - Check PM2 process status
 - Backend uses PM2 for process management in production
 
 ## 🐛 Debugging & Troubleshooting
@@ -223,18 +274,38 @@ REACT_APP_API_BASE_URL=http://localhost:3001
 
 ## 🔍 Key Files to Understand
 
-1. **`backend/server.js`** - Main application entry point with middleware configuration
-2. **`backend/database/db.js`** - All database operations and PostGIS queries  
-3. **`frontend/src/components/MainApp.tsx`** - Main React application component
-4. **`frontend/src/utils/locationRecorder.ts`** - GPS tracking functionality
-5. **`DOCUMENTATIONS AND CONTEXT/`** - Comprehensive project documentation
+### Backend Architecture
+1. **`backend/server.js`** - Main application entry point
+2. **`backend/config/environment.js`** - Configuration management
+3. **`backend/routes/index.js`** - Route aggregator
+4. **`backend/controllers/`** - Business logic layer
+5. **`backend/repositories/`** - Database access layer
+6. **`backend/middleware/`** - Authentication, rate limiting, error handling
+
+### Frontend
+7. **`frontend/src/components/MainApp.tsx`** - Main React application
+8. **`frontend/src/utils/locationRecorder.ts`** - GPS tracking
+
+### Documentation
+9. **`DOCUMENTATIONS AND CONTEXT/MODULARIZATION/`** - Backend architecture docs
+10. **`DOCUMENTATIONS AND CONTEXT/README.md`** - Documentation index
 
 ## 📚 Documentation References
 
 The `DOCUMENTATIONS AND CONTEXT/` directory contains extensive documentation:
-- `DEPLOYMENT_GUIDE.md` - Production deployment instructions
-- `PHASE_*` files - Feature implementation documentation  
-- `*_INTEGRATION_GUIDE.md` - Integration instructions for various features
-- `WEBHOOK_FIX_SUMMARY.md` - Recent PayMongo webhook fixes
+- **MODULARIZATION/** - Backend architecture and modular structure
+  - `MODULARIZATION_COMPLETE.md` - Complete modularization summary
+  - `SETUP_INSTRUCTIONS.md` - Developer guide for modular structure
+- **DEPLOYMENT/** - Production deployment instructions
+  - `DEPLOYMENT_GUIDE.md` - Main deployment guide
+  - `scripts/` - Automation scripts
+- **FIXES/** - Bug fixes and troubleshooting
+  - Modularization fixes (API key, endpoints, etc.)
+  - Image upload fixes
+  - Trip recorder fixes
+- **PHASES/** - Feature implementation documentation
+- **IMPLEMENTATION_GUIDES/** - Integration instructions
 
-When working on this codebase, always check the relevant documentation files for context-specific implementation details and troubleshooting guides.
+**Important:** Always check `DOCUMENTATIONS AND CONTEXT/README.md` for the complete documentation index.
+
+When working on this codebase, start with the MODULARIZATION docs to understand the architecture, then check relevant documentation files for feature-specific implementation details.
