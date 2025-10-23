@@ -1,0 +1,153 @@
+/**
+ * Owner Detection Middleware
+ * Detects subdomain from request hostname and attaches owner context
+ * 
+ * This middleware enables multi-tenant architecture where each station owner
+ * accesses the system through their own subdomain (e.g., castillonfuels.fuelfinder.com)
+ */
+
+const db = require("../database/db");
+
+/**
+ * Extract subdomain from hostname
+ * @param {string} hostname - Request hostname (e.g., "castillonfuels.fuelfinder.com")
+ * @returns {string|null} - Subdomain or null if not found
+ * 
+ * Examples:
+ * - castillonfuels.fuelfinder.com -> "castillonfuels"
+ * - santosgas.fuelfinder.com -> "santosgas"
+ * - fuelfinder.com -> null (main domain, no subdomain)
+ * - localhost:3000 -> null (local development)
+ */
+function extractSubdomain(hostname) {
+  if (!hostname) return null;
+
+  // Remove port if present (e.g., "localhost:3000" -> "localhost")
+  const host = hostname.split(':')[0];
+
+  // Split by dots
+  const parts = host.split('.');
+
+  // Handle different scenarios:
+  // 1. localhost or IP address -> no subdomain
+  if (parts.length <= 1 || host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+    return null;
+  }
+
+  // 2. subdomain.domain.tld (e.g., castillonfuels.fuelfinder.com)
+  if (parts.length >= 3) {
+    // Get the first part (subdomain)
+    const subdomain = parts[0];
+    
+    // Ignore common prefixes that aren't owner subdomains
+    if (subdomain === 'www' || subdomain === 'api' || subdomain === 'admin') {
+      return null;
+    }
+    
+    return subdomain;
+  }
+
+  // 3. domain.tld only (e.g., fuelfinder.com) -> no subdomain
+  return null;
+}
+
+/**
+ * Middleware to detect owner from subdomain
+ * Attaches req.owner and req.ownerData to the request object
+ */
+async function detectOwner(req, res, next) {
+  try {
+    // Extract subdomain from hostname
+    const subdomain = extractSubdomain(req.hostname);
+
+    if (!subdomain) {
+      // No subdomain detected - this is a public/main domain request
+      req.owner = null;
+      req.ownerData = null;
+      console.log(`🌐 Public request from: ${req.hostname}`);
+      return next();
+    }
+
+    // Look up owner in database by subdomain
+    const result = await db.query(
+      `SELECT id, name, domain, email, contact_person, phone, is_active, created_at 
+       FROM owners 
+       WHERE domain = $1 AND is_active = TRUE`,
+      [subdomain]
+    );
+
+    if (result.rows.length === 0) {
+      // Subdomain doesn't match any active owner
+      console.warn(`⚠️  Unknown subdomain: ${subdomain} (from ${req.hostname})`);
+      
+      return res.status(404).json({
+        error: "Owner not found",
+        message: `Subdomain '${subdomain}' is not registered. Please check your URL.`,
+        subdomain: subdomain
+      });
+    }
+
+    // Attach owner data to request
+    const owner = result.rows[0];
+    req.owner = owner.domain; // Just the subdomain string
+    req.ownerData = owner; // Full owner object
+    
+    console.log(`👤 Owner request detected: ${owner.name} (${owner.domain}) from ${req.hostname}`);
+    
+    next();
+  } catch (error) {
+    console.error("❌ Error in owner detection middleware:", error);
+    next(error);
+  }
+}
+
+/**
+ * Middleware that requires an owner to be detected
+ * Use this for owner-only endpoints
+ */
+function requireOwner(req, res, next) {
+  if (!req.owner || !req.ownerData) {
+    return res.status(403).json({
+      error: "Owner access required",
+      message: "This endpoint requires access through an owner subdomain (e.g., yourcompany.fuelfinder.com)",
+      hint: "Make sure you're accessing the system through your assigned subdomain"
+    });
+  }
+  next();
+}
+
+/**
+ * Optional owner detection (doesn't fail if no owner)
+ * Use this for endpoints that work for both public and owner-specific requests
+ */
+async function optionalOwnerDetection(req, res, next) {
+  try {
+    const subdomain = extractSubdomain(req.hostname);
+    
+    if (subdomain) {
+      const result = await db.query(
+        `SELECT id, name, domain, email, is_active 
+         FROM owners 
+         WHERE domain = $1 AND is_active = TRUE`,
+        [subdomain]
+      );
+      
+      if (result.rows.length > 0) {
+        req.owner = result.rows[0].domain;
+        req.ownerData = result.rows[0];
+      }
+    }
+    
+    next();
+  } catch (error) {
+    console.error("❌ Error in optional owner detection:", error);
+    next();
+  }
+}
+
+module.exports = {
+  extractSubdomain,
+  detectOwner,
+  requireOwner,
+  optionalOwnerDetection
+};

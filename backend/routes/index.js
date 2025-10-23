@@ -10,10 +10,12 @@ const router = express.Router();
 const stationRoutes = require("./stationRoutes");
 const poiRoutes = require("./poiRoutes");
 const healthRoutes = require("./healthRoutes");
+const ownerRoutes = require("./ownerRoutes");
 
 // Register routes
 router.use("/stations", stationRoutes);
 router.use("/pois", poiRoutes);
+router.use("/owner", ownerRoutes);
 
 // Health and stats routes
 router.use("/", healthRoutes);

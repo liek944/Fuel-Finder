@@ -7,8 +7,12 @@ const { pool } = require("../config/database");
 
 /**
  * Get nearby stations using PostGIS ST_DWithin
+ * @param {number} latitude - Latitude coordinate
+ * @param {number} longitude - Longitude coordinate
+ * @param {number} radiusMeters - Search radius in meters
+ * @param {string|null} ownerFilter - Optional owner ID to filter stations
  */
-async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
+async function getNearbyStations(latitude, longitude, radiusMeters = 3000, ownerFilter = null) {
   const query = `
     SELECT
       s.id,
@@ -63,19 +67,25 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
       ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
       $3
     )
+    ${ownerFilter ? 'AND s.owner_id = $4' : ''}
     GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom
     ORDER BY distance_meters ASC
     LIMIT 50
   `;
 
-  const result = await pool.query(query, [latitude, longitude, radiusMeters]);
+  const params = ownerFilter 
+    ? [latitude, longitude, radiusMeters, ownerFilter]
+    : [latitude, longitude, radiusMeters];
+
+  const result = await pool.query(query, params);
   return result.rows;
 }
 
 /**
  * Get all stations
+ * @param {string|null} ownerFilter - Optional owner ID to filter stations
  */
-async function getAllStations() {
+async function getAllStations(ownerFilter = null) {
   const query = `
     SELECT
       s.id,
@@ -121,11 +131,13 @@ async function getAllStations() {
     FROM stations s
     LEFT JOIN images i ON i.station_id = s.id
     LEFT JOIN fuel_prices fp ON fp.station_id = s.id
+    ${ownerFilter ? 'WHERE s.owner_id = $1' : ''}
     GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom
     ORDER BY s.name
   `;
 
-  const result = await pool.query(query);
+  const params = ownerFilter ? [ownerFilter] : [];
+  const result = await pool.query(query, params);
   return result.rows;
 }
 
