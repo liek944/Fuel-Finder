@@ -18,6 +18,11 @@ router.get("/search", asyncHandler(stationController.searchStations));
 router.get("/brand/:brand", asyncHandler(stationController.getStationsByBrand));
 router.get("/:id", asyncHandler(stationController.getStationById));
 
+// Price reporting routes (public)
+router.post("/:id/report-price", rateLimit, asyncHandler(stationController.submitPriceReport));
+router.get("/:id/price-reports", asyncHandler(stationController.getPriceReportsForStation));
+router.get("/:id/average-price", asyncHandler(stationController.getAveragePriceFromReports));
+
 // Protected routes (require API key if configured)
 router.post(
   "/",
