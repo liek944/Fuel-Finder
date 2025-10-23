@@ -10,6 +10,7 @@ const config = require("./config/environment");
 
 // Middleware imports
 const { errorHandler, notFound } = require("./middleware/errorHandler");
+const { optionalOwnerDetection } = require("./middleware/ownerDetection");
 
 // Route imports
 const apiRoutes = require("./routes");
@@ -42,6 +43,10 @@ if (config.nodeEnv === "development") {
     next();
   });
 }
+
+// Apply optional owner detection to all requests
+// This attaches owner context if request comes from owner subdomain
+app.use(optionalOwnerDetection);
 
 // API routes
 app.use("/api", apiRoutes);

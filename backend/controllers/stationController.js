@@ -8,11 +8,18 @@ const { transformStationData } = require("../utils/transformers");
 
 /**
  * Get all stations
+ * If accessed via owner subdomain, returns only owner's stations
  */
 async function getAllStations(req, res) {
-  console.log("📋 Fetching all stations from PostgreSQL database...");
+  const ownerFilter = req.ownerData ? req.ownerData.id : null;
   
-  const stations = await stationRepository.getAllStations();
+  if (ownerFilter) {
+    console.log(`📋 Fetching stations for owner: ${req.ownerData.name}`);
+  } else {
+    console.log("📋 Fetching all stations from PostgreSQL database...");
+  }
+  
+  const stations = await stationRepository.getAllStations(ownerFilter);
   const data = transformStationData(stations);
   
   console.log(`✅ Found ${data.length} stations`);
@@ -21,11 +28,13 @@ async function getAllStations(req, res) {
 
 /**
  * Get nearby stations
+ * If accessed via owner subdomain, returns only owner's nearby stations
  */
 async function getNearbyStations(req, res) {
   const lat = parseFloat(req.query.lat);
   const lng = parseFloat(req.query.lng);
   const radius = parseInt(req.query.radiusMeters || req.query.radius) || 3000;
+  const ownerFilter = req.ownerData ? req.ownerData.id : null;
 
   if (isNaN(lat) || isNaN(lng)) {
     return res.status(400).json({
@@ -41,9 +50,13 @@ async function getNearbyStations(req, res) {
     });
   }
 
-  console.log(`🔍 Finding stations near [${lat}, ${lng}] within ${radius}m...`);
+  if (ownerFilter) {
+    console.log(`🔍 Finding ${req.ownerData.name}'s stations near [${lat}, ${lng}] within ${radius}m...`);
+  } else {
+    console.log(`🔍 Finding stations near [${lat}, ${lng}] within ${radius}m...`);
+  }
   
-  const stations = await stationRepository.getNearbyStations(lat, lng, radius);
+  const stations = await stationRepository.getNearbyStations(lat, lng, radius, ownerFilter);
   const data = transformStationData(stations);
   
   console.log(`✅ Found ${data.length} nearby stations`);
