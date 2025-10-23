@@ -37,7 +37,7 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000, owner
             'display_order', i.display_order,
             'is_primary', i.is_primary,
             'created_at', i.created_at
-          ) ORDER BY i.display_order, i.id
+          )
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
       ) AS images,
@@ -99,7 +99,7 @@ async function getAllStations(ownerFilter = null) {
             'display_order', i.display_order,
             'is_primary', i.is_primary,
             'created_at', i.created_at
-          ) ORDER BY i.display_order, i.id
+          )
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
       ) AS images,
@@ -151,7 +151,7 @@ async function getStationById(id) {
             'display_order', i.display_order,
             'is_primary', i.is_primary,
             'created_at', i.created_at
-          ) ORDER BY i.display_order, i.id
+          )
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
       ) AS images,

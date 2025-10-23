@@ -47,7 +47,7 @@ async function getAllPois() {
             'display_order', i.display_order,
             'is_primary', i.is_primary,
             'created_at', i.created_at
-          ) ORDER BY i.display_order, i.id
+          )
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
       ) AS images
@@ -85,7 +85,7 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
             'display_order', i.display_order,
             'is_primary', i.is_primary,
             'created_at', i.created_at
-          ) ORDER BY i.display_order, i.id
+          )
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
       ) AS images
@@ -125,7 +125,7 @@ async function getPoiById(id) {
             'display_order', i.display_order,
             'is_primary', i.is_primary,
             'created_at', i.created_at
-          ) ORDER BY i.display_order, i.id
+          )
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
       ) AS images
