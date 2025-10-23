@@ -12,13 +12,13 @@ async function submitPriceReport(report) {
   const { station_id, fuel_type, price, reporter_name, reporter_contact, photo_url } = report;
   
   const query = `
-    INSERT INTO price_reports (
+    INSERT INTO fuel_price_reports (
       station_id, 
       fuel_type, 
       price, 
-      reporter_name, 
-      reporter_contact, 
-      photo_url, 
+      reporter_ip, 
+      reporter_identifier, 
+      notes, 
       is_verified, 
       created_at
     )
@@ -30,9 +30,9 @@ async function submitPriceReport(report) {
     station_id,
     fuel_type,
     price,
-    reporter_name,
-    reporter_contact,
-    photo_url
+    reporter_contact || null, // Using reporter_contact as IP
+    reporter_name || 'Anonymous', // Using reporter_name as identifier
+    photo_url || null // Using photo_url as notes
   ]);
   
   return result.rows[0];
@@ -46,7 +46,7 @@ async function getPriceReports(stationId, limit = 10, verified = null) {
     SELECT 
       pr.*,
       s.name AS station_name
-    FROM price_reports pr
+    FROM fuel_price_reports pr
     LEFT JOIN stations s ON pr.station_id = s.id
     WHERE pr.station_id = $1
   `;
@@ -70,8 +70,8 @@ async function getPriceReports(stationId, limit = 10, verified = null) {
  */
 async function getLatestVerifiedPrice(stationId, fuelType) {
   const query = `
-    SELECT price, created_at, reporter_name
-    FROM price_reports
+    SELECT price, created_at, reporter_identifier as reporter_name
+    FROM fuel_price_reports
     WHERE station_id = $1
       AND fuel_type = $2
       AND is_verified = true
@@ -93,7 +93,7 @@ async function getAveragePriceFromReports(stationId, fuelType, days = 7) {
       COUNT(*) AS report_count,
       MIN(price) AS min_price,
       MAX(price) AS max_price
-    FROM price_reports
+    FROM fuel_price_reports
     WHERE station_id = $1
       AND fuel_type = $2
       AND created_at >= NOW() - INTERVAL '${days} days'
@@ -109,7 +109,7 @@ async function getAveragePriceFromReports(stationId, fuelType, days = 7) {
  */
 async function verifyPriceReport(reportId, verifiedBy) {
   const query = `
-    UPDATE price_reports
+    UPDATE fuel_price_reports
     SET 
       is_verified = true,
       verified_by = $2,
@@ -127,7 +127,7 @@ async function verifyPriceReport(reportId, verifiedBy) {
  */
 async function deletePriceReport(reportId) {
   const query = `
-    DELETE FROM price_reports
+    DELETE FROM fuel_price_reports
     WHERE id = $1
     RETURNING id
   `;
@@ -144,7 +144,7 @@ async function getPriceReportStats() {
     SELECT
       COUNT(*) AS total_reports,
       COUNT(DISTINCT station_id) AS stations_with_reports,
-      COUNT(DISTINCT reporter_name) AS unique_reporters,
+      COUNT(DISTINCT reporter_identifier) AS unique_reporters,
       COUNT(CASE WHEN is_verified = true THEN 1 END) AS verified_reports,
       COUNT(CASE WHEN is_verified = false THEN 1 END) AS pending_reports,
       COUNT(CASE WHEN created_at >= NOW() - INTERVAL '24 hours' THEN 1 END) AS reports_last_24h,
@@ -152,7 +152,7 @@ async function getPriceReportStats() {
       ROUND(AVG(price)::numeric, 2) AS average_price,
       MIN(price) AS lowest_price,
       MAX(price) AS highest_price
-    FROM price_reports
+    FROM fuel_price_reports
   `;
   
   const result = await pool.query(query);
@@ -169,7 +169,7 @@ async function getPriceReportTrends(days = 7) {
       fuel_type,
       ROUND(AVG(price)::numeric, 2) as average_price,
       COUNT(*) as report_count
-    FROM price_reports
+    FROM fuel_price_reports
     WHERE created_at >= NOW() - INTERVAL '${days} days'
       AND is_verified = true
     GROUP BY DATE(created_at), fuel_type
@@ -190,7 +190,7 @@ async function getPendingPriceReports(limit = 100) {
       s.name AS station_name,
       s.brand AS station_brand,
       s.address AS station_address
-    FROM price_reports pr
+    FROM fuel_price_reports pr
     LEFT JOIN stations s ON pr.station_id = s.id
     WHERE pr.is_verified = false
     ORDER BY pr.created_at DESC
