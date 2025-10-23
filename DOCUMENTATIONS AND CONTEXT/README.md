@@ -31,6 +31,12 @@ This directory contains all documentation for the Fuel Finder project, organized
 - `SETUP_FUEL_TYPES.md` - Fuel types configuration
 - `DIAGNOSTIC_COMMANDS.md` - Diagnostic and troubleshooting commands
 - `ec2-fix-triple-upload.sh` - EC2 fix automation script
+- **[scripts/](./DEPLOYMENT/scripts/)** - Deployment automation scripts
+  - `debug-upload-issue.sh` - Debug image upload issues
+  - `deploy-donations.sh` - Deploy donation system updates
+  - `deploy-webhook-fix.sh` - Deploy PayMongo webhook fixes
+  - `verify-donation-stats.sh` - Verify donation statistics
+  - `verify-pm2-status.sh` - Check PM2 process status
 
 ### 📋 [FEATURE_SPECS](./FEATURE_SPECS/)
 **Detailed specifications for upcoming features**
@@ -39,6 +45,16 @@ This directory contains all documentation for the Fuel Finder project, organized
 - `FUEL_COST_CALCULATOR_SPEC.md` - Fuel cost calculator specification
 - `QUEUE_DETECTION_SPEC.md` - Queue detection system specification
 - `SMART_PRICE_ALERTS_SPEC.md` - Smart price alerts specification
+
+### 🏗️ [MODULARIZATION](./MODULARIZATION/)
+**Backend modularization documentation and guides**
+- `README.md` - Modularization overview and quick reference
+- `MODULARIZATION_COMPLETE.md` - Complete summary of modularization effort
+- `MODULARIZATION_PLAN.md` - Original architecture plan
+- `MIGRATION_GUIDE.md` - Step-by-step migration instructions
+- `SETUP_INSTRUCTIONS.md` - Developer guide for modular structure
+- `MODULARIZATION_FIXES_SUMMARY.md` - Bugs fixed during modularization
+- `CLEANUP_GUIDE.md` - Post-modularization file organization
 
 ### 🔧 [FIXES](./FIXES/)
 **Bug fixes, troubleshooting guides, and problem resolutions**
@@ -50,9 +66,23 @@ This directory contains all documentation for the Fuel Finder project, organized
   - `DELETE_STATION_FIX.md`
   - `EDIT_BUTTON_POPUP_FIX.md`
   - `FIX_NAVIGATION.md`
-  - `QUICK_FIX_GUIDE.md`
+  - `COORDINATE_ACCURACY_QUICK_FIX.md` - Quick coordinate fix guide
+  - `IMAGE_UPLOAD_QUICK_FIX.md` - Quick image upload fix guide
   - `QUICK_FIX_STEPS.md`
   - `ENV_FILES_CLEANUP.md`
+
+- **Modularization Fixes:**
+  - `API_KEY_FIX.md` - Environment loading fix
+  - `API_KEY_SIGNIN_FIX_COMPLETE.md` - API key validation fix
+  - `COORDINATE_ACCURACY_FIX.md` - Coordinate swap detection
+  - `STATION_CREATION_400_FIX.md` - Station creation payload fix
+  - `SUPABASE_IMAGE_DISPLAY_FIX.md` - Supabase URL generation fix
+  - `URGENT_FIX_COMPLETE.md` - Critical fixes summary
+  - `WEBHOOK_FIX_SUMMARY.md` - PayMongo webhook fixes
+  - `COMPLETE_MODULARIZATION_AUDIT_FIXED.md` - 18 endpoints restored
+  - `MODULARIZATION_MISSING_ENDPOINTS_AUDIT.md` - Missing endpoints analysis
+  - `PRICE_REPORTS_ENDPOINTS_MISSING.md` - Price report restoration
+  - `POSTGIS_RADIUS_FIX.md` - Query parameter fix
 
 - **Image Upload Fixes:**
   - `IMAGE_UPLOAD_BUG_FIX.md`
@@ -181,8 +211,9 @@ This directory contains all documentation for the Fuel Finder project, organized
 
 ### For New Developers:
 1. Start with **[CONTEXT/roadmap and context.md](./CONTEXT/roadmap%20and%20context.md)** for project overview
-2. Review **[DEPLOYMENT/ENVIRONMENT_SETUP.md](./DEPLOYMENT/ENVIRONMENT_SETUP.md)** for setup
-3. Check **[CONTEXT/FEATURE_SUMMARY.md](./CONTEXT/FEATURE_SUMMARY.md)** for available features
+2. Review **[MODULARIZATION/README.md](./MODULARIZATION/README.md)** to understand the codebase structure
+3. Review **[DEPLOYMENT/ENVIRONMENT_SETUP.md](./DEPLOYMENT/ENVIRONMENT_SETUP.md)** for setup
+4. Check **[CONTEXT/FEATURE_SUMMARY.md](./CONTEXT/FEATURE_SUMMARY.md)** for available features
 
 ### For Deployment:
 1. **[DEPLOYMENT/DEPLOYMENT_GUIDE.md](./DEPLOYMENT/DEPLOYMENT_GUIDE.md)** - Main deployment guide
@@ -220,6 +251,7 @@ All documentation in this directory follows these standards:
 ## 🔍 Finding What You Need
 
 ### By Topic:
+- **Code Architecture** → [MODULARIZATION](./MODULARIZATION/)
 - **Setup & Deployment** → [DEPLOYMENT](./DEPLOYMENT/)
 - **Bug Fixes** → [FIXES](./FIXES/)
 - **New Features** → [FEATURE_SPECS](./FEATURE_SPECS/) & [IMPLEMENTATION_GUIDES](./IMPLEMENTATION_GUIDES/)
