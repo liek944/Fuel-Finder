@@ -31,7 +31,7 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000, owner
       ) AS distance_meters,
       COALESCE(
         JSON_AGG(
-          DISTINCT JSONB_BUILD_OBJECT(
+          JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
             'display_order', i.display_order,
@@ -43,7 +43,7 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000, owner
       ) AS images,
       COALESCE(
         JSON_AGG(
-          DISTINCT JSONB_BUILD_OBJECT(
+          JSONB_BUILD_OBJECT(
             'fuel_type', fp.fuel_type,
             'price', fp.price,
             'price_updated_at', fp.price_updated_at,
@@ -93,7 +93,7 @@ async function getAllStations(ownerFilter = null) {
       ST_Y(s.geom) AS lat,
       COALESCE(
         JSON_AGG(
-          DISTINCT JSONB_BUILD_OBJECT(
+          JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
             'display_order', i.display_order,
@@ -105,7 +105,7 @@ async function getAllStations(ownerFilter = null) {
       ) AS images,
       COALESCE(
         JSON_AGG(
-          DISTINCT JSONB_BUILD_OBJECT(
+          JSONB_BUILD_OBJECT(
             'fuel_type', fp.fuel_type,
             'price', fp.price,
             'price_updated_at', fp.price_updated_at,
@@ -145,7 +145,7 @@ async function getStationById(id) {
       ST_Y(s.geom) AS lat,
       COALESCE(
         JSON_AGG(
-          DISTINCT JSONB_BUILD_OBJECT(
+          JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
             'display_order', i.display_order,
@@ -157,7 +157,7 @@ async function getStationById(id) {
       ) AS images,
       COALESCE(
         JSON_AGG(
-          DISTINCT JSONB_BUILD_OBJECT(
+          JSONB_BUILD_OBJECT(
             'fuel_type', fp.fuel_type,
             'price', fp.price,
             'price_updated_at', fp.price_updated_at,

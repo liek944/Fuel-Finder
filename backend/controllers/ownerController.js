@@ -3,7 +3,7 @@
  * Handles business logic for owner-specific operations
  */
 
-const db = require("../database/db");
+const { pool } = require("../config/database");
 const { transformStationData } = require("../utils/transformers");
 const { checkStationOwnership, logOwnerActivity } = require("../middleware/ownerAuth");
 
@@ -32,7 +32,7 @@ async function getDashboard(req, res) {
   console.log(`📊 Fetching dashboard for owner: ${req.ownerData.name}`);
 
   // Fetch dashboard statistics
-  const result = await db.query(
+  const result = await pool.query(
     `SELECT * FROM owner_dashboard_stats WHERE owner_id = $1`,
     [ownerId]
   );
@@ -72,7 +72,7 @@ async function getOwnerStations(req, res) {
 
   console.log(`🏪 Fetching stations for owner: ${req.ownerData.name}`);
 
-  const result = await db.query(
+  const result = await pool.query(
     `SELECT 
       s.*,
       ST_X(s.geom) as lng,
@@ -138,7 +138,7 @@ async function getOwnerStation(req, res) {
     });
   }
 
-  const result = await db.query(
+  const result = await pool.query(
     `SELECT 
       s.*,
       ST_X(s.geom) as lng,
@@ -258,7 +258,7 @@ async function updateOwnerStation(req, res) {
     RETURNING *
   `;
 
-  const result = await db.query(query, values);
+  const result = await pool.query(query, values);
 
   if (result.rows.length === 0) {
     return res.status(404).json({
@@ -278,7 +278,7 @@ async function updateOwnerStation(req, res) {
   );
 
   // Fetch complete station data
-  const stationResult = await db.query(
+  const stationResult = await pool.query(
     `SELECT s.*, ST_X(s.geom) as lng, ST_Y(s.geom) as lat FROM stations s WHERE s.id = $1`,
     [stationId]
   );
@@ -299,7 +299,7 @@ async function getPendingPriceReports(req, res) {
 
   console.log(`📋 Fetching pending price reports for: ${req.ownerData.name}`);
 
-  const result = await db.query(
+  const result = await pool.query(
     `SELECT 
       fpr.*,
       s.name as station_name,
@@ -339,7 +339,7 @@ async function verifyPriceReport(req, res) {
   }
 
   // Check if report exists and belongs to owner's station
-  const reportCheck = await db.query(
+  const reportCheck = await pool.query(
     `SELECT fpr.*, s.owner_id, s.name as station_name
      FROM fuel_price_reports fpr
      JOIN stations s ON s.id = fpr.station_id
@@ -373,7 +373,7 @@ async function verifyPriceReport(req, res) {
   console.log(`✅ Owner ${req.ownerData.name} verifying price report ${reportId}`);
 
   // Update price report
-  await db.query(
+  await pool.query(
     `UPDATE fuel_price_reports 
      SET is_verified = TRUE,
          verified_by = $1,
@@ -385,7 +385,7 @@ async function verifyPriceReport(req, res) {
   );
 
   // Update station's fuel price
-  await db.query(
+  await pool.query(
     `INSERT INTO fuel_prices (station_id, fuel_type, price, is_community, updated_at)
      VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP)
      ON CONFLICT (station_id, fuel_type) 
@@ -437,7 +437,7 @@ async function rejectPriceReport(req, res) {
   }
 
   // Check if report exists and belongs to owner's station
-  const reportCheck = await db.query(
+  const reportCheck = await pool.query(
     `SELECT fpr.*, s.owner_id, s.name as station_name
      FROM fuel_price_reports fpr
      JOIN stations s ON s.id = fpr.station_id
@@ -464,7 +464,7 @@ async function rejectPriceReport(req, res) {
   console.log(`❌ Owner ${req.ownerData.name} rejecting price report ${reportId}`);
 
   // Delete the rejected report (or mark as rejected if you want to keep history)
-  await db.query(
+  await pool.query(
     `DELETE FROM fuel_price_reports WHERE id = $1`,
     [reportId]
   );
@@ -500,7 +500,7 @@ async function getActivityLogs(req, res) {
   const limit = parseInt(req.query.limit) || 100;
   const offset = parseInt(req.query.offset) || 0;
 
-  const result = await db.query(
+  const result = await pool.query(
     `SELECT 
       oal.*,
       s.name as station_name,
@@ -532,7 +532,7 @@ async function getAnalytics(req, res) {
     recentActivity
   ] = await Promise.all([
     // Station statistics
-    db.query(
+    pool.query(
       `SELECT 
         COUNT(*) as total_stations,
         COUNT(DISTINCT brand) as total_brands,
@@ -543,7 +543,7 @@ async function getAnalytics(req, res) {
     ),
     
     // Price report statistics
-    db.query(
+    pool.query(
       `SELECT 
         COUNT(*) as total_reports,
         COUNT(*) FILTER (WHERE is_verified = TRUE) as verified_count,
@@ -557,7 +557,7 @@ async function getAnalytics(req, res) {
     ),
     
     // Recent activity summary
-    db.query(
+    pool.query(
       `SELECT 
         action_type,
         COUNT(*) as count,
