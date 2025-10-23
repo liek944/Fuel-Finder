@@ -59,8 +59,8 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000) {
     LEFT JOIN images i ON i.station_id = s.id
     LEFT JOIN fuel_prices fp ON fp.station_id = s.id
     WHERE ST_DWithin(
-      s.geom,
-      ST_SetSRID(ST_MakePoint($2, $1), 4326),
+      s.geom::geography,
+      ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
       $3
     )
     GROUP BY s.id, s.name, s.brand, s.fuel_price, s.services, s.address, s.phone, s.operating_hours, s.geom

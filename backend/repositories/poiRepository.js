@@ -106,8 +106,8 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
     FROM pois p
     LEFT JOIN images i ON i.poi_id = p.id
     WHERE ST_DWithin(
-      p.geom,
-      ST_SetSRID(ST_MakePoint($2, $1), 4326),
+      p.geom::geography,
+      ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
       $3
     )
     GROUP BY p.id, p.name, p.type, p.geom, p.created_at, p.updated_at

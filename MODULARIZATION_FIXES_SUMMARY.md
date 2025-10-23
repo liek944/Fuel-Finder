@@ -30,6 +30,13 @@ After modularizing the Fuel Finder backend, several bugs were introduced that pr
 **Fix:** Added folder prefix to all Supabase URL generation  
 **Documentation:** `SUPABASE_IMAGE_DISPLAY_FIX.md`
 
+### 5. ✅ PostGIS Radius Query Bug (Backend)
+**Files:** `backend/repositories/stationRepository.js`, `backend/repositories/poiRepository.js`  
+**Problem:** Missing `::geography` cast in ST_DWithin query - radius interpreted as degrees instead of meters  
+**Impact:** User interface only showed 8 stations instead of all 41 stations within selected radius  
+**Fix:** Added `::geography` cast to both geometry columns in ST_DWithin query  
+**Documentation:** `DOCUMENTATIONS AND CONTEXT/FIXES/POSTGIS_RADIUS_FIX.md`
+
 ## 📋 Complete Fix Checklist
 
 - [x] Backend: Fix .env loading path
@@ -37,12 +44,14 @@ After modularizing the Fuel Finder backend, several bugs were introduced that pr
 - [x] Frontend: Fix keyMatch property check
 - [x] Frontend: Fix location payload format
 - [x] Backend: Fix Supabase image URL generation
+- [x] Backend: Fix PostGIS geography cast in radius queries
 - [x] Frontend: Rebuild application
 - [ ] Deploy backend to production (EC2)
 - [ ] Deploy frontend to production (Vercel)
 - [ ] Test admin sign-in on production
 - [ ] Test station creation on production
 - [ ] Test image display on production
+- [ ] Test nearby stations display all results within radius
 
 ## 🚀 Deployment Steps
 
@@ -108,18 +117,21 @@ After deployment, verify:
 1. `backend/config/environment.js` - Fixed .env path
 2. `backend/server.js` - Removed redundant dotenv
 3. `backend/utils/transformers.js` - Fixed Supabase image URL paths
+4. `backend/repositories/stationRepository.js` - Fixed PostGIS geography cast
+5. `backend/repositories/poiRepository.js` - Fixed PostGIS geography cast
 
 ### Frontend Files  
 1. `frontend/src/components/AdminPortal.tsx` - Fixed keyMatch check and location payload
 
 ## 🔍 Root Causes
 
-All four issues stemmed from the modularization process:
+All five issues stemmed from the modularization process:
 
 1. **Moving config to subdirectory** broke relative path resolution
 2. **Property name mismatch** between frontend/backend (typo)
 3. **API contract change** - backend changed to nested `location` object
 4. **Supabase path format** - missing folder prefix in image URL generation
+5. **PostGIS query syntax** - missing `::geography` cast in ST_DWithin spatial queries
 
 ## 💡 Lessons Learned
 
@@ -135,6 +147,7 @@ All four issues stemmed from the modularization process:
 - `API_KEY_SIGNIN_FIX_COMPLETE.md` - Complete API key authentication fix
 - `STATION_CREATION_400_FIX.md` - Station creation payload fix
 - `SUPABASE_IMAGE_DISPLAY_FIX.md` - Supabase image URL fix
+- `DOCUMENTATIONS AND CONTEXT/FIXES/POSTGIS_RADIUS_FIX.md` - PostGIS geography cast fix
 - `MODULARIZATION_FIXES_SUMMARY.md` - This file (overview)
 
 ## ⚠️ Note About Supabase
@@ -156,7 +169,7 @@ The warning `🪣 Supabase storage: Not configured` is **NOT** causing any issue
 
 ---
 
-**Last Updated:** Oct 23, 2025 - 7:12am UTC+8  
+**Last Updated:** Oct 23, 2025 - 8:20am UTC+8  
 **All Fixes Applied:** YES ✅  
-**Tested Locally:** YES ✅  
-**Production Ready:** YES ✅
+**Tested Locally:** Pending restart  
+**Production Ready:** Pending deployment testing
