@@ -407,6 +407,295 @@ app.get("/api/stats", async (req, res) => {
 });
 
 // ============================================================================
+// OWNER ACCESS CONTROL ROUTES
+// ============================================================================
+
+// Helper function to extract subdomain from hostname
+function extractSubdomain(hostname) {
+  if (!hostname) return null;
+  const host = hostname.split(':')[0];
+  const parts = host.split('.');
+  
+  if (parts.length <= 1 || host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+    return null;
+  }
+  
+  if (parts.length >= 3) {
+    const subdomain = parts[0];
+    if (subdomain === 'www' || subdomain === 'api' || subdomain === 'admin') {
+      return null;
+    }
+    return subdomain;
+  }
+  
+  return null;
+}
+
+// Middleware to detect owner from subdomain
+async function detectOwnerMiddleware(req, res, next) {
+  try {
+    const subdomain = extractSubdomain(req.hostname);
+    
+    if (!subdomain) {
+      req.owner = null;
+      req.ownerData = null;
+      return next();
+    }
+    
+    const result = await pool.query(
+      `SELECT id, name, domain, email, contact_person, phone, is_active, created_at 
+       FROM owners 
+       WHERE domain = $1 AND is_active = TRUE`,
+      [subdomain]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        error: "Owner not found",
+        message: `Subdomain '${subdomain}' is not registered.`,
+        subdomain: subdomain
+      });
+    }
+    
+    const owner = result.rows[0];
+    req.owner = owner.domain;
+    req.ownerData = owner;
+    
+    console.log(`👤 Owner request: ${owner.name} (${owner.domain})`);
+    next();
+  } catch (error) {
+    console.error("❌ Owner detection error:", error);
+    next(error);
+  }
+}
+
+// Middleware to verify owner API key
+async function verifyOwnerApiKey(req, res, next) {
+  try {
+    if (!req.ownerData) {
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "Owner authentication required."
+      });
+    }
+    
+    const providedApiKey = req.header("x-api-key");
+    
+    if (!providedApiKey) {
+      await logOwnerActivity(req.ownerData.id, 'auth_attempt', null, req.ip, req.get('user-agent'), {reason: 'missing_api_key'}, false, 'API key not provided');
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "API key required in x-api-key header."
+      });
+    }
+    
+    const result = await pool.query(
+      "SELECT api_key, is_active FROM owners WHERE id = $1",
+      [req.ownerData.id]
+    );
+    
+    if (result.rows.length === 0 || !result.rows[0].is_active) {
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "Owner account not found or inactive."
+      });
+    }
+    
+    if (providedApiKey !== result.rows[0].api_key) {
+      await logOwnerActivity(req.ownerData.id, 'auth_attempt', null, req.ip, req.get('user-agent'), {reason: 'invalid_api_key'}, false, 'Invalid API key');
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "Invalid API key."
+      });
+    }
+    
+    await logOwnerActivity(req.ownerData.id, 'auth_success', null, req.ip, req.get('user-agent'), {endpoint: req.path, method: req.method}, true);
+    next();
+  } catch (error) {
+    console.error("❌ API key verification error:", error);
+    next(error);
+  }
+}
+
+// Helper to log owner activity
+async function logOwnerActivity(ownerId, actionType, stationId = null, requestIp = null, userAgent = null, details = null, success = true, errorMessage = null) {
+  try {
+    await pool.query(
+      `INSERT INTO owner_activity_logs 
+       (owner_id, action_type, station_id, request_ip, user_agent, details, success, error_message)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [ownerId, actionType, stationId, requestIp, userAgent, details ? JSON.stringify(details) : null, success, errorMessage]
+    );
+  } catch (error) {
+    console.error("❌ Failed to log owner activity:", error);
+  }
+}
+
+// GET /api/owner/info - Public owner information (no API key required)
+app.get("/api/owner/info", detectOwnerMiddleware, async (req, res) => {
+  try {
+    if (!req.ownerData) {
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "Owner access required through subdomain"
+      });
+    }
+    
+    res.json({
+      name: req.ownerData.name,
+      domain: req.ownerData.domain,
+      contact_person: req.ownerData.contact_person,
+      email: req.ownerData.email,
+      phone: req.ownerData.phone
+    });
+  } catch (err) {
+    console.error("Error fetching owner info:", err);
+    res.status(500).json({ error: "Failed to fetch owner info" });
+  }
+});
+
+// GET /api/owner/dashboard - Dashboard statistics (requires API key)
+app.get("/api/owner/dashboard", detectOwnerMiddleware, verifyOwnerApiKey, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM owner_dashboard_stats WHERE owner_id = $1`,
+      [req.ownerData.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.json({
+        owner_name: req.ownerData.name,
+        domain: req.ownerData.domain,
+        total_stations: 0,
+        verified_reports: 0,
+        pending_reports: 0,
+        total_actions: 0,
+        last_activity: null
+      });
+    }
+    
+    await logOwnerActivity(req.ownerData.id, 'view_dashboard', null, req.ip, req.get('user-agent'));
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error fetching owner dashboard:", err);
+    res.status(500).json({ error: "Failed to fetch dashboard" });
+  }
+});
+
+// GET /api/owner/stations - List owner's stations (requires API key)
+app.get("/api/owner/stations", detectOwnerMiddleware, verifyOwnerApiKey, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT 
+        s.*,
+        ST_X(s.geom) as lng,
+        ST_Y(s.geom) as lat,
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', img.id,
+              'url', img.image_url,
+              'uploaded_at', img.uploaded_at
+            )
+          ) FILTER (WHERE img.id IS NOT NULL),
+          '[]'::json
+        ) as images
+      FROM stations s
+      LEFT JOIN images img ON img.entity_id = s.id AND img.entity_type = 'station'
+      WHERE s.owner_id = $1
+      GROUP BY s.id
+      ORDER BY s.name`,
+      [req.ownerData.id]
+    );
+    
+    const stations = transformStationData(result.rows);
+    res.json(stations);
+  } catch (err) {
+    console.error("Error fetching owner stations:", err);
+    res.status(500).json({ error: "Failed to fetch stations" });
+  }
+});
+
+// GET /api/owner/price-reports/pending - Get pending price reports (requires API key)
+app.get("/api/owner/price-reports/pending", detectOwnerMiddleware, verifyOwnerApiKey, async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    
+    const result = await pool.query(
+      `SELECT 
+        fpr.*,
+        s.name as station_name,
+        s.brand as station_brand
+      FROM fuel_price_reports fpr
+      JOIN stations s ON s.id = fpr.station_id
+      WHERE s.owner_id = $1 AND fpr.is_verified = FALSE
+      ORDER BY fpr.created_at DESC
+      LIMIT $2`,
+      [req.ownerData.id, limit]
+    );
+    
+    res.json({
+      count: result.rows.length,
+      reports: result.rows
+    });
+  } catch (err) {
+    console.error("Error fetching pending reports:", err);
+    res.status(500).json({ error: "Failed to fetch pending reports" });
+  }
+});
+
+// POST /api/owner/price-reports/:id/verify - Verify price report (requires API key)
+app.post("/api/owner/price-reports/:id/verify", detectOwnerMiddleware, verifyOwnerApiKey, async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.id);
+    const { notes } = req.body;
+    
+    const reportCheck = await pool.query(
+      `SELECT fpr.*, s.owner_id, s.name as station_name
+       FROM fuel_price_reports fpr
+       JOIN stations s ON s.id = fpr.station_id
+       WHERE fpr.id = $1`,
+      [reportId]
+    );
+    
+    if (reportCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Report not found" });
+    }
+    
+    const report = reportCheck.rows[0];
+    
+    if (report.owner_id !== req.ownerData.id) {
+      return res.status(403).json({ error: "Forbidden", message: "You do not have access to this report" });
+    }
+    
+    await pool.query(
+      `UPDATE fuel_price_reports 
+       SET is_verified = TRUE, verified_by = $1, verified_by_owner_id = $2, verified_at = CURRENT_TIMESTAMP, notes = COALESCE($3, notes)
+       WHERE id = $4`,
+      [req.ownerData.name, req.ownerData.id, notes, reportId]
+    );
+    
+    await pool.query(
+      `INSERT INTO fuel_prices (station_id, fuel_type, price, is_community, updated_at)
+       VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP)
+       ON CONFLICT (station_id, fuel_type) DO UPDATE SET price = EXCLUDED.price, is_community = TRUE, updated_at = CURRENT_TIMESTAMP`,
+      [report.station_id, report.fuel_type, report.price]
+    );
+    
+    await logOwnerActivity(req.ownerData.id, 'verify_price', report.station_id, req.ip, req.get('user-agent'), {report_id: reportId, fuel_type: report.fuel_type, price: report.price});
+    
+    res.json({
+      success: true,
+      message: `Price report verified for ${report.station_name}`,
+      report_id: reportId
+    });
+  } catch (err) {
+    console.error("Error verifying price report:", err);
+    res.status(500).json({ error: "Failed to verify price report" });
+  }
+});
+
+// ============================================================================
 // POI ROUTES
 // ============================================================================
 
