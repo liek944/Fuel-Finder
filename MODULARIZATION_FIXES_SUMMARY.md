@@ -116,7 +116,7 @@ After deployment, verify:
 
 ### Backend Files
 1. `backend/config/environment.js` - Fixed .env path
-2. `backend/server.js` - Removed redundant dotenv
+2. `backend/server.js` - Removed redundant dotenv + Fixed radiusMeters parameter (lines 222, 430)
 3. `backend/utils/transformers.js` - Fixed Supabase image URL paths
 4. `backend/controllers/stationController.js` - Fixed query parameter name (radiusMeters)
 5. `backend/controllers/poiController.js` - Fixed query parameter name (radiusMeters)

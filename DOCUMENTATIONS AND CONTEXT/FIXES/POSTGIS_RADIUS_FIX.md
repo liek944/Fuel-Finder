@@ -121,14 +121,17 @@ When refactoring API controllers:
 
 ## 🚀 Deployment Checklist
 
-- [x] Fix applied to stationController.js
-- [x] Fix applied to poiController.js  
+- [x] Fix applied to server.js (PRODUCTION - what PM2 runs)
+- [x] Fix applied to stationController.js (modular version)
+- [x] Fix applied to poiController.js (modular version)
 - [ ] Commit and push changes to Git
 - [ ] SSH to EC2 and git pull
 - [ ] Restart backend server (PM2)
 - [ ] Test with different radius values in user interface
-- [ ] Verify PM2 logs show correct radiusMeters value
+- [ ] Verify PM2 logs show correct radiusMeters value (not 3000m)
 - [ ] Update MODULARIZATION_FIXES_SUMMARY.md
+
+**IMPORTANT:** PM2 runs `server.js` (see `ecosystem.config.js`), not the modular controllers!
 
 ---
 
