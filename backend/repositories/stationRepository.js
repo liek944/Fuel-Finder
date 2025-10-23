@@ -34,16 +34,9 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000, owner
           DISTINCT JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
-            'original_filename', i.original_filename,
-            'file_size', i.file_size,
-            'mime_type', i.mime_type,
-            'width', i.width,
-            'height', i.height,
             'display_order', i.display_order,
-            'alt_text', i.alt_text,
             'is_primary', i.is_primary,
-            'created_at', i.created_at,
-            'updated_at', i.updated_at
+            'created_at', i.created_at
           ) ORDER BY i.display_order, i.id
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
@@ -103,16 +96,9 @@ async function getAllStations(ownerFilter = null) {
           DISTINCT JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
-            'original_filename', i.original_filename,
-            'file_size', i.file_size,
-            'mime_type', i.mime_type,
-            'width', i.width,
-            'height', i.height,
             'display_order', i.display_order,
-            'alt_text', i.alt_text,
             'is_primary', i.is_primary,
-            'created_at', i.created_at,
-            'updated_at', i.updated_at
+            'created_at', i.created_at
           ) ORDER BY i.display_order, i.id
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
@@ -162,16 +148,9 @@ async function getStationById(id) {
           DISTINCT JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
-            'original_filename', i.original_filename,
-            'file_size', i.file_size,
-            'mime_type', i.mime_type,
-            'width', i.width,
-            'height', i.height,
             'display_order', i.display_order,
-            'alt_text', i.alt_text,
             'is_primary', i.is_primary,
-            'created_at', i.created_at,
-            'updated_at', i.updated_at
+            'created_at', i.created_at
           ) ORDER BY i.display_order, i.id
         ) FILTER (WHERE i.id IS NOT NULL),
         '[]'::JSON
@@ -337,7 +316,6 @@ async function getDatabaseStats() {
       (SELECT COUNT(*) FROM pois) AS total_pois,
       (SELECT COUNT(*) FROM images) AS total_images,
       (SELECT COUNT(*) FROM price_reports) AS total_price_reports,
-      (SELECT SUM(file_size) FROM images) AS total_image_size_bytes,
       (SELECT pg_size_pretty(pg_database_size(current_database()))) AS database_size
   `;
   
