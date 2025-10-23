@@ -40,7 +40,7 @@ async function getAllPois() {
       p.created_at,
       p.updated_at,
       COALESCE(
-        JSON_AGG(
+        JSON_AGG(DISTINCT
           JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
@@ -78,7 +78,7 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
       p.created_at,
       p.updated_at,
       COALESCE(
-        JSON_AGG(
+        JSON_AGG(DISTINCT
           JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
@@ -118,7 +118,7 @@ async function getPoiById(id) {
       p.created_at,
       p.updated_at,
       COALESCE(
-        JSON_AGG(
+        JSON_AGG(DISTINCT
           JSONB_BUILD_OBJECT(
             'id', i.id,
             'filename', i.filename,
