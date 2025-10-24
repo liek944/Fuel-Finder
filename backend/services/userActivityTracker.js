@@ -286,6 +286,35 @@ class UserActivityTracker {
   }
   
   /**
+   * Get activity logs (session activity history)
+   * For now, returns current active sessions as a log
+   * TODO: Implement persistent activity logging if needed
+   */
+  getActivityLogs(limit = 100, offset = 0) {
+    this.cleanupExpiredSessions();
+    
+    const sessions = Array.from(this.activeSessions.values());
+    
+    // Sort by last seen (most recent first)
+    const sortedSessions = sessions.sort((a, b) => b.lastSeen - a.lastSeen);
+    
+    // Apply pagination
+    const paginatedSessions = sortedSessions.slice(offset, offset + limit);
+    
+    // Transform to activity log format
+    return paginatedSessions.map(session => ({
+      sessionId: session.sessionId.substring(0, 12) + '...',
+      timestamp: new Date(session.lastSeen).toISOString(),
+      action: 'Heartbeat',
+      device: session.userAgent,
+      location: session.location ? `${session.location.city}, ${session.location.region}` : 'Unknown',
+      page: session.currentPage,
+      duration: Math.round((session.lastSeen - session.firstSeen) / 60000) + 'm',
+      pageViews: session.pageViews
+    }));
+  }
+  
+  /**
    * Clear all sessions (for testing/maintenance)
    */
   clearAllSessions() {

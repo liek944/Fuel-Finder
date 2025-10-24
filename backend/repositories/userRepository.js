@@ -2,7 +2,16 @@
  * User Analytics Repository
  * Handles user analytics and activity tracking queries
  * 
- * NOTE: This is a placeholder implementation. For production, integrate with:
+ * ⚠️ DEPRECATED: This file returns MOCK DATA and is no longer used.
+ * 
+ * Real tracking is now handled by:
+ * - services/userActivityTracker.js (in-memory real-time tracking)
+ * - routes/userRoutes.js (heartbeat endpoint)
+ * - controllers/adminController.js (uses userActivityTracker)
+ * 
+ * This file is kept for reference only.
+ * 
+ * NOTE: Original implementation used placeholder data. For production, integrate with:
  * - Google Analytics API
  * - Custom analytics tracking system
  * - Session tracking middleware
