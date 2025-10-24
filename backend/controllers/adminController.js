@@ -4,7 +4,7 @@
  */
 
 const priceRepository = require("../repositories/priceRepository");
-const userRepository = require("../repositories/userRepository");
+const userActivityTracker = require("../services/userActivityTracker");
 
 /**
  * Get all pending (unverified) price reports
@@ -200,7 +200,7 @@ async function updateStationPrices(req, res) {
  * GET /api/admin/users/stats
  */
 async function getUserStats(req, res) {
-  const stats = await userRepository.getUserStats();
+  const stats = userActivityTracker.getStatistics();
   
   res.json({
     success: true,
@@ -213,7 +213,7 @@ async function getUserStats(req, res) {
  * GET /api/admin/users/active
  */
 async function getActiveUsers(req, res) {
-  const users = await userRepository.getActiveUsers();
+  const users = userActivityTracker.getActiveUsers();
   
   res.json({
     success: true,
@@ -229,7 +229,7 @@ async function getUserActivityLogs(req, res) {
   const limit = parseInt(req.query.limit) || 100;
   const offset = parseInt(req.query.offset) || 0;
   
-  const logs = await userRepository.getUserActivityLogs(limit, offset);
+  const logs = userActivityTracker.getActivityLogs(limit, offset);
   
   res.json({
     success: true,
