@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { apiGet, apiDelete, apiPatch } from "../utils/api";
+import { apiGet, apiPost, apiDelete, apiPatch } from "../utils/api";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import FuelPriceTrendChart from "./FuelPriceTrendChart";
@@ -149,8 +149,8 @@ export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   // Verify a price report
   const verifyReport = async (reportId: number) => {
     try {
-      const response = await apiPatch(
-        `/api/price-reports/${reportId}/verify`,
+      const response = await apiPost(
+        `/api/admin/price-reports/${reportId}/verify`,
         { verified_by: "admin" },
         adminApiKey,
       );
