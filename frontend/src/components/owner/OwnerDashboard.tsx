@@ -64,7 +64,7 @@ const OwnerDashboard: React.FC = () => {
       const statsRes = await fetch(`${apiUrl}/api/owner/dashboard`, {
         headers: {
           'x-api-key': apiKey,
-          'Host': `${subdomain}.fuelfinder.com`
+          'x-owner-domain': subdomain || ''
         }
       });
 
@@ -76,7 +76,7 @@ const OwnerDashboard: React.FC = () => {
       const stationsRes = await fetch(`${apiUrl}/api/owner/stations`, {
         headers: {
           'x-api-key': apiKey,
-          'Host': `${subdomain}.fuelfinder.com`
+          'x-owner-domain': subdomain || ''
         }
       });
 
@@ -89,7 +89,7 @@ const OwnerDashboard: React.FC = () => {
       const reportsRes = await fetch(`${apiUrl}/api/owner/price-reports/pending`, {
         headers: {
           'x-api-key': apiKey,
-          'Host': `${subdomain}.fuelfinder.com`
+          'x-owner-domain': subdomain || ''
         }
       });
 
@@ -122,7 +122,7 @@ const OwnerDashboard: React.FC = () => {
         method: 'POST',
         headers: {
           'x-api-key': apiKey!,
-          'Host': `${subdomain}.fuelfinder.com`,
+          'x-owner-domain': getSubdomain() || '',
           'Content-Type': 'application/json'
         }
       });

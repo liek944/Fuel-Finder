@@ -15,9 +15,10 @@ import "./App.css";
  * Extract subdomain from hostname
  * Examples:
  * - ifuel-dangay.fuelfinder.com -> "ifuel-dangay"
+ * - ifuel-dangay-portal.netlify.app -> "ifuel-dangay" (Netlify deployment)
  * - localhost:3000 -> null
  * - fuelfinder.com -> null
- * - fuelfinderths.netlify.app -> null (hosting provider, not owner subdomain)
+ * - fuelfinderths.netlify.app -> null (main app)
  */
 function extractSubdomain(hostname: string): string | null {
   // Remove port if present
@@ -31,11 +32,23 @@ function extractSubdomain(hostname: string): string | null {
     return null;
   }
   
-  // Ignore hosting provider domains (not owner subdomains)
+  // SPECIAL: Detect Netlify/Vercel owner portal deployments
+  // Pattern: owner-name-portal.netlify.app or owner-name-portal.vercel.app
   const hostingProviders = ['netlify.app', 'vercel.app', 'herokuapp.com', 'onrender.com'];
   const domain = parts.slice(-2).join('.');
   if (hostingProviders.includes(domain)) {
-    return null; // Don't treat netlify/vercel subdomains as owner subdomains
+    const siteName = parts[0]; // e.g., "ifuel-dangay-portal" or "fuelfinderths"
+    
+    // Check if this is an owner portal (contains "-portal" in the name)
+    if (siteName.includes('-portal')) {
+      // Extract owner name: "ifuel-dangay-portal" -> "ifuel-dangay"
+      const ownerName = siteName.replace('-portal', '');
+      console.log('🔍 Detected Netlify owner portal:', ownerName);
+      return ownerName;
+    }
+    
+    // Otherwise, it's the main app deployment
+    return null;
   }
   
   // For DuckDNS: only detect if it matches owner pattern (owner-name.duckdns.org)

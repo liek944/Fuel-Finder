@@ -31,7 +31,7 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
       const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       const response = await fetch(`${apiUrl}/api/owner/info`, {
         headers: {
-          'Host': `${subdomain}.fuelfinder.com`
+          'x-owner-domain': subdomain
         }
       });
 
@@ -56,7 +56,7 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
       const response = await fetch(`${apiUrl}/api/owner/dashboard`, {
         headers: {
           'x-api-key': apiKey,
-          'Host': `${subdomain}.fuelfinder.com`
+          'x-owner-domain': subdomain
         }
       });
 
