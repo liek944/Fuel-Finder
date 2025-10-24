@@ -52,13 +52,26 @@ function extractSubdomain(hostname) {
 }
 
 /**
- * Middleware to detect owner from subdomain
+ * Middleware to detect owner from subdomain OR x-owner-domain header
  * Attaches req.owner and req.ownerData to the request object
+ * 
+ * Supports two detection methods:
+ * 1. Subdomain from hostname (e.g., ifuel-dangay.fuelfinder.com)
+ * 2. x-owner-domain header (for Netlify/Vercel deployments where frontend is on different domain)
  */
 async function detectOwner(req, res, next) {
   try {
-    // Extract subdomain from hostname
-    const subdomain = extractSubdomain(req.hostname);
+    // Method 1: Try to extract subdomain from hostname
+    let subdomain = extractSubdomain(req.hostname);
+
+    // Method 2: If no subdomain, check x-owner-domain header (for Netlify deployments)
+    if (!subdomain) {
+      const ownerDomainHeader = req.header("x-owner-domain");
+      if (ownerDomainHeader) {
+        subdomain = ownerDomainHeader;
+        console.log(`🏷️  Owner domain from header: ${subdomain}`);
+      }
+    }
 
     if (!subdomain) {
       // No subdomain detected - this is a public/main domain request
