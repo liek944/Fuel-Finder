@@ -45,6 +45,8 @@ Created admin routes for:
 - `DELETE /api/admin/price-reports/:id` - Delete a report
 - `PUT /api/admin/stations/:id/prices` - Update station prices
 
+**Note:** Uses existing custom `middleware/rateLimiter.js` (not express-rate-limit package)
+
 ### 3. `/backend/controllers/adminController.js` (NEW)
 Created admin controller with functions:
 - `getPendingPriceReports()`
@@ -161,10 +163,11 @@ After deployment, verify:
 ## Notes
 
 - All 9 functions in priceRepository.js were updated
-- Admin routes include rate limiting (100 requests per 15 minutes)
+- Admin routes use existing custom rate limiter (configured via environment variables)
 - Proper error handling with asyncHandler middleware
 - Backwards compatible with existing price reporting feature
 - No database migrations needed (table already exists with correct name)
+- No new npm packages required (uses existing middleware)
 
 ---
 

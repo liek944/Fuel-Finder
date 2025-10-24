@@ -7,17 +7,10 @@ const express = require("express");
 const router = express.Router();
 const adminController = require("../controllers/adminController");
 const { asyncHandler } = require("../middleware/errorHandler");
-const rateLimit = require("express-rate-limit");
-
-// Rate limiting for admin endpoints
-const adminLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: "Too many admin requests from this IP, please try again later.",
-});
+const rateLimit = require("../middleware/rateLimiter");
 
 // Apply rate limiting to all admin routes
-router.use(adminLimiter);
+router.use(rateLimit);
 
 // Price report management routes
 router.get("/price-reports/pending", asyncHandler(adminController.getPendingPriceReports));
