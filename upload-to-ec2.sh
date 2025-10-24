@@ -22,14 +22,19 @@ if [ "$EC2_HOST" = "your-ec2-ip-or-domain" ]; then
   exit 1
 fi
 
-# Upload modified file
+# Upload modified files
 echo "📤 Uploading ownerDetection.js..."
 scp -i "$EC2_KEY" \
   backend/middleware/ownerDetection.js \
   "$EC2_USER@$EC2_HOST:$EC2_BACKEND_PATH/middleware/"
 
+echo "📤 Uploading app.js (CORS fix)..."
+scp -i "$EC2_KEY" \
+  backend/app.js \
+  "$EC2_USER@$EC2_HOST:$EC2_BACKEND_PATH/"
+
 if [ $? -eq 0 ]; then
-  echo "✅ File uploaded successfully!"
+  echo "✅ Files uploaded successfully!"
   echo ""
   echo "🔄 Now restart PM2 on EC2:"
   echo ""
