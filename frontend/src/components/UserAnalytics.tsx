@@ -133,14 +133,14 @@ const UserAnalytics: React.FC = () => {
     loadData();
   }, []);
 
-  // Auto-refresh every 10 seconds
+  // Auto-refresh every 30 seconds
   useEffect(() => {
     if (!autoRefresh) return;
 
     const interval = setInterval(() => {
       fetchStats();
       fetchActiveUsers();
-    }, 10000); // 10 seconds
+    }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
   }, [autoRefresh]);
@@ -190,7 +190,7 @@ const UserAnalytics: React.FC = () => {
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="auto-refresh-checkbox"
             />
-            Auto-refresh (10s)
+            Auto-refresh (30s)
           </label>
           <button
             onClick={() => {

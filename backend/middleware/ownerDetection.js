@@ -69,7 +69,7 @@ async function detectOwner(req, res, next) {
     }
 
     // Look up owner in database by subdomain
-    const result = await db.query(
+    const result = await pool.query(
       `SELECT id, name, domain, email, contact_person, phone, is_active, created_at 
        FROM owners 
        WHERE domain = $1 AND is_active = TRUE`,
