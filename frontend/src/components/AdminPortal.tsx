@@ -1903,7 +1903,7 @@ const AdminPortal: React.FC = () => {
                                   <span style={{ fontWeight: 500 }}>
                                     {fp.fuel_type}:
                                   </span>{" "}
-                                  ₱{fp.price.toFixed(2)}/L
+                                  ₱{Number(fp.price).toFixed(2)}/L
                                   {fp.price_updated_by === "community" && (
                                     <span
                                       style={{

@@ -11,7 +11,7 @@ interface PriceReport {
   station_name: string;
   station_brand: string;
   fuel_type: string;
-  price: number;
+  price: number | string; // PostgreSQL NUMERIC/DECIMAL returns as string
   reporter_ip: string;
   notes?: string;
   is_verified: boolean;
@@ -448,7 +448,7 @@ export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                           <div>{report.station_name}</div>
                           <div>{report.station_brand}</div>
                         </td>
-                        <td>₱{report.price.toFixed(2)}/L</td>
+                        <td>₱{Number(report.price).toFixed(2)}/L</td>
                         <td>{report.fuel_type}</td>
                         <td>{report.reporter_ip}</td>
                         <td>

@@ -620,7 +620,7 @@ const PriceReportWidget: React.FC<{
                 >
                   <div className="report-item-header">
                     <span>
-                      {report.fuel_type}: ₱{report.price.toFixed(2)}
+                      {report.fuel_type}: ₱{Number(report.price).toFixed(2)}
                     </span>
                     {report.is_verified && (
                       <span className="verified-badge">✓ Verified</span>
@@ -1286,7 +1286,7 @@ const MainApp: React.FC = () => {
                             <span style={{ fontWeight: 500 }}>
                               {fp.fuel_type}:
                             </span>{" "}
-                            ₱{fp.price.toFixed(2)}/L
+                            ₱{Number(fp.price).toFixed(2)}/L
                             {fp.price_updated_by === "community" && (
                               <span
                                 style={{
