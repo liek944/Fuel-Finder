@@ -165,7 +165,7 @@ async function getPriceReportStats() {
 async function getPriceReportTrends(days = 7) {
   const query = `
     SELECT 
-      DATE(created_at) as date,
+      DATE(created_at) as report_date,
       fuel_type,
       ROUND(AVG(price)::numeric, 2) as average_price,
       COUNT(*) as report_count
@@ -173,7 +173,7 @@ async function getPriceReportTrends(days = 7) {
     WHERE created_at >= NOW() - INTERVAL '${days} days'
       AND is_verified = true
     GROUP BY DATE(created_at), fuel_type
-    ORDER BY date DESC, fuel_type
+    ORDER BY report_date DESC, fuel_type
   `;
   
   const result = await pool.query(query);

@@ -59,7 +59,13 @@ const FuelPriceTrendChart: React.FC<{ adminApiKey: string }> = ({
         if (!response.ok) {
           throw new Error("Failed to fetch trend data");
         }
-        const data: TrendData[] = await response.json();
+        const responseData = await response.json();
+        const data: TrendData[] = responseData.data || responseData;
+
+        // Check if data is an array
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid data format received from server");
+        }
 
         const labels = [
           ...new Set(
