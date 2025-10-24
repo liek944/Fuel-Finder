@@ -140,23 +140,54 @@ async function deletePriceReport(reportId) {
  * Get price report statistics
  */
 async function getPriceReportStats() {
-  const query = `
+  // Get basic stats
+  const statsQuery = `
     SELECT
       COUNT(*) AS total_reports,
-      COUNT(DISTINCT station_id) AS stations_with_reports,
-      COUNT(DISTINCT reporter_identifier) AS unique_reporters,
+      COUNT(DISTINCT station_id) AS unique_stations_reported,
       COUNT(CASE WHEN is_verified = true THEN 1 END) AS verified_reports,
       COUNT(CASE WHEN is_verified = false THEN 1 END) AS pending_reports,
-      COUNT(CASE WHEN created_at >= NOW() - INTERVAL '24 hours' THEN 1 END) AS reports_last_24h,
-      COUNT(CASE WHEN created_at >= NOW() - INTERVAL '7 days' THEN 1 END) AS reports_last_7d,
-      ROUND(AVG(price)::numeric, 2) AS average_price,
-      MIN(price) AS lowest_price,
-      MAX(price) AS highest_price
+      COUNT(CASE WHEN created_at::date = CURRENT_DATE THEN 1 END) AS reports_today,
+      ROUND(AVG(price)::numeric, 2) AS avg_price_all,
+      MAX(created_at) AS last_report_date
     FROM fuel_price_reports
   `;
   
-  const result = await pool.query(query);
-  return result.rows[0];
+  // Get most reported station
+  const mostReportedQuery = `
+    SELECT 
+      s.name AS most_reported_station,
+      COUNT(*) AS most_reported_station_count
+    FROM fuel_price_reports pr
+    LEFT JOIN stations s ON pr.station_id = s.id
+    GROUP BY s.name
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+  `;
+  
+  const statsResult = await pool.query(statsQuery);
+  const mostReportedResult = await pool.query(mostReportedQuery);
+  
+  const stats = statsResult.rows[0];
+  const mostReported = mostReportedResult.rows[0];
+  
+  // Calculate verification rate
+  const total = parseInt(stats.total_reports) || 0;
+  const verified = parseInt(stats.verified_reports) || 0;
+  const verificationRate = total > 0 ? ((verified / total) * 100).toFixed(1) + '%' : '0%';
+  
+  return {
+    total_reports: parseInt(stats.total_reports) || 0,
+    verified_reports: parseInt(stats.verified_reports) || 0,
+    pending_reports: parseInt(stats.pending_reports) || 0,
+    reports_today: parseInt(stats.reports_today) || 0,
+    unique_stations_reported: parseInt(stats.unique_stations_reported) || 0,
+    avg_price_all: stats.avg_price_all,
+    most_reported_station: mostReported?.most_reported_station || null,
+    most_reported_station_count: parseInt(mostReported?.most_reported_station_count) || 0,
+    last_report_date: stats.last_report_date,
+    verification_rate: verificationRate
+  };
 }
 
 /**
