@@ -15,7 +15,7 @@ async function ensurePoisTable() {
       CREATE TABLE IF NOT EXISTS pois (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('gas','convenience','repair')),
+        type TEXT NOT NULL CHECK (type IN ('gas','convenience','repair','car_wash','motor_shop')),
         geom geometry(Point, 4326) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
