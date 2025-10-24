@@ -97,7 +97,7 @@ async function getStationById(req, res) {
  * Create a new station
  */
 async function createStation(req, res) {
-  const { name, brand, fuel_price, services, address, phone, operating_hours, location } = req.body;
+  const { name, brand, fuel_price, services, address, phone, operating_hours, location, fuel_prices } = req.body;
 
   // Validation
   if (!name || !brand || !location || !location.lat || !location.lng) {
@@ -121,7 +121,28 @@ async function createStation(req, res) {
     lng: location.lng,
   });
 
-  const data = transformStationData([newStation])[0];
+  // Add individual fuel prices if provided
+  if (fuel_prices && Array.isArray(fuel_prices) && fuel_prices.length > 0) {
+    console.log(`⛽ Adding ${fuel_prices.length} fuel price(s) for station ${newStation.id}`);
+    for (const fp of fuel_prices) {
+      if (fp.fuel_type && fp.price && parseFloat(fp.price) > 0) {
+        try {
+          await priceRepository.updateStationFuelPrice(
+            newStation.id,
+            fp.fuel_type,
+            parseFloat(fp.price),
+            'admin'
+          );
+        } catch (err) {
+          console.error(`❌ Error adding fuel price ${fp.fuel_type}:`, err);
+        }
+      }
+    }
+  }
+
+  // Re-fetch the station to get the fuel_prices array populated
+  const stationWithPrices = await stationRepository.getStationById(newStation.id);
+  const data = transformStationData([stationWithPrices])[0];
   
   console.log(`✅ Created station: ${data.name} (ID: ${data.id})`);
   res.status(201).json(data);
