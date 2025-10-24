@@ -61,15 +61,21 @@ function extractSubdomain(hostname) {
  */
 async function detectOwner(req, res, next) {
   try {
-    // Method 1: Try to extract subdomain from hostname
-    let subdomain = extractSubdomain(req.hostname);
+    let subdomain = null;
 
-    // Method 2: If no subdomain, check x-owner-domain header (for Netlify deployments)
+    // Method 1: PRIORITIZE x-owner-domain header (for Netlify/Vercel deployments)
+    // This is needed when frontend is deployed separately from backend
+    const ownerDomainHeader = req.header("x-owner-domain");
+    if (ownerDomainHeader) {
+      subdomain = ownerDomainHeader;
+      console.log(`🏷️  Owner domain from header: ${subdomain}`);
+    }
+
+    // Method 2: If no header, try to extract subdomain from hostname
     if (!subdomain) {
-      const ownerDomainHeader = req.header("x-owner-domain");
-      if (ownerDomainHeader) {
-        subdomain = ownerDomainHeader;
-        console.log(`🏷️  Owner domain from header: ${subdomain}`);
+      subdomain = extractSubdomain(req.hostname);
+      if (subdomain) {
+        console.log(`🔍 Owner domain from hostname: ${subdomain} (${req.hostname})`);
       }
     }
 
