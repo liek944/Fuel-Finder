@@ -39,6 +39,7 @@ const OwnerDashboard: React.FC = () => {
   const [stations, setStations] = useState<Station[]>([]);
   const [pendingReports, setPendingReports] = useState<PriceReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports'>('overview');
   const navigate = useNavigate();
 
@@ -60,6 +61,9 @@ const OwnerDashboard: React.FC = () => {
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
     
     try {
+      setError(null);
+      setLoading(true);
+
       // Fetch dashboard stats
       const statsRes = await fetch(`${apiUrl}/api/owner/dashboard`, {
         headers: {
@@ -68,7 +72,10 @@ const OwnerDashboard: React.FC = () => {
         }
       });
 
-      if (!statsRes.ok) throw new Error('Failed to fetch dashboard');
+      if (!statsRes.ok) {
+        const errorData = await statsRes.json();
+        throw new Error(errorData.message || 'Failed to fetch dashboard');
+      }
       const statsData = await statsRes.json();
       setStats(statsData);
 
@@ -83,6 +90,8 @@ const OwnerDashboard: React.FC = () => {
       if (stationsRes.ok) {
         const stationsData = await stationsRes.json();
         setStations(stationsData);
+      } else {
+        console.warn('Failed to fetch stations:', stationsRes.status);
       }
 
       // Fetch pending reports
@@ -95,12 +104,15 @@ const OwnerDashboard: React.FC = () => {
 
       if (reportsRes.ok) {
         const reportsData = await reportsRes.json();
-        setPendingReports(reportsData);
+        // Backend returns { count, reports } format
+        setPendingReports(reportsData.reports || []);
+      } else {
+        console.warn('Failed to fetch pending reports:', reportsRes.status);
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Dashboard error:', error);
-      navigate('/owner/login');
+      setError(error.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -117,26 +129,38 @@ const OwnerDashboard: React.FC = () => {
     const subdomain = getSubdomain();
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
+    if (!apiKey) {
+      alert('API key not found. Please login again.');
+      navigate('/owner/login');
+      return;
+    }
+
     try {
       const response = await fetch(`${apiUrl}/api/owner/price-reports/${reportId}/${action}`, {
         method: 'POST',
         headers: {
-          'x-api-key': apiKey!,
-          'x-owner-domain': getSubdomain() || '',
+          'x-api-key': apiKey,
+          'x-owner-domain': subdomain || '',
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          notes: action === 'verify' ? 'Verified by owner' : 'Rejected by owner',
+          reason: action === 'reject' ? 'Incorrect price information' : undefined
+        })
       });
 
       if (response.ok) {
+        const result = await response.json();
         // Refresh data
-        fetchData(apiKey!);
-        alert(`Price report ${action === 'verify' ? 'approved' : 'rejected'} successfully!`);
+        await fetchData(apiKey);
+        alert(result.message || `Price report ${action === 'verify' ? 'approved' : 'rejected'} successfully!`);
       } else {
-        alert(`Failed to ${action} report`);
+        const errorData = await response.json();
+        alert(`Failed to ${action} report: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('An error occurred');
+      alert('An error occurred while processing the request');
     }
   };
 
@@ -149,11 +173,45 @@ const OwnerDashboard: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="owner-dashboard error">
+        <div className="error-content">
+          <h2>⚠️ Dashboard Error</h2>
+          <p>{error}</p>
+          <div className="error-actions">
+            <button onClick={() => fetchData(getApiKey()!)} className="retry-button">
+              🔄 Retry
+            </button>
+            <button onClick={() => navigate('/owner/login')} className="logout-button">
+              🔐 Return to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!stats) {
     return (
       <div className="owner-dashboard error">
-        <p>Failed to load dashboard</p>
-        <button onClick={() => navigate('/owner/login')}>Return to Login</button>
+        <div className="error-content">
+          <h2>📊 No Dashboard Data</h2>
+          <p>Unable to load dashboard statistics. This might be because:</p>
+          <ul>
+            <li>No stations are assigned to your account</li>
+            <li>Database view is not created</li>
+            <li>API key is invalid</li>
+          </ul>
+          <div className="error-actions">
+            <button onClick={() => fetchData(getApiKey()!)} className="retry-button">
+              🔄 Retry
+            </button>
+            <button onClick={() => navigate('/owner/login')} className="logout-button">
+              🔐 Return to Login
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
