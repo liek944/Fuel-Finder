@@ -34,10 +34,8 @@ async function getPendingPriceReports(req, res) {
 async function getPriceReportStats(req, res) {
   const stats = await priceRepository.getPriceReportStats();
   
-  res.json({
-    success: true,
-    data: stats,
-  });
+  // Return stats directly to match frontend expectations
+  res.json(stats);
 }
 
 /**
