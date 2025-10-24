@@ -7,10 +7,10 @@ const express = require("express");
 const router = express.Router();
 const adminController = require("../controllers/adminController");
 const { asyncHandler } = require("../middleware/errorHandler");
-const rateLimit = require("../middleware/rateLimiter");
+const adminRateLimit = require("../middleware/adminRateLimiter");
 
-// Apply rate limiting to all admin routes
-router.use(rateLimit);
+// Apply admin-specific rate limiting (more lenient for dashboard auto-refresh)
+router.use(adminRateLimit);
 
 // User analytics routes
 router.get("/users/stats", asyncHandler(adminController.getUserStats));

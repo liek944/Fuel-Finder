@@ -6,7 +6,7 @@
  * sensitive actions like verifying prices or updating stations.
  */
 
-const db = require("../database/db");
+const { pool } = require("../config/database");
 
 /**
  * Verify owner API key

@@ -13,10 +13,14 @@ const ownerController = require("../controllers/ownerController");
 const { detectOwner, requireOwner } = require("../middleware/ownerDetection");
 const { verifyOwnerApiKey, enforceOwnerStationAccess } = require("../middleware/ownerAuth");
 const { asyncHandler } = require("../middleware/errorHandler");
+const ownerRateLimit = require("../middleware/ownerRateLimiter");
 
 // Apply owner detection to all routes
 router.use(detectOwner);
 router.use(requireOwner);
+
+// Apply per-owner rate limiting (must be after owner detection)
+router.use(ownerRateLimit);
 
 // =====================================================
 // Public owner routes (no API key required)
