@@ -6,6 +6,7 @@
 const express = require("express");
 const router = express.Router();
 const stationController = require("../controllers/stationController");
+const imageController = require("../controllers/imageController");
 const { optionalApiKey } = require("../middleware/authentication");
 const rateLimit = require("../middleware/rateLimiter");
 const requestDeduplication = require("../middleware/deduplication");
@@ -43,6 +44,20 @@ router.delete(
   "/:id",
   optionalApiKey,
   asyncHandler(stationController.deleteStation)
+);
+
+// Image upload routes
+router.post(
+  "/:id/images",
+  requestDeduplication,
+  rateLimit,
+  optionalApiKey,
+  asyncHandler(imageController.uploadStationImages)
+);
+
+router.get(
+  "/:id/images",
+  asyncHandler(imageController.getStationImages)
 );
 
 module.exports = router;

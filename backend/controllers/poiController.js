@@ -86,10 +86,10 @@ async function createPoi(req, res) {
     });
   }
 
-  if (!["gas", "convenience", "repair"].includes(type)) {
+  if (!["gas", "convenience", "repair", "car_wash", "motor_shop"].includes(type)) {
     return res.status(400).json({
       error: "Invalid type",
-      message: "Type must be one of: gas, convenience, repair",
+      message: "Type must be one of: gas, convenience, repair, car_wash, motor_shop",
     });
   }
 
@@ -132,10 +132,10 @@ async function updatePoi(req, res) {
   }
 
   // Validate type if provided
-  if (type && !["gas", "convenience", "repair"].includes(type)) {
+  if (type && !["gas", "convenience", "repair", "car_wash", "motor_shop"].includes(type)) {
     return res.status(400).json({
       error: "Invalid type",
-      message: "Type must be one of: gas, convenience, repair",
+      message: "Type must be one of: gas, convenience, repair, car_wash, motor_shop",
     });
   }
 

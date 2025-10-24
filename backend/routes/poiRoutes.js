@@ -6,6 +6,7 @@
 const express = require("express");
 const router = express.Router();
 const poiController = require("../controllers/poiController");
+const imageController = require("../controllers/imageController");
 const { optionalApiKey } = require("../middleware/authentication");
 const rateLimit = require("../middleware/rateLimiter");
 const requestDeduplication = require("../middleware/deduplication");
@@ -36,6 +37,20 @@ router.delete(
   "/:id",
   optionalApiKey,
   asyncHandler(poiController.deletePoi)
+);
+
+// Image upload routes
+router.post(
+  "/:id/images",
+  requestDeduplication,
+  rateLimit,
+  optionalApiKey,
+  asyncHandler(imageController.uploadPoiImages)
+);
+
+router.get(
+  "/:id/images",
+  asyncHandler(imageController.getPoiImages)
 );
 
 module.exports = router;
