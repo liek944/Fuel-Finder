@@ -17,6 +17,7 @@ import "./App.css";
  * - ifuel-dangay.fuelfinder.com -> "ifuel-dangay"
  * - localhost:3000 -> null
  * - fuelfinder.com -> null
+ * - fuelfinderths.netlify.app -> null (hosting provider, not owner subdomain)
  */
 function extractSubdomain(hostname: string): string | null {
   // Remove port if present
@@ -30,13 +31,28 @@ function extractSubdomain(hostname: string): string | null {
     return null;
   }
   
-  // For development: ifuel-dangay.localhost or ifuel-dangay.duckdns.org
-  if (parts.length === 2 && (parts[1] === 'localhost' || host.includes('duckdns'))) {
-    return parts[0];
+  // Ignore hosting provider domains (not owner subdomains)
+  const hostingProviders = ['netlify.app', 'vercel.app', 'herokuapp.com', 'onrender.com'];
+  const domain = parts.slice(-2).join('.');
+  if (hostingProviders.includes(domain)) {
+    return null; // Don't treat netlify/vercel subdomains as owner subdomains
   }
   
-  // For production: subdomain.fuelfinder.com
-  if (parts.length >= 3) {
+  // For DuckDNS: only detect if it matches owner pattern (owner-name.duckdns.org)
+  // Main backend is fuelfinder.duckdns.org (no subdomain)
+  if (host.includes('duckdns.org')) {
+    if (parts.length === 3) {
+      const subdomain = parts[0];
+      // Only treat as owner subdomain if it's NOT the main backend domain
+      if (subdomain !== 'fuelfinder') {
+        return subdomain;
+      }
+    }
+    return null;
+  }
+  
+  // For production custom domain: subdomain.fuelfinder.com
+  if (parts.length >= 3 && host.includes('fuelfinder.com')) {
     const subdomain = parts[0];
     
     // Ignore common prefixes that aren't owner subdomains
