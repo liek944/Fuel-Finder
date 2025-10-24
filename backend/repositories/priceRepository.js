@@ -183,7 +183,16 @@ async function getPriceReportTrends(days = 7) {
 /**
  * Get all pending price reports (unverified)
  */
-async function getPendingPriceReports(limit = 100) {
+async function getPendingPriceReports(limit = 100, offset = 0) {
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM fuel_price_reports pr
+    WHERE pr.is_verified = false
+  `;
+  
+  const countResult = await pool.query(countQuery);
+  const total = parseInt(countResult.rows[0].total);
+  
   const query = `
     SELECT 
       pr.*,
@@ -194,11 +203,85 @@ async function getPendingPriceReports(limit = 100) {
     LEFT JOIN stations s ON pr.station_id = s.id
     WHERE pr.is_verified = false
     ORDER BY pr.created_at DESC
-    LIMIT $1
+    LIMIT $1 OFFSET $2
   `;
   
-  const result = await pool.query(query, [limit]);
-  return result.rows;
+  const result = await pool.query(query, [limit, offset]);
+  return {
+    reports: result.rows,
+    total: total
+  };
+}
+
+/**
+ * Get all price reports with optional filters
+ */
+async function getAllPriceReports(filters = {}) {
+  const { limit = 100, offset = 0, verified, stationName, startDate, endDate } = filters;
+  
+  // Build WHERE clause
+  const whereClauses = [];
+  const params = [];
+  let paramCount = 0;
+  
+  if (verified !== undefined) {
+    paramCount++;
+    whereClauses.push(`pr.is_verified = $${paramCount}`);
+    params.push(verified === 'true' || verified === true);
+  }
+  
+  if (stationName) {
+    paramCount++;
+    whereClauses.push(`s.name ILIKE $${paramCount}`);
+    params.push(`%${stationName}%`);
+  }
+  
+  if (startDate) {
+    paramCount++;
+    whereClauses.push(`pr.created_at >= $${paramCount}`);
+    params.push(startDate);
+  }
+  
+  if (endDate) {
+    paramCount++;
+    whereClauses.push(`pr.created_at <= $${paramCount}`);
+    params.push(endDate);
+  }
+  
+  const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+  
+  // Count total matching records
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM fuel_price_reports pr
+    LEFT JOIN stations s ON pr.station_id = s.id
+    ${whereClause}
+  `;
+  
+  const countResult = await pool.query(countQuery, params);
+  const total = parseInt(countResult.rows[0].total);
+  
+  // Get paginated results
+  const query = `
+    SELECT 
+      pr.*,
+      s.name AS station_name,
+      s.brand AS station_brand,
+      s.address AS station_address
+    FROM fuel_price_reports pr
+    LEFT JOIN stations s ON pr.station_id = s.id
+    ${whereClause}
+    ORDER BY pr.created_at DESC
+    LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
+  `;
+  
+  params.push(limit, offset);
+  const result = await pool.query(query, params);
+  
+  return {
+    reports: result.rows,
+    total: total
+  };
 }
 
 /**
@@ -263,6 +346,7 @@ module.exports = {
   getPriceReportStats,
   getPriceReportTrends,
   getPendingPriceReports,
+  getAllPriceReports,
   getStationFuelPrices,
   updateStationFuelPrice,
   deleteStationFuelPrice

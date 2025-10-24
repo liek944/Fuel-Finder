@@ -4,6 +4,7 @@
  */
 
 const priceRepository = require("../repositories/priceRepository");
+const userRepository = require("../repositories/userRepository");
 
 /**
  * Get all pending (unverified) price reports
@@ -11,13 +12,18 @@ const priceRepository = require("../repositories/priceRepository");
  */
 async function getPendingPriceReports(req, res) {
   const limit = parseInt(req.query.limit) || 100;
+  const offset = parseInt(req.query.offset) || 0;
   
-  const reports = await priceRepository.getPendingPriceReports(limit);
+  const result = await priceRepository.getPendingPriceReports(limit, offset);
   
   res.json({
     success: true,
-    count: reports.length,
-    data: reports,
+    reports: result.reports,
+    pagination: {
+      total: result.total,
+      limit: limit,
+      offset: offset
+    }
   });
 }
 
@@ -110,6 +116,40 @@ async function deletePriceReport(req, res) {
 }
 
 /**
+ * Get all price reports with optional filters
+ * GET /api/admin/price-reports
+ */
+async function getAllPriceReports(req, res) {
+  const limit = parseInt(req.query.limit) || 100;
+  const offset = parseInt(req.query.offset) || 0;
+  const verified = req.query.verified;
+  const stationName = req.query.station_name;
+  const startDate = req.query.start_date;
+  const endDate = req.query.end_date;
+  
+  const filters = {
+    limit,
+    offset,
+    verified,
+    stationName,
+    startDate,
+    endDate
+  };
+  
+  const result = await priceRepository.getAllPriceReports(filters);
+  
+  res.json({
+    success: true,
+    reports: result.reports,
+    pagination: {
+      total: result.total,
+      limit: limit,
+      offset: offset
+    }
+  });
+}
+
+/**
  * Update station fuel prices
  * PUT /api/admin/stations/:id/prices
  */
@@ -157,11 +197,62 @@ async function updateStationPrices(req, res) {
   });
 }
 
+/**
+ * Get user statistics
+ * GET /api/admin/users/stats
+ */
+async function getUserStats(req, res) {
+  const stats = await userRepository.getUserStats();
+  
+  res.json({
+    success: true,
+    stats: stats,
+  });
+}
+
+/**
+ * Get active users
+ * GET /api/admin/users/active
+ */
+async function getActiveUsers(req, res) {
+  const users = await userRepository.getActiveUsers();
+  
+  res.json({
+    success: true,
+    users: users,
+  });
+}
+
+/**
+ * Get user activity logs
+ * GET /api/admin/users/activity
+ */
+async function getUserActivityLogs(req, res) {
+  const limit = parseInt(req.query.limit) || 100;
+  const offset = parseInt(req.query.offset) || 0;
+  
+  const logs = await userRepository.getUserActivityLogs(limit, offset);
+  
+  res.json({
+    success: true,
+    logs: logs,
+    pagination: {
+      total: logs.length,
+      limit: limit,
+      offset: offset
+    }
+  });
+}
+
 module.exports = {
   getPendingPriceReports,
+  getAllPriceReports,
   getPriceReportStats,
   getPriceReportTrends,
   verifyPriceReport,
   deletePriceReport,
   updateStationPrices,
+  getUserStats,
+  getActiveUsers,
+  getUserActivityLogs,
 };
