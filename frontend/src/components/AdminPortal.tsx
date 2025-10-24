@@ -1221,6 +1221,7 @@ const AdminPortal: React.FC = () => {
       if (isGasStation) {
         payload.brand = formBrand;
         payload.fuel_price = parseFloat(formPrice); // Legacy field for backward compatibility
+        payload.services = formServices; // Add services array
         // Add fuel prices array with only non-zero prices
         payload.fuel_prices = formFuelPrices
           .filter((fp) => fp.fuel_type.trim() && parseFloat(fp.price) > 0)
