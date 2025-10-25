@@ -41,6 +41,7 @@ const OwnerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports'>('overview');
+  const [processingReportId, setProcessingReportId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const getApiKey = () => localStorage.getItem('owner_api_key');
@@ -135,6 +136,14 @@ const OwnerDashboard: React.FC = () => {
       return;
     }
 
+    // Prevent double-clicks
+    if (processingReportId !== null) {
+      console.log('⏳ Already processing another report...');
+      return;
+    }
+
+    setProcessingReportId(reportId);
+
     try {
       const response = await fetch(`${apiUrl}/api/owner/price-reports/${reportId}/${action}`, {
         method: 'POST',
@@ -149,18 +158,29 @@ const OwnerDashboard: React.FC = () => {
         })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        // Refresh data
-        await fetchData(apiKey);
-        alert(result.message || `Price report ${action === 'verify' ? 'approved' : 'rejected'} successfully!`);
-      } else {
-        const errorData = await response.json();
-        alert(`Failed to ${action} report: ${errorData.message || 'Unknown error'}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('An error occurred while processing the request');
+
+      const result = await response.json();
+      console.log(`✅ ${action} response:`, result);
+
+      // Show success message immediately
+      alert(result.message || `Price report ${action === 'verify' ? 'approved' : 'rejected'} successfully!`);
+
+      // Refresh data after showing success
+      try {
+        await fetchData(apiKey);
+      } catch (refreshError) {
+        console.error('Error refreshing data:', refreshError);
+        // Don't show error to user since the action itself succeeded
+      }
+    } catch (error: any) {
+      console.error(`❌ Error during ${action}:`, error);
+      alert(`Failed to ${action} report: ${error.message || 'Unknown error'}`);
+    } finally {
+      setProcessingReportId(null);
     }
   };
 
@@ -363,14 +383,16 @@ const OwnerDashboard: React.FC = () => {
                       <button
                         onClick={() => handleVerifyReport(report.id, 'verify')}
                         className="verify-button"
+                        disabled={processingReportId === report.id}
                       >
-                        ✅ Approve
+                        {processingReportId === report.id ? '⏳ Processing...' : '✅ Approve'}
                       </button>
                       <button
                         onClick={() => handleVerifyReport(report.id, 'reject')}
                         className="reject-button"
+                        disabled={processingReportId === report.id}
                       >
-                        ❌ Reject
+                        {processingReportId === report.id ? '⏳ Processing...' : '❌ Reject'}
                       </button>
                     </div>
                   </div>
