@@ -108,18 +108,54 @@ async function getAveragePriceFromReports(stationId, fuelType, days = 7) {
  * Verify a price report
  */
 async function verifyPriceReport(reportId, verifiedBy) {
-  const query = `
-    UPDATE fuel_price_reports
-    SET 
-      is_verified = true,
-      verified_by = $2,
-      verified_at = NOW()
-    WHERE id = $1
-    RETURNING *
-  `;
+  const client = await pool.connect();
   
-  const result = await pool.query(query, [reportId, verifiedBy]);
-  return result.rows[0];
+  try {
+    await client.query('BEGIN');
+    
+    // Step 1: Mark the report as verified
+    const reportQuery = `
+      UPDATE fuel_price_reports
+      SET 
+        is_verified = true,
+        verified_by = $2,
+        verified_at = NOW()
+      WHERE id = $1
+      RETURNING station_id, fuel_type, price
+    `;
+    
+    const reportResult = await client.query(reportQuery, [reportId, verifiedBy]);
+    
+    if (reportResult.rows.length === 0) {
+      throw new Error('Price report not found');
+    }
+    
+    const report = reportResult.rows[0];
+    
+    // Step 2: Update the fuel_prices table with the verified price
+    const priceQuery = `
+      INSERT INTO fuel_prices (station_id, fuel_type, price, is_community, price_updated_by, price_updated_at, updated_at)
+      VALUES ($1, $2, $3, TRUE, 'community', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (station_id, fuel_type)
+      DO UPDATE SET
+        price = EXCLUDED.price,
+        is_community = TRUE,
+        price_updated_by = 'community',
+        price_updated_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    `;
+    
+    await client.query(priceQuery, [report.station_id, report.fuel_type, report.price]);
+    
+    await client.query('COMMIT');
+    
+    return report;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**

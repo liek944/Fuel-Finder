@@ -388,12 +388,14 @@ async function verifyPriceReport(req, res) {
 
   // Update station's fuel price
   await pool.query(
-    `INSERT INTO fuel_prices (station_id, fuel_type, price, is_community, updated_at)
-     VALUES ($1, $2, $3, TRUE, CURRENT_TIMESTAMP)
+    `INSERT INTO fuel_prices (station_id, fuel_type, price, is_community, price_updated_by, price_updated_at, updated_at)
+     VALUES ($1, $2, $3, FALSE, 'owner', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
      ON CONFLICT (station_id, fuel_type) 
      DO UPDATE SET 
        price = EXCLUDED.price,
-       is_community = TRUE,
+       is_community = FALSE,
+       price_updated_by = 'owner',
+       price_updated_at = CURRENT_TIMESTAMP,
        updated_at = CURRENT_TIMESTAMP`,
     [report.station_id, report.fuel_type, report.price]
   );
