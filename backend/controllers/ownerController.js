@@ -79,7 +79,7 @@ async function getOwnerStations(req, res) {
       ST_Y(s.geom) as lat,
       COALESCE(
         json_agg(
-          DISTINCT jsonb_build_object(
+          jsonb_build_object(
             'id', img.id,
             'filename', img.filename,
             'display_order', img.display_order,
@@ -90,7 +90,7 @@ async function getOwnerStations(req, res) {
       ) as images,
       COALESCE(
         json_agg(
-          DISTINCT jsonb_build_object(
+          jsonb_build_object(
             'id', fp.id,
             'fuel_type', fp.fuel_type,
             'price', fp.price,
@@ -146,7 +146,7 @@ async function getOwnerStation(req, res) {
       ST_Y(s.geom) as lat,
       COALESCE(
         json_agg(
-          DISTINCT jsonb_build_object(
+          jsonb_build_object(
             'id', img.id,
             'filename', img.filename,
             'display_order', img.display_order,
@@ -157,7 +157,7 @@ async function getOwnerStation(req, res) {
       ) as images,
       COALESCE(
         json_agg(
-          DISTINCT jsonb_build_object(
+          jsonb_build_object(
             'id', fp.id,
             'fuel_type', fp.fuel_type,
             'price', fp.price,
