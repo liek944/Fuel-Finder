@@ -81,8 +81,9 @@ async function getOwnerStations(req, res) {
         json_agg(
           DISTINCT jsonb_build_object(
             'id', img.id,
-            'url', img.image_url,
-            'uploaded_at', img.uploaded_at
+            'filename', img.filename,
+            'display_order', img.display_order,
+            'is_primary', img.is_primary
           )
         ) FILTER (WHERE img.id IS NOT NULL),
         '[]'::json
@@ -100,7 +101,7 @@ async function getOwnerStations(req, res) {
         '[]'::json
       ) as fuel_prices
     FROM stations s
-    LEFT JOIN images img ON img.entity_id = s.id AND img.entity_type = 'station'
+    LEFT JOIN images img ON img.station_id = s.id
     LEFT JOIN fuel_prices fp ON fp.station_id = s.id
     WHERE s.owner_id = $1
     GROUP BY s.id
@@ -147,8 +148,9 @@ async function getOwnerStation(req, res) {
         json_agg(
           DISTINCT jsonb_build_object(
             'id', img.id,
-            'url', img.image_url,
-            'uploaded_at', img.uploaded_at
+            'filename', img.filename,
+            'display_order', img.display_order,
+            'is_primary', img.is_primary
           )
         ) FILTER (WHERE img.id IS NOT NULL),
         '[]'::json
@@ -166,7 +168,7 @@ async function getOwnerStation(req, res) {
         '[]'::json
       ) as fuel_prices
     FROM stations s
-    LEFT JOIN images img ON img.entity_id = s.id AND img.entity_type = 'station'
+    LEFT JOIN images img ON img.station_id = s.id
     LEFT JOIN fuel_prices fp ON fp.station_id = s.id
     WHERE s.id = $1 AND s.owner_id = $2
     GROUP BY s.id`,
