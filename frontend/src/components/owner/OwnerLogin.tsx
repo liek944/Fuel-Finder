@@ -52,10 +52,13 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
     try {
       const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
       
+      // Trim API key to remove accidental whitespace
+      const trimmedApiKey = apiKey.trim();
+      
       // Verify API key by fetching dashboard
       const response = await fetch(`${apiUrl}/api/owner/dashboard`, {
         headers: {
-          'x-api-key': apiKey,
+          'x-api-key': trimmedApiKey,
           'x-owner-domain': subdomain
         }
       });
@@ -65,8 +68,8 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
         throw new Error(errorData.message || 'Invalid API key');
       }
 
-      // Store API key securely
-      localStorage.setItem('owner_api_key', apiKey);
+      // Store trimmed API key securely
+      localStorage.setItem('owner_api_key', trimmedApiKey);
       localStorage.setItem('owner_subdomain', subdomain);
       
       // Redirect to dashboard
