@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS fuel_price_reports (
     station_id INTEGER NOT NULL REFERENCES stations(id) ON DELETE CASCADE,
     fuel_type VARCHAR(50) DEFAULT 'Regular', -- Regular, Premium, Diesel, etc.
     price DECIMAL(10, 2) NOT NULL CHECK (price > 0),
+    reporter_name VARCHAR(255) DEFAULT 'Anonymous', -- Name or identifier of reporter
     reporter_ip VARCHAR(45), -- IPv4 or IPv6 address
     reporter_identifier VARCHAR(255), -- Optional: browser fingerprint or user ID
     is_verified BOOLEAN DEFAULT FALSE,

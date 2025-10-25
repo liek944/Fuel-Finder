@@ -13,8 +13,8 @@ SELECT
     COUNT(DISTINCT s.id) AS total_stations,
     COUNT(DISTINCT CASE WHEN fpr.is_verified = TRUE AND fpr.verified_by_owner_id = o.id THEN fpr.id END) AS verified_reports,
     COUNT(DISTINCT CASE WHEN fpr.is_verified = FALSE THEN fpr.id END) AS pending_reports,
-    COUNT(DISTINCT oal.id) AS total_actions,
-    MAX(oal.created_at) AS last_activity
+    COUNT(DISTINCT CASE WHEN oal.action_type NOT IN ('auth_success', 'auth_attempt', 'view_dashboard') THEN oal.id END) AS total_actions,
+    MAX(CASE WHEN oal.action_type NOT IN ('auth_success', 'auth_attempt') THEN oal.created_at END) AS last_activity
 FROM owners o
 LEFT JOIN stations s ON s.owner_id = o.id
 LEFT JOIN fuel_price_reports fpr ON fpr.station_id = s.id
