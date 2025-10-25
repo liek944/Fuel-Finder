@@ -1905,6 +1905,18 @@ const AdminPortal: React.FC = () => {
                                     {fp.fuel_type}:
                                   </span>{" "}
                                   ₱{Number(fp.price).toFixed(2)}/L
+                                  {fp.price_updated_by === "owner" && (
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        color: "#2563eb",
+                                        marginLeft: 4,
+                                        fontWeight: 500,
+                                      }}
+                                    >
+                                      (verified by owner)
+                                    </span>
+                                  )}
                                   {fp.price_updated_by === "community" && (
                                     <span
                                       style={{
