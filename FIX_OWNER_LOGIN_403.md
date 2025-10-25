@@ -201,6 +201,24 @@ Expected result: Dashboard stats showing total_stations, pending_reports, etc.
 
 ## Common Issues
 
+### Issue: Missing trailing '=' when copying API key
+
+**Problem:** Double-clicking to select the API key doesn't include the trailing `=` character.
+
+**Example:**
+- ❌ Wrong: `H8dyZF3oZx72k2EOSIjUrKeZOQ8MMmoYFr9NVv07g0I` (missing `=`)
+- ✅ Correct: `H8dyZF3oZx72k2EOSIjUrKeZOQ8MMmoYFr9NVv07g0I=` (includes `=`)
+
+**Solution:** 
+- Triple-click to select the entire line, OR
+- Click at start, hold Shift, click at end of line, OR
+- Use Ctrl+A if key is in a text field
+
+**Why it matters:** Base64-encoded keys use `=` as padding. The backend does an exact string match, so `...g0I` ≠ `...g0I=`.
+
+**Good news:** The backend now detects this and shows a helpful error:
+> "Invalid API key. The key appears incomplete - make sure to copy the entire key including any trailing characters like '='."
+
 ### Issue: "Subdomain 'fuelfinder' is not registered"
 
 **Problem:** You're accessing the portal from the wrong URL.

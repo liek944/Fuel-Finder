@@ -27,8 +27,8 @@ async function verifyOwnerApiKey(req, res, next) {
       });
     }
 
-    // Get API key from header
-    const providedApiKey = req.header("x-api-key");
+    // Get API key from header and trim whitespace
+    const providedApiKey = req.header("x-api-key")?.trim();
 
     if (!providedApiKey) {
       console.warn(`⚠️  Missing API key for owner: ${req.ownerData.name}`);
@@ -91,6 +91,11 @@ async function verifyOwnerApiKey(req, res, next) {
     // Verify API key
     if (providedApiKey !== owner.api_key) {
       console.warn(`⚠️  Invalid API key attempt for owner: ${req.ownerData.name} from IP: ${req.ip}`);
+      console.warn(`   Expected length: ${owner.api_key.length}, Received length: ${providedApiKey.length}`);
+      
+      // Check if it's a partial match (common issue: missing trailing '=' in base64)
+      const isPartialMatch = owner.api_key.startsWith(providedApiKey) || 
+                             providedApiKey.startsWith(owner.api_key);
       
       // Log failed attempt for security monitoring
       await logOwnerActivity(
@@ -101,15 +106,25 @@ async function verifyOwnerApiKey(req, res, next) {
         req.get('user-agent'),
         { 
           reason: 'invalid_api_key',
-          provided_key_prefix: providedApiKey.substring(0, 8) + '...'
+          provided_key_prefix: providedApiKey.substring(0, 8) + '...',
+          expected_length: owner.api_key.length,
+          provided_length: providedApiKey.length,
+          is_partial_match: isPartialMatch
         },
         false,
         'Invalid API key provided'
       );
 
+      // Provide helpful error message
+      let errorMessage = "Invalid API key. Please check your credentials.";
+      if (isPartialMatch) {
+        errorMessage = "Invalid API key. The key appears incomplete - make sure to copy the entire key including any trailing characters like '='.";
+      }
+
       return res.status(403).json({
         error: "Forbidden",
-        message: "Invalid API key. Please check your credentials.",
+        message: errorMessage,
+        hint: isPartialMatch ? "Double-check that you copied the complete API key, including the ending '=' character if present." : undefined
       });
     }
 
