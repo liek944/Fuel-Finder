@@ -12,16 +12,29 @@ interface DashboardStats {
   last_activity: string | null;
 }
 
+interface FuelPrice {
+  id: number;
+  fuel_type: string;
+  price: number | string;
+  is_community: boolean;
+  updated_at: string;
+}
+
 interface Station {
   id: number;
   name: string;
   brand: string | null;
   address: string;
+  phone: string | null;
   location: {
     lat: number;
     lng: number;
   };
   operating_hours: { open: string; close: string } | null;
+  services: string[];
+  fuel_prices: FuelPrice[];
+  images: any[];
+  primaryImage: any;
 }
 
 interface PriceReport {
@@ -44,6 +57,8 @@ const OwnerDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports'>('overview');
   const [processingReportId, setProcessingReportId] = useState<number | null>(null);
+  const [editingStation, setEditingStation] = useState<Station | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const navigate = useNavigate();
 
   const getApiKey = () => localStorage.getItem('owner_api_key');
@@ -125,6 +140,67 @@ const OwnerDashboard: React.FC = () => {
     localStorage.removeItem('owner_api_key');
     localStorage.removeItem('owner_subdomain');
     navigate('/owner/login');
+  };
+
+  const handleEditStation = (station: Station) => {
+    setEditingStation(station);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateStation = async (updatedData: Partial<Station>) => {
+    const apiKey = getApiKey();
+    const subdomain = getSubdomain();
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
+    if (!apiKey || !editingStation) {
+      alert('API key or station data not found');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiUrl}/api/owner/stations/${editingStation.id}`, {
+        method: 'PUT',
+        headers: {
+          'x-api-key': apiKey,
+          'x-owner-domain': subdomain || '',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update station');
+      }
+
+      // Update fuel prices if provided
+      if (updatedData.fuel_prices) {
+        for (const fuelPrice of updatedData.fuel_prices) {
+          await fetch(`${apiUrl}/api/owner/stations/${editingStation.id}/fuel-price`, {
+            method: 'PUT',
+            headers: {
+              'x-api-key': apiKey,
+              'x-owner-domain': subdomain || '',
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              fuel_type: fuelPrice.fuel_type,
+              price: fuelPrice.price
+            })
+          });
+        }
+      }
+
+      alert('Station updated successfully!');
+      setShowEditModal(false);
+      setEditingStation(null);
+      
+      // Refresh data
+      await fetchData(apiKey);
+    } catch (error: any) {
+      console.error('Error updating station:', error);
+      alert(`Failed to update station: ${error.message || 'Unknown error'}`);
+    }
   };
 
   const handleVerifyReport = async (reportId: number, action: 'verify' | 'reject') => {
@@ -333,15 +409,47 @@ const OwnerDashboard: React.FC = () => {
                       {station.brand && <span className="brand-badge">{station.brand}</span>}
                     </div>
                     <p className="station-address">📍 {station.address}</p>
+                    {station.phone && (
+                      <p className="station-phone">📞 {station.phone}</p>
+                    )}
                     {station.operating_hours && (
                       <p className="station-hours">
                         🕐 {station.operating_hours.open} - {station.operating_hours.close}
                       </p>
                     )}
+                    
+                    {/* Fuel Prices Section */}
+                    {station.fuel_prices && station.fuel_prices.length > 0 && (
+                      <div className="fuel-prices-section">
+                        <h4>Current Prices</h4>
+                        <div className="fuel-prices-grid">
+                          {station.fuel_prices.map((fuelPrice) => (
+                            <div key={fuelPrice.id} className="fuel-price-item">
+                              <div className="fuel-type">{fuelPrice.fuel_type}</div>
+                              <div className="fuel-price">₱{Number(fuelPrice.price).toFixed(2)}</div>
+                              <div className="fuel-status">
+                                {fuelPrice.is_community ? '👥 Community' : '✓ Verified'}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="station-coords">
                       <small>
                         {station.location.lat.toFixed(6)}, {station.location.lng.toFixed(6)}
                       </small>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="station-actions">
+                      <button 
+                        onClick={() => handleEditStation(station)}
+                        className="action-button edit-button"
+                      >
+                        ✏️ Edit Station
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -404,6 +512,18 @@ const OwnerDashboard: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Edit Station Modal */}
+      {showEditModal && editingStation && (
+        <EditStationModal
+          station={editingStation}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingStation(null);
+          }}
+          onSave={handleUpdateStation}
+        />
+      )}
     </div>
   );
 };
@@ -424,5 +544,310 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color }) => (
     </div>
   </div>
 );
+
+// Edit Station Modal Component
+interface EditStationModalProps {
+  station: Station;
+  onClose: () => void;
+  onSave: (data: Partial<Station>) => void;
+}
+
+const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, onSave }) => {
+  const [formData, setFormData] = useState({
+    name: station.name,
+    brand: station.brand || '',
+    address: station.address,
+    phone: station.phone || '',
+    operating_hours: station.operating_hours || { open: '', close: '' },
+    services: station.services || [],
+  });
+
+  // Common preset fuel types
+  const PRESET_FUEL_TYPES = ['Diesel', 'Premium', 'Regular', 'Unleaded', 'Super Premium'];
+
+  const [fuelPrices, setFuelPrices] = useState<{ fuel_type: string; price: string }[]>([]);
+  const [newFuelType, setNewFuelType] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
+
+  // Initialize fuel prices from existing data or presets
+  React.useEffect(() => {
+    if (station.fuel_prices && station.fuel_prices.length > 0) {
+      // Use existing fuel prices from station
+      setFuelPrices(
+        station.fuel_prices.map((fp) => ({
+          fuel_type: fp.fuel_type,
+          price: String(fp.price),
+        }))
+      );
+    } else {
+      // Initialize with common presets (empty prices)
+      setFuelPrices([
+        { fuel_type: 'Diesel', price: '' },
+        { fuel_type: 'Premium', price: '' },
+        { fuel_type: 'Regular', price: '' },
+      ]);
+    }
+  }, [station.fuel_prices]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Filter out empty fuel prices
+    const validFuelPrices = fuelPrices
+      .filter((fp) => fp.price && parseFloat(fp.price) > 0)
+      .map((fp) => ({
+        fuel_type: fp.fuel_type,
+        price: parseFloat(fp.price),
+      }));
+
+    const updateData: any = {
+      name: formData.name,
+      brand: formData.brand || null,
+      address: formData.address,
+      phone: formData.phone || null,
+      operating_hours: formData.operating_hours.open && formData.operating_hours.close 
+        ? formData.operating_hours 
+        : null,
+      services: formData.services,
+    };
+
+    if (validFuelPrices.length > 0) {
+      updateData.fuel_prices = validFuelPrices;
+    }
+
+    onSave(updateData);
+  };
+
+  const handleFuelPriceChange = (fuelType: string, value: string) => {
+    setFuelPrices((prev) =>
+      prev.map((fp) =>
+        fp.fuel_type === fuelType ? { ...fp, price: value } : fp
+      )
+    );
+  };
+
+  const handleAddCustomFuelType = () => {
+    if (!newFuelType.trim()) {
+      alert('Please enter a fuel type name');
+      return;
+    }
+
+    // Check if fuel type already exists
+    if (fuelPrices.some((fp) => fp.fuel_type.toLowerCase() === newFuelType.trim().toLowerCase())) {
+      alert('This fuel type already exists');
+      return;
+    }
+
+    // Add new fuel type
+    setFuelPrices((prev) => [...prev, { fuel_type: newFuelType.trim(), price: '' }]);
+    setNewFuelType('');
+    setShowCustomInput(false);
+  };
+
+  const handleRemoveFuelType = (fuelType: string) => {
+    setFuelPrices((prev) => prev.filter((fp) => fp.fuel_type !== fuelType));
+  };
+
+  const handleAddPresetFuelType = (fuelType: string) => {
+    // Check if already exists
+    if (fuelPrices.some((fp) => fp.fuel_type === fuelType)) {
+      return;
+    }
+    setFuelPrices((prev) => [...prev, { fuel_type: fuelType, price: '' }]);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>✏️ Edit Station</h2>
+          <button className="modal-close" onClick={onClose}>
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="modal-form">
+          {/* Basic Information */}
+          <div className="form-section">
+            <h3>Basic Information</h3>
+            
+            <div className="form-group">
+              <label>Station Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Brand</label>
+              <input
+                type="text"
+                value={formData.brand}
+                onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+                placeholder="e.g., Shell, Petron, Caltex"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Address *</label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Phone Number</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="e.g., +63 912 345 6789"
+              />
+            </div>
+          </div>
+
+          {/* Operating Hours */}
+          <div className="form-section">
+            <h3>Operating Hours</h3>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Open Time</label>
+                <input
+                  type="time"
+                  value={formData.operating_hours.open}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      operating_hours: { ...formData.operating_hours, open: e.target.value },
+                    })
+                  }
+                />
+              </div>
+              <div className="form-group">
+                <label>Close Time</label>
+                <input
+                  type="time"
+                  value={formData.operating_hours.close}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      operating_hours: { ...formData.operating_hours, close: e.target.value },
+                    })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Fuel Prices */}
+          <div className="form-section">
+            <h3>Fuel Prices (₱ per Liter)</h3>
+            <p className="form-hint">Add fuel types your station offers and set their prices</p>
+            
+            {/* Current Fuel Prices */}
+            {fuelPrices.map((fuelPrice) => (
+              <div key={fuelPrice.fuel_type} className="fuel-price-input-row">
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label>{fuelPrice.fuel_type}</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={fuelPrice.price}
+                    onChange={(e) => handleFuelPriceChange(fuelPrice.fuel_type, e.target.value)}
+                    placeholder={`Enter ${fuelPrice.fuel_type} price`}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="remove-fuel-button"
+                  onClick={() => handleRemoveFuelType(fuelPrice.fuel_type)}
+                  title="Remove this fuel type"
+                >
+                  🗑️
+                </button>
+              </div>
+            ))}
+
+            {/* Preset Fuel Types */}
+            <div className="preset-fuel-types">
+              <label style={{ fontSize: '13px', color: '#718096', marginBottom: '8px', display: 'block' }}>
+                Quick Add:
+              </label>
+              <div className="preset-buttons">
+                {PRESET_FUEL_TYPES.filter(
+                  (preset) => !fuelPrices.some((fp) => fp.fuel_type === preset)
+                ).map((fuelType) => (
+                  <button
+                    key={fuelType}
+                    type="button"
+                    className="preset-fuel-button"
+                    onClick={() => handleAddPresetFuelType(fuelType)}
+                  >
+                    + {fuelType}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Fuel Type Input */}
+            {showCustomInput ? (
+              <div className="custom-fuel-input">
+                <input
+                  type="text"
+                  value={newFuelType}
+                  onChange={(e) => setNewFuelType(e.target.value)}
+                  placeholder="Enter custom fuel type name"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  className="add-custom-button"
+                  onClick={handleAddCustomFuelType}
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  className="cancel-custom-button"
+                  onClick={() => {
+                    setShowCustomInput(false);
+                    setNewFuelType('');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="add-custom-fuel-type-button"
+                onClick={() => setShowCustomInput(true)}
+              >
+                ➕ Add Custom Fuel Type
+              </button>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="modal-actions">
+            <button type="button" onClick={onClose} className="cancel-button">
+              Cancel
+            </button>
+            <button type="submit" className="save-button">
+              💾 Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 export default OwnerDashboard;
