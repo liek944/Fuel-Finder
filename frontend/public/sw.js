@@ -1,5 +1,5 @@
 /* Fuel Finder Service Worker */
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v__BUILD_TIME__'; // Will be replaced during build
 const STATIC_CACHE = `ff-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `ff-runtime-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';

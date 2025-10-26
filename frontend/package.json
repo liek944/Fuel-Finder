@@ -27,7 +27,7 @@
   "scripts": {
     "dev": "vite",
     "start": "vite",
-    "build": "vite build",
+    "build": "vite build && node version-sw.js",
     "preview": "vite preview",
     "test": "vitest"
   },
