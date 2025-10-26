@@ -756,6 +756,11 @@ const MainApp: React.FC = () => {
   // Donation widget state
   const [showDonations, setShowDonations] = useState<boolean>(false);
 
+  // Auto-refresh states
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true); // Auto-refresh enabled by default
+  const [lastDataRefresh, setLastDataRefresh] = useState<number>(Date.now());
+  const AUTO_REFRESH_INTERVAL = 60000; // 60 seconds
+
   // Location tracking states
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
   const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(
@@ -894,6 +899,46 @@ const MainApp: React.FC = () => {
 
     fetchPOIs();
   }, [position, radiusMeters]);
+
+  // Auto-refresh timer - periodically refetch stations and POIs
+  useEffect(() => {
+    if (!autoRefreshEnabled || !position) return;
+
+    const refreshData = async () => {
+      try {
+        // Fetch stations
+        const stationsUrl = getApiUrl(
+          `/api/stations/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
+        );
+        const stationsResponse = await fetch(stationsUrl);
+        const stationsData = await stationsResponse.json();
+        setStations(Array.isArray(stationsData) ? stationsData : []);
+
+        // Fetch POIs
+        const poisUrl = getApiUrl(
+          `/api/pois/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
+        );
+        const poisResponse = await fetch(poisUrl);
+        const poisData = await poisResponse.json();
+        setPois(Array.isArray(poisData) ? poisData : []);
+
+        // Update last refresh timestamp
+        setLastDataRefresh(Date.now());
+        
+        console.log("🔄 Auto-refresh: Data updated");
+      } catch (error) {
+        console.error("Auto-refresh failed:", error);
+      }
+    };
+
+    // Set up interval for auto-refresh
+    const intervalId = setInterval(refreshData, AUTO_REFRESH_INTERVAL);
+
+    // Cleanup interval on unmount or when dependencies change
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [autoRefreshEnabled, position, radiusMeters, AUTO_REFRESH_INTERVAL]);
 
   // Initialize user activity tracking
   useEffect(() => {
@@ -1634,6 +1679,56 @@ const MainApp: React.FC = () => {
               <div className="results-summary-header">📊 Results</div>
               <div>⛽ {filteredStations.length} stations</div>
               <div>📍 {pois.length} POIs</div>
+            </div>
+
+            {/* Auto-refresh toggle */}
+            <div className="auto-refresh-control" style={{
+              marginTop: 12,
+              padding: "10px",
+              background: autoRefreshEnabled ? "#e8f5e9" : "#fafafa",
+              borderRadius: 8,
+              border: `1px solid ${autoRefreshEnabled ? "#4CAF50" : "#ddd"}`,
+            }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 6,
+              }}>
+                <label style={{ 
+                  fontSize: 12, 
+                  fontWeight: 600,
+                  color: autoRefreshEnabled ? "#2e7d32" : "#666",
+                }}>
+                  🔄 Auto-refresh
+                </label>
+                <button
+                  onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                  style={{
+                    background: autoRefreshEnabled ? "#4CAF50" : "#9e9e9e",
+                    color: "white",
+                    border: "none",
+                    padding: "4px 12px",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}
+                >
+                  {autoRefreshEnabled ? "ON" : "OFF"}
+                </button>
+              </div>
+              <div style={{ fontSize: 10, color: "#666" }}>
+                {autoRefreshEnabled ? (
+                  <>
+                    Updates every {AUTO_REFRESH_INTERVAL / 1000}s
+                    <br />
+                    Last: {getTimeAgo(lastDataRefresh)}
+                  </>
+                ) : (
+                  "Enable to auto-update prices"
+                )}
+              </div>
             </div>
 
             {/* Route to Nearest POI Section */}
