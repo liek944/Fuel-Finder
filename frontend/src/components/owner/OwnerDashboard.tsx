@@ -644,8 +644,45 @@ const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, o
     setShowCustomInput(false);
   };
 
-  const handleRemoveFuelType = (fuelType: string) => {
-    setFuelPrices((prev) => prev.filter((fp) => fp.fuel_type !== fuelType));
+  const handleRemoveFuelType = async (fuelType: string) => {
+    if (!editingStation) return;
+
+    // Ask for confirmation
+    if (!window.confirm(`Are you sure you want to remove ${fuelType} from this station?`)) {
+      return;
+    }
+
+    const apiKey = localStorage.getItem('owner_api_key');
+    const subdomain = localStorage.getItem('owner_subdomain');
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
+    try {
+      // Only call the API if the fuel type exists in the database (station has existing fuel_prices)
+      const existingFuelPrice = station.fuel_prices?.find(fp => fp.fuel_type === fuelType);
+      
+      if (existingFuelPrice) {
+        const response = await fetch(`${apiUrl}/api/owner/stations/${editingStation.id}/fuel-price/${encodeURIComponent(fuelType)}`, {
+          method: 'DELETE',
+          headers: {
+            'x-api-key': apiKey || '',
+            'x-owner-domain': subdomain || '',
+          }
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to delete fuel price');
+        }
+
+        console.log(`✅ ${fuelType} deleted from database`);
+      }
+
+      // Remove from local state
+      setFuelPrices((prev) => prev.filter((fp) => fp.fuel_type !== fuelType));
+    } catch (error: any) {
+      console.error('Error deleting fuel price:', error);
+      alert(`Failed to delete ${fuelType}: ${error.message || 'Unknown error'}`);
+    }
   };
 
   const handleAddPresetFuelType = (fuelType: string) => {
