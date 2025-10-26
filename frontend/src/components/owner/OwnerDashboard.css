@@ -21,6 +21,77 @@
   animation: spin 1s linear infinite;
 }
 
+.spinner-small {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Toast Notifications */
+.toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  padding: 16px 24px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font-size: 15px;
+  font-weight: 600;
+  z-index: 10000;
+  animation: slideInRight 0.3s ease-out, fadeOut 0.5s ease-in 3.5s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 400px;
+}
+
+.toast-success {
+  background: #48bb78;
+  color: white;
+}
+
+.toast-error {
+  background: #f56565;
+  color: white;
+}
+
+.toast-info {
+  background: #4299e1;
+  color: white;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 /* Header */
 .dashboard-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -51,6 +122,35 @@
   border-radius: 6px;
   display: inline-block;
   margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.refresh-button {
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.refresh-button:hover:not(:disabled) {
+  background: white;
+  color: #667eea;
+}
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .logout-button {
@@ -575,6 +675,17 @@
     align-items: flex-start;
   }
 
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .refresh-button,
+  .logout-button {
+    flex: 1;
+    padding: 10px 16px;
+  }
+
   .dashboard-tabs {
     overflow-x: auto;
     padding: 0 16px;
@@ -598,6 +709,16 @@
 
   .report-actions {
     flex-direction: column;
+  }
+
+  /* Toast for mobile */
+  .toast {
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    max-width: calc(100% - 32px);
+    font-size: 14px;
+    padding: 14px 20px;
   }
 }
 
@@ -767,19 +888,34 @@
   border: 2px solid #e2e8f0;
 }
 
-.cancel-button:hover {
+.cancel-button:hover:not(:disabled) {
   background: #e2e8f0;
+}
+
+.cancel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .save-button {
   background: #48bb78;
   color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
-.save-button:hover {
+.save-button:hover:not(:disabled) {
   background: #38a169;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.save-button:disabled {
+  background: #a0aec0;
+  cursor: not-allowed;
+  opacity: 0.8;
 }
 
 /* Fuel Price Input Row */

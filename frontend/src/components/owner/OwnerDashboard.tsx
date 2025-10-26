@@ -59,6 +59,9 @@ const OwnerDashboard: React.FC = () => {
   const [processingReportId, setProcessingReportId] = useState<number | null>(null);
   const [editingStation, setEditingStation] = useState<Station | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [savingStation, setSavingStation] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const navigate = useNavigate();
 
   const getApiKey = () => localStorage.getItem('owner_api_key');
@@ -136,6 +139,23 @@ const OwnerDashboard: React.FC = () => {
     }
   };
 
+  const handleRefresh = async () => {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      navigate('/owner/login');
+      return;
+    }
+
+    setRefreshing(true);
+    try {
+      await fetchData(apiKey);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('owner_api_key');
     localStorage.removeItem('owner_subdomain');
@@ -147,17 +167,27 @@ const OwnerDashboard: React.FC = () => {
     setShowEditModal(true);
   };
 
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+
   const handleUpdateStation = async (updatedData: Partial<Station>) => {
     const apiKey = getApiKey();
     const subdomain = getSubdomain();
     const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
     if (!apiKey || !editingStation) {
-      alert('API key or station data not found');
+      showToast('API key or station data not found', 'error');
       return;
     }
 
+    setSavingStation(true);
+
     try {
+      // Show saving notification
+      showToast('Saving changes...', 'info');
+
       const response = await fetch(`${apiUrl}/api/owner/stations/${editingStation.id}`, {
         method: 'PUT',
         headers: {
@@ -191,7 +221,7 @@ const OwnerDashboard: React.FC = () => {
         }
       }
 
-      alert('Station updated successfully!');
+      showToast('✓ Station updated successfully!', 'success');
       setShowEditModal(false);
       setEditingStation(null);
       
@@ -199,7 +229,9 @@ const OwnerDashboard: React.FC = () => {
       await fetchData(apiKey);
     } catch (error: any) {
       console.error('Error updating station:', error);
-      alert(`Failed to update station: ${error.message || 'Unknown error'}`);
+      showToast(`Failed to update station: ${error.message || 'Unknown error'}`, 'error');
+    } finally {
+      setSavingStation(false);
     }
   };
 
@@ -323,9 +355,19 @@ const OwnerDashboard: React.FC = () => {
             <h1>{stats.owner_name}</h1>
             <p className="domain-badge">{stats.domain}.fuelfinder.com</p>
           </div>
-          <button onClick={handleLogout} className="logout-button">
-            🚪 Logout
-          </button>
+          <div className="header-actions">
+            <button 
+              onClick={handleRefresh} 
+              className="refresh-button"
+              disabled={refreshing}
+              title="Refresh dashboard data"
+            >
+              {refreshing ? '⏳ Refreshing...' : '🔄 Refresh'}
+            </button>
+            <button onClick={handleLogout} className="logout-button">
+              🚪 Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -513,6 +555,13 @@ const OwnerDashboard: React.FC = () => {
         )}
       </div>
 
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`toast toast-${toast.type}`}>
+          <span>{toast.message}</span>
+        </div>
+      )}
+
       {/* Edit Station Modal */}
       {showEditModal && editingStation && (
         <EditStationModal
@@ -522,6 +571,7 @@ const OwnerDashboard: React.FC = () => {
             setEditingStation(null);
           }}
           onSave={handleUpdateStation}
+          isSaving={savingStation}
         />
       )}
     </div>
@@ -550,9 +600,10 @@ interface EditStationModalProps {
   station: Station;
   onClose: () => void;
   onSave: (data: Partial<Station>) => void;
+  isSaving?: boolean;
 }
 
-const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, onSave }) => {
+const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, onSave, isSaving = false }) => {
   const [formData, setFormData] = useState({
     name: station.name,
     brand: station.brand || '',
@@ -872,11 +923,27 @@ const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, o
 
           {/* Action Buttons */}
           <div className="modal-actions">
-            <button type="button" onClick={onClose} className="cancel-button">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="cancel-button"
+              disabled={isSaving}
+            >
               Cancel
             </button>
-            <button type="submit" className="save-button">
-              💾 Save Changes
+            <button 
+              type="submit" 
+              className="save-button"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <span className="spinner-small"></span>
+                  Saving Changes...
+                </>
+              ) : (
+                <>💾 Save Changes</>
+              )}
             </button>
           </div>
         </form>
