@@ -7,6 +7,7 @@ import {
   Circle,
   Polyline,
   LayersControl,
+  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -83,6 +84,26 @@ interface RouteData {
   distance: number;
   duration: number;
 }
+
+// Map controller component to handle centering
+interface MapControllerProps {
+  center: [number, number] | null;
+  shouldFollow: boolean;
+}
+
+const MapController: React.FC<MapControllerProps> = ({ center, shouldFollow }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (center && shouldFollow) {
+      map.flyTo(center, map.getZoom(), {
+        duration: 0.5, // Smooth animation
+      });
+    }
+  }, [center, shouldFollow, map]);
+
+  return null;
+};
 
 // Create custom user location icon with sharp point
 const createUserLocationIcon = () => {
@@ -744,7 +765,9 @@ const MainApp: React.FC = () => {
   const [maxPrice, setMaxPrice] = useState<number>(100);
   const [routeData, setRouteData] = useState<RouteData | null>(null);
   const [routingTo, setRoutingTo] = useState<Station | POI | null>(null);
+  const [routeStartPosition, setRouteStartPosition] = useState<[number, number] | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [followMe, setFollowMe] = useState<boolean>(true); // Auto-center on location updates
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] =
     useState<boolean>(false);
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
@@ -951,6 +974,37 @@ const MainApp: React.FC = () => {
     };
   }, []);
 
+  // Debug routeData changes
+  useEffect(() => {
+    console.log("🔄 RouteData state changed:", {
+      hasRouteData: !!routeData,
+      hasCoordinates: !!routeData?.coordinates,
+      coordinatesLength: routeData?.coordinates?.length || 0,
+      routeData: routeData,
+    });
+  }, [routeData]);
+
+  // Auto-clear route if moved significantly from original start position
+  useEffect(() => {
+    if (!routeData || !routeStartPosition || !position) return;
+
+    const distanceKm = calculateDistance(
+      position[0],
+      position[1],
+      routeStartPosition[0],
+      routeStartPosition[1],
+    );
+    const distanceMeters = distanceKm * 1000;
+
+    // Clear route if moved more than 100 meters from where route started
+    if (distanceMeters > 100) {
+      console.log(
+        `🧭 Auto-clearing route - moved ${Math.round(distanceMeters)}m from original start position`,
+      );
+      clearRoute();
+    }
+  }, [position, routeData, routeStartPosition]);
+
   // Filter stations based on search criteria
   const filteredStations = stations.filter((station) => {
     const matchesBrand =
@@ -980,16 +1034,21 @@ const MainApp: React.FC = () => {
 
     setRoutingTo(location);
     setLoading(true);
+    setRouteStartPosition(position); // Store the starting position
 
     try {
       const url = getApiUrl(
         `/api/route?start=${position[0]},${position[1]}&end=${location.location.lat},${location.location.lng}`,
       );
+      console.log("🗺️ Fetching route from:", url);
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Route API error: ${response.status}`);
       }
       const data = await response.json();
+      console.log("📍 Route data received:", data);
+      console.log("📍 Coordinates count:", data?.coordinates?.length || 0);
+      console.log("📍 Sample coordinates:", data?.coordinates?.slice(0, 3));
       setRouteData(data || null);
     } catch (error) {
       console.error("Failed to get route:", error);
@@ -1002,6 +1061,7 @@ const MainApp: React.FC = () => {
   const clearRoute = () => {
     setRouteData(null);
     setRoutingTo(null);
+    setRouteStartPosition(null);
   };
 
   // Check if a location is currently open based on operating hours
@@ -1173,6 +1233,9 @@ const MainApp: React.FC = () => {
             />
           </LayersControl.BaseLayer>
         </LayersControl>
+
+        {/* Map Controller - handles auto-centering */}
+        <MapController center={position} shouldFollow={followMe} />
 
         {/* Search radius circle */}
         <Circle
@@ -1815,6 +1878,88 @@ const MainApp: React.FC = () => {
         </button>
       )}
       */}
+
+      {/* Map Control Buttons - Right Side */}
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          right: "20px",
+          transform: "translateY(-50%)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+          zIndex: 1000,
+        }}
+      >
+        {/* Center to My Location Button */}
+        <button
+          onClick={() => {
+            if (position) {
+              setFollowMe(true);
+              console.log("📍 Centering to user location");
+            }
+          }}
+          style={{
+            width: "50px",
+            height: "50px",
+            borderRadius: "50%",
+            background: "#2196F3",
+            color: "white",
+            border: "3px solid white",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            cursor: "pointer",
+            fontSize: "24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          title="Center to my location"
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.background = "#1976D2";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.background = "#2196F3";
+          }}
+        >
+          📍
+        </button>
+
+        {/* Follow Me Toggle Button */}
+        <button
+          onClick={() => {
+            setFollowMe(!followMe);
+            console.log(followMe ? "🔓 Follow Me: OFF" : "🔒 Follow Me: ON");
+          }}
+          style={{
+            width: "50px",
+            height: "50px",
+            borderRadius: "50%",
+            background: followMe ? "#4CAF50" : "#757575",
+            color: "white",
+            border: "3px solid white",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            cursor: "pointer",
+            fontSize: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          title={followMe ? "Follow Me: ON (click to disable)" : "Follow Me: OFF (click to enable)"}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
+          {followMe ? "🔒" : "🔓"}
+        </button>
+      </div>
 
       {/* PWA Install Button */}
       <PWAInstallButton />
