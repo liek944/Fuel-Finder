@@ -645,8 +645,6 @@ const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, o
   };
 
   const handleRemoveFuelType = async (fuelType: string) => {
-    if (!editingStation) return;
-
     // Ask for confirmation
     if (!window.confirm(`Are you sure you want to remove ${fuelType} from this station?`)) {
       return;
@@ -661,7 +659,7 @@ const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, o
       const existingFuelPrice = station.fuel_prices?.find(fp => fp.fuel_type === fuelType);
       
       if (existingFuelPrice) {
-        const response = await fetch(`${apiUrl}/api/owner/stations/${editingStation.id}/fuel-price/${encodeURIComponent(fuelType)}`, {
+        const response = await fetch(`${apiUrl}/api/owner/stations/${station.id}/fuel-price/${encodeURIComponent(fuelType)}`, {
           method: 'DELETE',
           headers: {
             'x-api-key': apiKey || '',
