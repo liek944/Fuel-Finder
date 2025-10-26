@@ -17,8 +17,10 @@ interface Station {
   name: string;
   brand: string | null;
   address: string;
-  latitude: number;
-  longitude: number;
+  location: {
+    lat: number;
+    lng: number;
+  };
   operating_hours: { open: string; close: string } | null;
 }
 
@@ -338,7 +340,7 @@ const OwnerDashboard: React.FC = () => {
                     )}
                     <div className="station-coords">
                       <small>
-                        {station.latitude.toFixed(6)}, {station.longitude.toFixed(6)}
+                        {station.location.lat.toFixed(6)}, {station.location.lng.toFixed(6)}
                       </small>
                     </div>
                   </div>
