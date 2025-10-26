@@ -21,6 +21,7 @@ import DonationWidget from "./DonationWidget";
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
 import userTracking from "../utils/userTracking";
+import { arrivalNotifications } from "../utils/arrivalNotifications";
 
 // Canvas-based markers are created dynamically - no static image imports needed
 
@@ -793,6 +794,10 @@ const MainApp: React.FC = () => {
   const lastUpdateRef = useRef<number>(0);
   const UPDATE_THROTTLE = 3000; // 3 seconds minimum between position updates
 
+  // Arrival notification states
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
+
   // Helper function to format time ago
   const getTimeAgo = (timestamp: number): string => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -847,6 +852,9 @@ const MainApp: React.FC = () => {
           setLocationAccuracy(pos.coords.accuracy);
           setLastLocationUpdate(now);
           lastUpdateRef.current = now;
+
+          // Update arrival notifications with new position
+          arrivalNotifications.updatePosition(newPosition[0], newPosition[1]);
 
           // Visual feedback
           setIsLocationUpdating(true);
@@ -974,6 +982,21 @@ const MainApp: React.FC = () => {
     };
   }, []);
 
+  // Initialize and sync arrival notification settings
+  useEffect(() => {
+    // Request notification permission on mount
+    arrivalNotifications.requestNotificationPermission();
+  }, []);
+
+  // Sync notification settings when changed
+  useEffect(() => {
+    arrivalNotifications.setVoiceEnabled(voiceEnabled);
+  }, [voiceEnabled]);
+
+  useEffect(() => {
+    arrivalNotifications.setNotificationsEnabled(notificationsEnabled);
+  }, [notificationsEnabled]);
+
   // Debug routeData changes
   useEffect(() => {
     console.log("🔄 RouteData state changed:", {
@@ -1050,6 +1073,12 @@ const MainApp: React.FC = () => {
       console.log("📍 Coordinates count:", data?.coordinates?.length || 0);
       console.log("📍 Sample coordinates:", data?.coordinates?.slice(0, 3));
       setRouteData(data || null);
+
+      // Set destination for arrival notifications
+      arrivalNotifications.setDestination({
+        name: location.name,
+        location: location.location,
+      });
     } catch (error) {
       console.error("Failed to get route:", error);
     } finally {
@@ -1062,6 +1091,9 @@ const MainApp: React.FC = () => {
     setRouteData(null);
     setRoutingTo(null);
     setRouteStartPosition(null);
+    
+    // Clear destination from arrival notifications
+    arrivalNotifications.clearDestination();
   };
 
   // Check if a location is currently open based on operating hours
@@ -1958,6 +1990,78 @@ const MainApp: React.FC = () => {
           }}
         >
           {followMe ? "🔒" : "🔓"}
+        </button>
+
+        {/* Voice Announcement Toggle Button */}
+        <button
+          onClick={() => {
+            setVoiceEnabled(!voiceEnabled);
+            if (!voiceEnabled) {
+              // Test voice when enabling
+              arrivalNotifications.speak("Voice announcements enabled");
+            }
+            console.log(voiceEnabled ? "🔇 Voice: OFF" : "🔊 Voice: ON");
+          }}
+          style={{
+            width: "50px",
+            height: "50px",
+            borderRadius: "50%",
+            background: voiceEnabled ? "#FF9800" : "#757575",
+            color: "white",
+            border: "3px solid white",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            cursor: "pointer",
+            fontSize: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          title={voiceEnabled ? "Voice Announcements: ON" : "Voice Announcements: OFF"}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
+          {voiceEnabled ? "🔊" : "🔇"}
+        </button>
+
+        {/* Notification Toggle Button */}
+        <button
+          onClick={() => {
+            setNotificationsEnabled(!notificationsEnabled);
+            if (!notificationsEnabled) {
+              // Test notification when enabling
+              arrivalNotifications.testNotification();
+            }
+            console.log(notificationsEnabled ? "🔕 Notifications: OFF" : "🔔 Notifications: ON");
+          }}
+          style={{
+            width: "50px",
+            height: "50px",
+            borderRadius: "50%",
+            background: notificationsEnabled ? "#9C27B0" : "#757575",
+            color: "white",
+            border: "3px solid white",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            cursor: "pointer",
+            fontSize: "20px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s ease",
+          }}
+          title={notificationsEnabled ? "Arrival Notifications: ON" : "Arrival Notifications: OFF"}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+          }}
+        >
+          {notificationsEnabled ? "🔔" : "🔕"}
         </button>
       </div>
 
