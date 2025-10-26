@@ -80,6 +80,15 @@ router.put(
 );
 
 /**
+ * PUT /api/owner/stations/:id/fuel-price
+ * Update fuel price for a specific station
+ */
+router.put(
+  "/stations/:id/fuel-price",
+  asyncHandler(ownerController.updateFuelPrice)
+);
+
+/**
  * GET /api/owner/price-reports/pending
  * Get pending price reports for owner's stations
  */

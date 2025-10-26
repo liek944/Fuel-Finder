@@ -293,6 +293,82 @@ async function updateOwnerStation(req, res) {
 }
 
 /**
+ * Update fuel price for a station (owner-verified)
+ */
+async function updateFuelPrice(req, res) {
+  const ownerId = req.ownerData.id;
+  const stationId = parseInt(req.params.id);
+  const { fuel_type, price } = req.body;
+
+  if (isNaN(stationId)) {
+    return res.status(400).json({
+      error: "Invalid station ID",
+      message: "Station ID must be a valid number",
+    });
+  }
+
+  if (!fuel_type || !price) {
+    return res.status(400).json({
+      error: "Missing required fields",
+      message: "fuel_type and price are required",
+    });
+  }
+
+  // Validate price
+  const priceFloat = parseFloat(price);
+  if (isNaN(priceFloat) || priceFloat <= 0) {
+    return res.status(400).json({
+      error: "Invalid price",
+      message: "Price must be a positive number",
+    });
+  }
+
+  // Check ownership
+  const hasAccess = await checkStationOwnership(ownerId, stationId);
+  if (!hasAccess) {
+    return res.status(403).json({
+      error: "Forbidden",
+      message: "You do not have access to this station",
+    });
+  }
+
+  console.log(`💰 Owner ${req.ownerData.name} updating ${fuel_type} price for station ${stationId} to ₱${priceFloat}`);
+
+  // Update or insert fuel price
+  await pool.query(
+    `INSERT INTO fuel_prices (station_id, fuel_type, price, is_community, price_updated_by, price_updated_at, updated_at)
+     VALUES ($1, $2, $3, FALSE, 'owner', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+     ON CONFLICT (station_id, fuel_type) 
+     DO UPDATE SET 
+       price = EXCLUDED.price,
+       is_community = FALSE,
+       price_updated_by = 'owner',
+       price_updated_at = CURRENT_TIMESTAMP,
+       updated_at = CURRENT_TIMESTAMP`,
+    [stationId, fuel_type, priceFloat]
+  );
+
+  // Log the update
+  await logOwnerActivity(
+    ownerId,
+    'update_fuel_price',
+    stationId,
+    req.ip,
+    req.get('user-agent'),
+    { fuel_type, price: priceFloat }
+  );
+
+  console.log(`✅ Fuel price updated successfully`);
+
+  res.json({
+    success: true,
+    message: `${fuel_type} price updated to ₱${priceFloat.toFixed(2)}`,
+    fuel_type,
+    price: priceFloat,
+  });
+}
+
+/**
  * Get pending price reports for owner's stations
  */
 async function getPendingPriceReports(req, res) {
@@ -588,6 +664,7 @@ module.exports = {
   getOwnerStations,
   getOwnerStation,
   updateOwnerStation,
+  updateFuelPrice,
   getPendingPriceReports,
   verifyPriceReport,
   rejectPriceReport,
