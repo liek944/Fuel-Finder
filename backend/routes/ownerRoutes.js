@@ -89,6 +89,15 @@ router.put(
 );
 
 /**
+ * DELETE /api/owner/stations/:id/fuel-price/:fuelType
+ * Delete fuel price for a specific station and fuel type
+ */
+router.delete(
+  "/stations/:id/fuel-price/:fuelType",
+  asyncHandler(ownerController.deleteFuelPrice)
+);
+
+/**
  * GET /api/owner/price-reports/pending
  * Get pending price reports for owner's stations
  */

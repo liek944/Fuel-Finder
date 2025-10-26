@@ -369,6 +369,73 @@ async function updateFuelPrice(req, res) {
 }
 
 /**
+ * Delete fuel price for a station (owner-only)
+ */
+async function deleteFuelPrice(req, res) {
+  const ownerId = req.ownerData.id;
+  const stationId = parseInt(req.params.id);
+  const fuelType = req.params.fuelType;
+
+  if (isNaN(stationId)) {
+    return res.status(400).json({
+      error: "Invalid station ID",
+      message: "Station ID must be a valid number",
+    });
+  }
+
+  if (!fuelType) {
+    return res.status(400).json({
+      error: "Missing fuel type",
+      message: "Fuel type is required",
+    });
+  }
+
+  // Check ownership
+  const hasAccess = await checkStationOwnership(ownerId, stationId);
+  if (!hasAccess) {
+    return res.status(403).json({
+      error: "Forbidden",
+      message: "You do not have access to this station",
+    });
+  }
+
+  console.log(`🗑️ Owner ${req.ownerData.name} deleting ${fuelType} price for station ${stationId}`);
+
+  // Delete fuel price
+  const result = await pool.query(
+    `DELETE FROM fuel_prices 
+     WHERE station_id = $1 AND fuel_type = $2
+     RETURNING fuel_type`,
+    [stationId, fuelType]
+  );
+
+  if (result.rows.length === 0) {
+    return res.status(404).json({
+      error: "Fuel price not found",
+      message: `No ${fuelType} price found for this station`,
+    });
+  }
+
+  // Log the deletion
+  await logOwnerActivity(
+    ownerId,
+    'delete_fuel_price',
+    stationId,
+    req.ip,
+    req.get('user-agent'),
+    { fuel_type: fuelType }
+  );
+
+  console.log(`✅ ${fuelType} price deleted successfully`);
+
+  res.json({
+    success: true,
+    message: `${fuelType} price deleted successfully`,
+    fuel_type: fuelType,
+  });
+}
+
+/**
  * Get pending price reports for owner's stations
  */
 async function getPendingPriceReports(req, res) {
@@ -665,6 +732,7 @@ module.exports = {
   getOwnerStation,
   updateOwnerStation,
   updateFuelPrice,
+  deleteFuelPrice,
   getPendingPriceReports,
   verifyPriceReport,
   rejectPriceReport,
