@@ -108,6 +108,59 @@ const MapController: React.FC<MapControllerProps> = ({ center, shouldFollow, isP
   return null;
 };
 
+// Component to fix popup scaling on zoom
+const PopupScaleFix: React.FC = () => {
+  const map = useMap();
+
+  useEffect(() => {
+    const fixPopupScale = () => {
+      // Get all popup wrapper elements
+      const popupPane = map.getPane('popupPane');
+      if (!popupPane) return;
+
+      const popups = popupPane.querySelectorAll('.leaflet-popup');
+      popups.forEach((popup) => {
+        if (popup instanceof HTMLElement) {
+          // Get the current transform value
+          const transform = popup.style.transform;
+          
+          // If there's a transform with translate but no scale, keep it
+          // If there's a scale in the transform, remove it
+          if (transform && transform.includes('scale')) {
+            // Extract translate values and reapply without scale
+            const translateMatch = transform.match(/translate3d\(([^)]+)\)/);
+            if (translateMatch) {
+              popup.style.transform = `translate3d(${translateMatch[1]})`;
+            } else {
+              // Fallback: just keep translate if present
+              const translate2dMatch = transform.match(/translate\(([^)]+)\)/);
+              if (translate2dMatch) {
+                popup.style.transform = `translate(${translate2dMatch[1]})`;
+              }
+            }
+          }
+        }
+      });
+    };
+
+    // Fix popups during zoom animation
+    map.on('zoom', fixPopupScale);
+    map.on('zoomend', fixPopupScale);
+    map.on('zoomanim', fixPopupScale);
+
+    // Initial fix
+    fixPopupScale();
+
+    return () => {
+      map.off('zoom', fixPopupScale);
+      map.off('zoomend', fixPopupScale);
+      map.off('zoomanim', fixPopupScale);
+    };
+  }, [map]);
+
+  return null;
+};
+
 // Create custom user location icon with sharp point
 const createUserLocationIcon = () => {
   const width = 36;
@@ -390,7 +443,7 @@ const PriceReportWidget: React.FC<{
   availableFuelTypes?: string[];
 }> = ({
   stationId,
-  stationName,
+  stationName: _stationName,
   availableFuelTypes = ["Regular", "Premium", "Diesel"],
 }) => {
   const [showForm, setShowForm] = useState(false);
@@ -694,7 +747,7 @@ interface ImageSlideshowProps {
 
 const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
   images,
-  entityId,
+  entityId: _entityId,
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -793,7 +846,7 @@ const MainApp: React.FC = () => {
   const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(
     Date.now(),
   );
-  const [isLocationUpdating, setIsLocationUpdating] = useState<boolean>(false);
+  const [, setIsLocationUpdating] = useState<boolean>(false);
   const lastUpdateRef = useRef<number>(0);
   const UPDATE_THROTTLE = 3000; // 3 seconds minimum between position updates
 
@@ -1211,7 +1264,7 @@ const MainApp: React.FC = () => {
     );
   }
 
-  const isMobile = typeof window !== "undefined" && window.innerWidth <= 600;
+  // const isMobile = typeof window !== "undefined" && window.innerWidth <= 600;
 
   return (
     <div style={{ height: "100vh", width: "100vw", position: "relative" }}>
@@ -1271,6 +1324,9 @@ const MainApp: React.FC = () => {
 
         {/* Map Controller - handles auto-centering */}
         <MapController center={position} shouldFollow={followMe} isPopupOpen={isPopupOpen} />
+        
+        {/* Fix popup scaling during zoom */}
+        <PopupScaleFix />
 
         {/* Search radius circle */}
         <Circle
@@ -2019,7 +2075,7 @@ const MainApp: React.FC = () => {
             setVoiceEnabled(!voiceEnabled);
             if (!voiceEnabled) {
               // Test voice when enabling
-              arrivalNotifications.speak("Voice announcements enabled");
+              arrivalNotifications.testVoice("Voice announcements enabled");
             }
             console.log(voiceEnabled ? "🔇 Voice: OFF" : "🔊 Voice: ON");
           }}

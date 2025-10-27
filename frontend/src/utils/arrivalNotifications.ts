@@ -106,7 +106,6 @@ class ArrivalNotificationManager {
         badge: '/logo192.png',
         tag: 'fuel-finder-arrival',
         requireInteraction: false,
-        vibrate: [200, 100, 200],
       });
 
       // Auto-close after 5 seconds
@@ -305,6 +304,13 @@ class ArrivalNotificationManager {
       '/logo192.png'
     );
     this.speak('Test notification. Arrival alerts are working.');
+  }
+
+  /**
+   * Test voice announcement (public method for external testing)
+   */
+  testVoice(message: string): void {
+    this.speak(message);
   }
 }
 
