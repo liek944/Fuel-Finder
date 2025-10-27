@@ -87,9 +87,19 @@ class ArrivalNotificationManager {
    * Show browser notification
    */
   private showNotification(title: string, body: string, icon?: string): void {
-    if (!this.notificationsEnabled || !this.permissionGranted) return;
+    if (!this.notificationsEnabled) {
+      console.log('🔕 Notifications disabled by user');
+      return;
+    }
+
+    if (!this.permissionGranted) {
+      console.warn('❌ Notification BLOCKED - Permission not granted');
+      console.warn('💡 Fix: Click the lock icon in address bar → Notifications → Allow');
+      return;
+    }
 
     try {
+      console.log('📢 Showing notification:', title);
       const notification = new Notification(title, {
         body,
         icon: icon || '/logo192.png',
@@ -101,8 +111,9 @@ class ArrivalNotificationManager {
 
       // Auto-close after 5 seconds
       setTimeout(() => notification.close(), 5000);
+      console.log('✅ Notification displayed successfully');
     } catch (error) {
-      console.error('Failed to show notification:', error);
+      console.error('❌ Failed to show notification:', error);
     }
   }
 
