@@ -81,15 +81,12 @@ export const OwnerThemeProvider: React.FC<OwnerThemeProviderProps> = ({
   });
 
   /**
-   * Apply theme by setting CSS variables on document root
+   * Apply CSS variables to document root (internal helper)
    */
-  const applyTheme = (themeConfig: ThemeConfig) => {
-    const mergedTheme = { ...defaultTheme, ...themeConfig };
-    setTheme(mergedTheme);
-
+  const applyCSSVariables = (themeConfig: ThemeConfig) => {
     const root = document.documentElement.style;
-    const colors = mergedTheme.colors || defaultTheme.colors!;
-    const fonts = mergedTheme.fonts || defaultTheme.fonts!;
+    const colors = themeConfig.colors || defaultTheme.colors!;
+    const fonts = themeConfig.fonts || defaultTheme.fonts!;
 
     // Apply color variables
     root.setProperty('--owner-primary', colors.primary);
@@ -105,21 +102,29 @@ export const OwnerThemeProvider: React.FC<OwnerThemeProviderProps> = ({
     root.setProperty('--owner-font-body', fonts.body);
 
     // Apply theme mode
-    document.documentElement.dataset.ownerThemeMode = mergedTheme.mode || 'dark';
+    document.documentElement.dataset.ownerThemeMode = themeConfig.mode || 'dark';
 
-    console.log('🎨 Owner theme applied:', mergedTheme.brandName || 'Default');
+    console.log('🎨 Owner theme applied:', themeConfig.brandName || 'Default');
+  };
+
+  /**
+   * Apply theme by updating state (CSS variables applied automatically)
+   */
+  const applyTheme = (themeConfig: ThemeConfig) => {
+    const mergedTheme = { ...defaultTheme, ...themeConfig };
+    setTheme(mergedTheme);
   };
 
   /**
    * Reset to default theme
    */
   const resetTheme = () => {
-    applyTheme(defaultTheme);
+    setTheme(defaultTheme);
   };
 
-  // Apply theme on mount and when theme changes
+  // Apply CSS variables whenever theme changes
   useEffect(() => {
-    applyTheme(theme);
+    applyCSSVariables(theme);
   }, [theme]);
 
   return (
@@ -151,13 +156,13 @@ export const mergeStationTheme = (
     ...ownerTheme,
     ...stationTheme,
     colors: {
-      ...ownerTheme.colors,
-      ...stationTheme.colors,
-    },
+      ...(ownerTheme.colors || {}),
+      ...(stationTheme.colors || {}),
+    } as ThemeColors,
     fonts: {
-      ...ownerTheme.fonts,
-      ...stationTheme.fonts,
-    },
+      ...(ownerTheme.fonts || {}),
+      ...(stationTheme.fonts || {}),
+    } as ThemeFonts,
     features: {
       ...ownerTheme.features,
       ...stationTheme.features,
