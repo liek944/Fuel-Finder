@@ -13,13 +13,14 @@ const { checkStationOwnership, logOwnerActivity } = require("../middleware/owner
 async function getOwnerInfo(req, res) {
   const owner = req.ownerData;
 
-  // Return only public information
+  // Return only public information including theme configuration
   res.json({
     name: owner.name,
     domain: owner.domain,
     contact_person: owner.contact_person,
     email: owner.email,
     phone: owner.phone,
+    theme_config: owner.theme_config || {},
   });
 }
 
@@ -77,6 +78,7 @@ async function getOwnerStations(req, res) {
       s.*,
       ST_X(s.geom) as lng,
       ST_Y(s.geom) as lat,
+      COALESCE(s.theme_config, '{}'::jsonb) as theme_config,
       COALESCE(
         json_agg(
           jsonb_build_object(

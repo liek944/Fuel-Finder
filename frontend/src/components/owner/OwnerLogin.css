@@ -4,7 +4,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, 
+    var(--owner-primary, #667eea) 0%, 
+    var(--owner-secondary, #764ba2) 100%);
   padding: 20px;
 }
 
@@ -34,6 +36,18 @@
   margin-bottom: 32px;
 }
 
+.owner-logo {
+  margin-bottom: 20px;
+}
+
+.owner-logo img {
+  max-width: 200px;
+  max-height: 80px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
 .owner-login-header h1 {
   font-size: 28px;
   font-weight: 700;
@@ -42,7 +56,9 @@
 }
 
 .owner-info-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, 
+    var(--owner-primary, #667eea) 0%, 
+    var(--owner-accent, #764ba2) 100%);
   padding: 20px;
   border-radius: 12px;
   color: white;
@@ -95,7 +111,7 @@
 
 .api-key-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--owner-primary, #667eea);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -126,7 +142,9 @@
 .login-button {
   width: 100%;
   padding: 14px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, 
+    var(--owner-primary, #667eea) 0%, 
+    var(--owner-accent, #764ba2) 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -190,7 +208,7 @@
 .contact-info {
   text-align: center;
   font-size: 13px;
-  color: #667eea;
+  color: var(--owner-primary, #667eea);
   font-weight: 500;
   margin: 8px 0 0 0;
 }
