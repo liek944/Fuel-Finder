@@ -90,18 +90,20 @@ interface RouteData {
 interface MapControllerProps {
   center: [number, number] | null;
   shouldFollow: boolean;
+  isPopupOpen?: boolean; // New prop to track popup state
 }
 
-const MapController: React.FC<MapControllerProps> = ({ center, shouldFollow }) => {
+const MapController: React.FC<MapControllerProps> = ({ center, shouldFollow, isPopupOpen = false }) => {
   const map = useMap();
 
   useEffect(() => {
-    if (center && shouldFollow) {
+    // Don't auto-center if popup is open, even if followMe is enabled
+    if (center && shouldFollow && !isPopupOpen) {
       map.flyTo(center, map.getZoom(), {
         duration: 0.5, // Smooth animation
       });
     }
-  }, [center, shouldFollow, map]);
+  }, [center, shouldFollow, isPopupOpen, map]);
 
   return null;
 };
@@ -772,6 +774,7 @@ const MainApp: React.FC = () => {
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] =
     useState<boolean>(false);
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
+  const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false); // Track if any popup is open
 
   // Trip replay states
   // const [showTripHistory, setShowTripHistory] = useState<boolean>(false);
@@ -1267,7 +1270,7 @@ const MainApp: React.FC = () => {
         </LayersControl>
 
         {/* Map Controller - handles auto-centering */}
-        <MapController center={position} shouldFollow={followMe} />
+        <MapController center={position} shouldFollow={followMe} isPopupOpen={isPopupOpen} />
 
         {/* Search radius circle */}
         <Circle
@@ -1283,7 +1286,12 @@ const MainApp: React.FC = () => {
 
         {/* User location */}
         <Marker position={position} icon={DefaultIcon}>
-          <Popup>
+          <Popup
+            eventHandlers={{
+              popupopen: () => setIsPopupOpen(true),
+              popupclose: () => setIsPopupOpen(false),
+            }}
+          >
             <div>
               <b>📍 Your Location</b>
               <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
@@ -1369,7 +1377,12 @@ const MainApp: React.FC = () => {
               position={[station.location.lat, station.location.lng]}
               icon={createFuelStationIcon(station.brand, proximity, !isOpen)}
             >
-              <Popup>
+              <Popup
+                eventHandlers={{
+                  popupopen: () => setIsPopupOpen(true),
+                  popupclose: () => setIsPopupOpen(false),
+                }}
+              >
                 <div style={{ minWidth: 250 }}>
                   <div
                     style={{
@@ -1576,7 +1589,12 @@ const MainApp: React.FC = () => {
             position={[poi.location.lat, poi.location.lng]}
             icon={createPOIIcon(poi.type)}
           >
-            <Popup>
+            <Popup
+              eventHandlers={{
+                popupopen: () => setIsPopupOpen(true),
+                popupclose: () => setIsPopupOpen(false),
+              }}
+            >
               <div>
                 <b>{poi.name}</b>
                 <div style={{ marginTop: 4, color: "#666" }}>

@@ -43,6 +43,28 @@ if ("serviceWorker" in navigator) {
         setInterval(() => {
           registration.update();
         }, 60000); // Check every minute
+
+        // Listen for service worker updates
+        registration.addEventListener('updatefound', () => {
+          console.log('🔄 New service worker found, updating...');
+          const newWorker = registration.installing;
+          
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                console.log('✅ New service worker installed, reloading page...');
+                // Force reload to use new service worker
+                window.location.reload();
+              }
+            });
+          }
+        });
+
+        // Handle service worker controller change
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('🔄 Service worker controller changed, reloading...');
+          window.location.reload();
+        });
       })
       .catch((err) => {
         // Avoid crashing if registration fails
