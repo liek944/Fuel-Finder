@@ -42,20 +42,17 @@
     box-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
 }
 
-/* Prevent popups from scaling with map zoom */
-.leaflet-popup {
-    transform: none !important;
+/* Popup size constraints for better UX */
+.leaflet-popup-content-wrapper {
+    /* Reasonable max dimensions */
+    max-width: 400px;
+    max-height: 600px;
+    width: auto;
+    overflow-y: auto;
 }
 
-.leaflet-zoom-animated.leaflet-popup {
-    transform: none !important;
-}
-
-/* Keep popup size constant regardless of zoom level */
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
-    transform: none !important;
-}
+/* Note: Popup zoom scaling is now handled by PopupScaleFix component in MainApp.tsx
+   This JS-based solution preserves positioning while preventing scale transforms */
 
 /* Animated marker bounce on load */
 @keyframes markerBounce {

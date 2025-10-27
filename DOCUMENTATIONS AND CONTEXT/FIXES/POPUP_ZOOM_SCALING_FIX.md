@@ -21,40 +21,91 @@ Leaflet uses CSS transforms during zoom animations to smoothly transition betwee
 - Popups covered the entire map at low zoom levels
 - Images and text became disproportionately large
 
-## Solution
-Override Leaflet's transform scaling on popup elements using CSS to keep them at a constant size.
+## Solution (CORRECTED)
+Use JavaScript event handlers to remove scale transforms while preserving positioning transforms.
+
+### Initial Failed Approach (DO NOT USE)
+❌ **First attempt used CSS `transform: none !important`** which broke popup positioning entirely.
+- Popups appeared in wrong locations (sea instead of markers)
+- Removed ALL transforms including positioning translates
+- Lesson: Cannot use blanket transform removal
+
+### Working Solution
+✅ **JavaScript-based PopupScaleFix component** that intelligently removes only scale transforms.
 
 ### Code Changes
-Added CSS rules to `/home/keil/fuel_finder/frontend/src/App.css`:
 
+**1. Added PopupScaleFix Component** in `/home/keil/fuel_finder/frontend/src/components/MainApp.tsx`:
+
+```tsx
+const PopupScaleFix: React.FC = () => {
+  const map = useMap();
+
+  useEffect(() => {
+    const fixPopupScale = () => {
+      const popupPane = map.getPane('popupPane');
+      if (!popupPane) return;
+
+      const popups = popupPane.querySelectorAll('.leaflet-popup');
+      popups.forEach((popup) => {
+        if (popup instanceof HTMLElement) {
+          const transform = popup.style.transform;
+          
+          // Remove scale but keep translate
+          if (transform && transform.includes('scale')) {
+            const translateMatch = transform.match(/translate3d\(([^)]+)\)/);
+            if (translateMatch) {
+              popup.style.transform = `translate3d(${translateMatch[1]})`;
+            }
+          }
+        }
+      });
+    };
+
+    map.on('zoom', fixPopupScale);
+    map.on('zoomend', fixPopupScale);
+    map.on('zoomanim', fixPopupScale);
+    
+    fixPopupScale();
+
+    return () => {
+      map.off('zoom', fixPopupScale);
+      map.off('zoomend', fixPopupScale);
+      map.off('zoomanim', fixPopupScale);
+    };
+  }, [map]);
+
+  return null;
+};
+```
+
+**2. Added Component to MapContainer** (line ~1329):
+```tsx
+<PopupScaleFix />
+```
+
+**3. Updated CSS** in `/home/keil/fuel_finder/frontend/src/App.css`:
 ```css
-/* Prevent popups from scaling with map zoom */
-.leaflet-popup {
-    transform: none !important;
-}
-
-.leaflet-zoom-animated.leaflet-popup {
-    transform: none !important;
-}
-
-/* Keep popup size constant regardless of zoom level */
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
-    transform: none !important;
+/* Popup size constraints for better UX */
+.leaflet-popup-content-wrapper {
+    max-width: 400px;
+    max-height: 600px;
+    overflow-y: auto;
 }
 ```
 
 ### How It Works
-1. **`.leaflet-popup`**: The main popup container - remove all transforms
-2. **`.leaflet-zoom-animated.leaflet-popup`**: Specifically target zoom-animated popups
-3. **`.leaflet-popup-content-wrapper`**: The content box - keep constant size
-4. **`.leaflet-popup-tip`**: The popup arrow/pointer - keep constant size
-
-The `!important` flags ensure these rules override Leaflet's inline styles that are dynamically applied during zoom animations.
+1. **Event Listeners**: Attach to `zoom`, `zoomend`, and `zoomanim` events
+2. **Transform Parsing**: Extract translate values using regex
+3. **Selective Removal**: Remove scale transforms, preserve translate transforms
+4. **Position Preservation**: Popups stay anchored to markers while maintaining constant size
 
 ## Files Modified
+- **`frontend/src/components/MainApp.tsx`**
+  - Lines 112-162: Added PopupScaleFix component
+  - Line ~1329: Integrated component into MapContainer
 - **`frontend/src/App.css`**
-  - Lines ~45-58: Added popup zoom scaling prevention rules
+  - Lines 45-52: Added reasonable size constraints (removed transform overrides)
 
 ## Testing Checklist
 - [x] Open a station marker popup
@@ -115,9 +166,22 @@ Leaflet applies transform scaling to elements within `.leaflet-zoom-animated` co
 **Chosen approach** (CSS override) is the simplest and most maintainable solution.
 
 ## Date Fixed
-January 27, 2025
+- **Initial (broken) fix**: January 27, 2025
+- **Corrected fix**: January 27, 2025 (same day)
 
-## User Report
+## Bug History
+
+### Initial User Report
 > "speaking of markers it seems to grow bigger when you zoom out of the map. Which cause it to cover the map."
 > 
 > "i'm not talking about the marker itself but the marker pop-up. the one with images, info's etc."
+
+### Regression Bug (Fixed Same Day)
+After the initial CSS-based fix, user reported:
+> "the changes you made broke something... as you can see on the image the marker pop up is on the sea and not on markers."
+
+**Cause**: CSS `transform: none !important` removed positioning transforms
+**Fix**: Replaced with JavaScript solution that selectively removes only scale transforms
+
+## Key Lesson
+**Never use `transform: none !important` on Leaflet popups** - it breaks both zoom scaling AND positioning. Always use targeted transform manipulation that preserves translate while removing scale.
