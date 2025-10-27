@@ -86,26 +86,53 @@ interface RouteData {
   duration: number;
 }
 
-// Map controller component to handle centering
-interface MapControllerProps {
-  center: [number, number] | null;
-  shouldFollow: boolean;
-  isPopupOpen?: boolean; // New prop to track popup state
-}
-
-const MapController: React.FC<MapControllerProps> = ({ center, shouldFollow, isPopupOpen = false }) => {
+// Component to handle manual centering (using ref to access map from button)
+const CenterButton: React.FC<{ position: [number, number] | null }> = ({ position }) => {
   const map = useMap();
-
-  useEffect(() => {
-    // Don't auto-center if popup is open, even if followMe is enabled
-    if (center && shouldFollow && !isPopupOpen) {
-      map.flyTo(center, map.getZoom(), {
-        duration: 0.5, // Smooth animation
-      });
-    }
-  }, [center, shouldFollow, isPopupOpen, map]);
-
-  return null;
+  
+  return (
+    <button
+      onClick={() => {
+        if (position) {
+          map.flyTo(position, map.getZoom(), {
+            duration: 0.5,
+          });
+          console.log("📍 Centering to user location");
+        }
+      }}
+      style={{
+        position: "fixed",
+        top: "50%",
+        right: "20px",
+        transform: "translateY(-50%)",
+        width: "50px",
+        height: "50px",
+        borderRadius: "50%",
+        background: "#2196F3",
+        color: "white",
+        border: "3px solid white",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+        cursor: "pointer",
+        fontSize: "24px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "all 0.2s ease",
+        zIndex: 1000,
+      }}
+      title="Center to my location"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-50%) scale(1.1)";
+        e.currentTarget.style.background = "#1976D2";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+        e.currentTarget.style.background = "#2196F3";
+      }}
+    >
+      📍
+    </button>
+  );
 };
 
 // Component to fix popup scaling on zoom
@@ -823,11 +850,10 @@ const MainApp: React.FC = () => {
   const [routingTo, setRoutingTo] = useState<Station | POI | null>(null);
   const [routeStartPosition, setRouteStartPosition] = useState<[number, number] | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [followMe, setFollowMe] = useState<boolean>(true); // Auto-center on location updates
+  // followMe removed - map only centers when user clicks the center button
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] =
     useState<boolean>(false);
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
-  const [isPopupOpen, setIsPopupOpen] = useState<boolean>(false); // Track if any popup is open
 
   // Trip replay states
   // const [showTripHistory, setShowTripHistory] = useState<boolean>(false);
@@ -1322,8 +1348,7 @@ const MainApp: React.FC = () => {
           </LayersControl.BaseLayer>
         </LayersControl>
 
-        {/* Map Controller - handles auto-centering */}
-        <MapController center={position} shouldFollow={followMe} isPopupOpen={isPopupOpen} />
+        {/* No auto-centering - user controls map manually */}
         
         {/* Fix popup scaling during zoom */}
         <PopupScaleFix />
@@ -1342,13 +1367,7 @@ const MainApp: React.FC = () => {
 
         {/* User location */}
         <Marker position={position} icon={DefaultIcon}>
-          <Popup
-            autoPan={false}
-            eventHandlers={{
-              popupopen: () => setIsPopupOpen(true),
-              popupclose: () => setIsPopupOpen(false),
-            }}
-          >
+          <Popup autoPan={false}>
             <div>
               <b>📍 Your Location</b>
               <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
@@ -1434,13 +1453,7 @@ const MainApp: React.FC = () => {
               position={[station.location.lat, station.location.lng]}
               icon={createFuelStationIcon(station.brand, proximity, !isOpen)}
             >
-              <Popup
-                autoPan={false}
-                eventHandlers={{
-                  popupopen: () => setIsPopupOpen(true),
-                  popupclose: () => setIsPopupOpen(false),
-                }}
-              >
+              <Popup autoPan={false}>
                 <div style={{ minWidth: 250 }}>
                   <div
                     style={{
@@ -1647,13 +1660,7 @@ const MainApp: React.FC = () => {
             position={[poi.location.lat, poi.location.lng]}
             icon={createPOIIcon(poi.type)}
           >
-            <Popup
-              autoPan={false}
-              eventHandlers={{
-                popupopen: () => setIsPopupOpen(true),
-                popupclose: () => setIsPopupOpen(false),
-              }}
-            >
+            <Popup autoPan={false}>
               <div>
                 <b>{poi.name}</b>
                 <div style={{ marginTop: 4, color: "#666" }}>
@@ -1778,6 +1785,9 @@ const MainApp: React.FC = () => {
           />
         )}
         */}
+        
+        {/* Center to My Location Button - inside MapContainer to access map via useMap() hook */}
+        <CenterButton position={position} />
       </MapContainer>
 
       {/* Search Controls */}
@@ -2001,73 +2011,6 @@ const MainApp: React.FC = () => {
           zIndex: 1000,
         }}
       >
-        {/* Center to My Location Button */}
-        <button
-          onClick={() => {
-            if (position) {
-              setFollowMe(true);
-              console.log("📍 Centering to user location");
-            }
-          }}
-          style={{
-            width: "50px",
-            height: "50px",
-            borderRadius: "50%",
-            background: "#2196F3",
-            color: "white",
-            border: "3px solid white",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-            cursor: "pointer",
-            fontSize: "24px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s ease",
-          }}
-          title="Center to my location"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.1)";
-            e.currentTarget.style.background = "#1976D2";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-            e.currentTarget.style.background = "#2196F3";
-          }}
-        >
-          📍
-        </button>
-
-        {/* Follow Me Toggle Button */}
-        <button
-          onClick={() => {
-            setFollowMe(!followMe);
-            console.log(followMe ? "🔓 Follow Me: OFF" : "🔒 Follow Me: ON");
-          }}
-          style={{
-            width: "50px",
-            height: "50px",
-            borderRadius: "50%",
-            background: followMe ? "#4CAF50" : "#757575",
-            color: "white",
-            border: "3px solid white",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-            cursor: "pointer",
-            fontSize: "20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s ease",
-          }}
-          title={followMe ? "Follow Me: ON (click to disable)" : "Follow Me: OFF (click to enable)"}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.1)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
-        >
-          {followMe ? "🔒" : "🔓"}
-        </button>
 
         {/* Voice Announcement Toggle Button */}
         <button
