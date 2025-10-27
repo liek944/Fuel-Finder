@@ -87,43 +87,21 @@ interface RouteData {
   duration: number;
 }
 
-// Component for follow camera button
-const FollowButton: React.FC<{
-  effectiveMode: 'off' | 'soft' | 'hard';
-  preference: 'off' | 'soft';
-  paused: boolean;
-  toggleFollowPreference: () => void;
-  resumeFollow: () => void;
-  navigationActive: boolean;
-}> = ({ effectiveMode, preference, paused, toggleFollowPreference, resumeFollow, navigationActive }) => {
-  
-  // Determine button appearance based on state
-  const getButtonStyle = () => {
-    if (navigationActive && !paused) {
-      return { background: '#FF5722', icon: '🧭', title: 'Following (Navigation)' }; // Orange for hard follow
-    } else if (effectiveMode === 'soft' && !paused) {
-      return { background: '#4CAF50', icon: '📍', title: 'Following' }; // Green for soft follow
-    } else if (paused) {
-      return { background: '#FFC107', icon: '⏸️', title: 'Following Paused' }; // Yellow for paused
-    } else {
-      return { background: '#9E9E9E', icon: '📍', title: 'Follow Off' }; // Gray for off
-    }
-  };
-  
-  const style = getButtonStyle();
-  
-  const handleClick = () => {
-    if (paused) {
-      resumeFollow();
-    } else {
-      toggleFollowPreference();
-    }
-  };
+// Simple component to center map to user location
+const CenterToLocationButton: React.FC<{ position: [number, number] | null }> = ({ position }) => {
+  const map = useMap();
   
   return (
     <button
-      onClick={handleClick}
-      className="follow-button"
+      onClick={() => {
+        if (position) {
+          map.flyTo(position, map.getZoom(), {
+            duration: 0.5,
+          });
+          console.log("📍 Manually centered to user location");
+        }
+      }}
+      className="center-location-button"
       style={{
         position: "fixed",
         top: "50%",
@@ -132,7 +110,7 @@ const FollowButton: React.FC<{
         width: "50px",
         height: "50px",
         borderRadius: "50%",
-        background: style.background,
+        background: "#2196F3",
         color: "white",
         border: "3px solid white",
         boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
@@ -141,18 +119,20 @@ const FollowButton: React.FC<{
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        transition: "all 0.3s ease",
+        transition: "all 0.2s ease",
         zIndex: 1000,
       }}
-      title={style.title}
+      title="Center to my location"
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-50%) scale(1.1)";
+        e.currentTarget.style.background = "#1976D2";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(-50%) scale(1)";
+        e.currentTarget.style.background = "#2196F3";
       }}
     >
-      {style.icon}
+      📍
     </button>
   );
 };
@@ -902,16 +882,6 @@ const MainApp: React.FC = () => {
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
 
-  // Follow camera states
-  const [followControls, setFollowControls] = useState<{
-    effectiveMode: 'off' | 'soft' | 'hard';
-    preference: 'off' | 'soft';
-    paused: boolean;
-    toggleFollowPreference: () => void;
-    resumeFollow: () => void;
-    pauseFollow: () => void;
-  } | null>(null);
-
   // Convert position to L.LatLng for follow camera
   const userLatLng = position ? L.latLng(position[0], position[1]) : null;
 
@@ -1383,12 +1353,12 @@ const MainApp: React.FC = () => {
           </LayersControl.BaseLayer>
         </LayersControl>
 
-        {/* Follow Camera Controller */}
+        {/* Follow Camera Controller - runs invisibly in background */}
         <FollowCameraController
           userLatLng={userLatLng}
           accuracy={locationAccuracy}
           navigationActive={!!routeData}
-          onControlsChange={setFollowControls}
+          onControlsChange={() => {}} // No UI controls needed
         />
         
         {/* Fix popup scaling during zoom */}
@@ -1827,17 +1797,8 @@ const MainApp: React.FC = () => {
         )}
         */}
         
-        {/* Follow Camera Button - inside MapContainer to access map via useMap() hook */}
-        {followControls && (
-          <FollowButton
-            effectiveMode={followControls.effectiveMode}
-            preference={followControls.preference}
-            paused={followControls.paused}
-            toggleFollowPreference={followControls.toggleFollowPreference}
-            resumeFollow={followControls.resumeFollow}
-            navigationActive={!!routeData}
-          />
-        )}
+        {/* Center to My Location Button - simple one-click recenter */}
+        <CenterToLocationButton position={position} />
       </MapContainer>
 
       {/* Search Controls */}

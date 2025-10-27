@@ -312,41 +312,13 @@
     border-color: #f44336 !important;
 }
 
-/* Follow Camera Button Styles */
-.follow-button {
+/* Center to Location Button Styles */
+.center-location-button {
     animation: fadeInSlide 0.5s ease-out;
 }
 
-.follow-button:active {
+.center-location-button:active {
     transform: translateY(-50%) scale(0.95) !important;
-}
-
-/* Pulse animation for active following modes */
-@keyframes followPulse {
-    0%, 100% {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    50% {
-        box-shadow: 0 4px 20px rgba(76, 175, 80, 0.6);
-    }
-}
-
-@keyframes navPulse {
-    0%, 100% {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    }
-    50% {
-        box-shadow: 0 4px 20px rgba(255, 87, 34, 0.6);
-    }
-}
-
-/* Apply pulse animation when following is active */
-.follow-button[title="Following"] {
-    animation: followPulse 2s ease-in-out infinite;
-}
-
-.follow-button[title="Following (Navigation)"] {
-    animation: navPulse 2s ease-in-out infinite;
 }
 
 /* Fade in and slide animation for button appearance */
@@ -363,7 +335,7 @@
 
 /* Responsive adjustments for mobile */
 @media (max-width: 768px) {
-    .follow-button {
+    .center-location-button {
         width: 45px;
         height: 45px;
         font-size: 20px;
@@ -372,7 +344,7 @@
 }
 
 @media (max-width: 480px) {
-    .follow-button {
+    .center-location-button {
         width: 40px;
         height: 40px;
         font-size: 18px;
