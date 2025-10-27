@@ -1287,6 +1287,7 @@ const MainApp: React.FC = () => {
         {/* User location */}
         <Marker position={position} icon={DefaultIcon}>
           <Popup
+            autoPan={false}
             eventHandlers={{
               popupopen: () => setIsPopupOpen(true),
               popupclose: () => setIsPopupOpen(false),
@@ -1378,6 +1379,7 @@ const MainApp: React.FC = () => {
               icon={createFuelStationIcon(station.brand, proximity, !isOpen)}
             >
               <Popup
+                autoPan={false}
                 eventHandlers={{
                   popupopen: () => setIsPopupOpen(true),
                   popupclose: () => setIsPopupOpen(false),
@@ -1590,6 +1592,7 @@ const MainApp: React.FC = () => {
             icon={createPOIIcon(poi.type)}
           >
             <Popup
+              autoPan={false}
               eventHandlers={{
                 popupopen: () => setIsPopupOpen(true),
                 popupclose: () => setIsPopupOpen(false),
