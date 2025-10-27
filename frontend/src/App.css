@@ -42,6 +42,21 @@
     box-shadow: 0 3px 14px rgba(0, 0, 0, 0.2);
 }
 
+/* Prevent popups from scaling with map zoom */
+.leaflet-popup {
+    transform: none !important;
+}
+
+.leaflet-zoom-animated.leaflet-popup {
+    transform: none !important;
+}
+
+/* Keep popup size constant regardless of zoom level */
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+    transform: none !important;
+}
+
 /* Animated marker bounce on load */
 @keyframes markerBounce {
     0%,
