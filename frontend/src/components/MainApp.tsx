@@ -2002,12 +2002,12 @@ const MainApp: React.FC = () => {
       <div
         style={{
           position: "fixed",
-          top: "50%",
-          right: "20px",
-          transform: "translateY(-50%)",
+          top: window.innerWidth <= 768 ? "20px" : "50%",
+          right: window.innerWidth <= 768 ? "16px" : "20px",
+          transform: window.innerWidth <= 768 ? "none" : "translateY(-50%)",
           display: "flex",
           flexDirection: "column",
-          gap: "12px",
+          gap: window.innerWidth <= 768 ? "16px" : "12px",
           zIndex: 1000,
         }}
       >
@@ -2023,15 +2023,15 @@ const MainApp: React.FC = () => {
             console.log(voiceEnabled ? "🔇 Voice: OFF" : "🔊 Voice: ON");
           }}
           style={{
-            width: "50px",
-            height: "50px",
+            width: window.innerWidth <= 768 ? "48px" : "50px",
+            height: window.innerWidth <= 768 ? "48px" : "50px",
             borderRadius: "50%",
             background: voiceEnabled ? "#FF9800" : "#757575",
             color: "white",
-            border: "3px solid white",
+            border: window.innerWidth <= 768 ? "2px solid white" : "3px solid white",
             boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
             cursor: "pointer",
-            fontSize: "20px",
+            fontSize: window.innerWidth <= 768 ? "18px" : "20px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -2059,15 +2059,15 @@ const MainApp: React.FC = () => {
             console.log(notificationsEnabled ? "🔕 Notifications: OFF" : "🔔 Notifications: ON");
           }}
           style={{
-            width: "50px",
-            height: "50px",
+            width: window.innerWidth <= 768 ? "48px" : "50px",
+            height: window.innerWidth <= 768 ? "48px" : "50px",
             borderRadius: "50%",
             background: notificationsEnabled ? "#9C27B0" : "#757575",
             color: "white",
-            border: "3px solid white",
+            border: window.innerWidth <= 768 ? "2px solid white" : "3px solid white",
             boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
             cursor: "pointer",
-            fontSize: "20px",
+            fontSize: window.innerWidth <= 768 ? "18px" : "20px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",

@@ -32,6 +32,16 @@
         pulse 2s ease-in-out 1s infinite;
 }
 
+/* Mobile responsive positioning */
+@media (max-width: 768px) {
+    .pwa-install-button {
+        bottom: 5.5rem;
+        right: 1rem;
+        padding: 0.65rem 1rem;
+        font-size: 0.8rem;
+    }
+}
+
 .pwa-install-button:hover {
     background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
     box-shadow:
