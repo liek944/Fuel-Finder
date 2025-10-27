@@ -9,6 +9,7 @@ import MainApp from "./components/MainApp";
 import AdminPortal from "./components/AdminPortal";
 import OwnerLogin from "./components/owner/OwnerLogin";
 import OwnerDashboard from "./components/owner/OwnerDashboard";
+import { OwnerThemeProvider } from "./contexts/OwnerThemeContext";
 import "./App.css";
 
 /**
@@ -98,15 +99,17 @@ function App() {
   // Owner subdomain detected - show owner portal
   if (isOwnerPortal && subdomain) {
     return (
-      <Router>
-        <div className="App">
-          <Routes>
-            <Route path="/owner/login" element={<OwnerLogin subdomain={subdomain} />} />
-            <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-            <Route path="*" element={<Navigate to="/owner/login" replace />} />
-          </Routes>
-        </div>
-      </Router>
+      <OwnerThemeProvider>
+        <Router>
+          <div className="App">
+            <Routes>
+              <Route path="/owner/login" element={<OwnerLogin subdomain={subdomain} />} />
+              <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+              <Route path="*" element={<Navigate to="/owner/login" replace />} />
+            </Routes>
+          </div>
+        </Router>
+      </OwnerThemeProvider>
     );
   }
 

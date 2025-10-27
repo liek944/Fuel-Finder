@@ -16,7 +16,7 @@
   width: 48px;
   height: 48px;
   border: 4px solid #e2e8f0;
-  border-top-color: #667eea;
+  border-top-color: var(--owner-primary, #667eea);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -94,7 +94,9 @@
 
 /* Header */
 .dashboard-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, 
+    var(--owner-primary, #667eea) 0%, 
+    var(--owner-accent, #764ba2) 100%);
   color: white;
   padding: 24px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -145,7 +147,7 @@
 
 .refresh-button:hover:not(:disabled) {
   background: white;
-  color: #667eea;
+  color: var(--owner-primary, #667eea);
 }
 
 .refresh-button:disabled {
@@ -167,7 +169,7 @@
 
 .logout-button:hover {
   background: white;
-  color: #667eea;
+  color: var(--owner-primary, #667eea);
 }
 
 /* Tabs */
@@ -193,13 +195,13 @@
 }
 
 .tab:hover {
-  color: #667eea;
+  color: var(--owner-primary, #667eea);
   background: #f7fafc;
 }
 
 .tab.active {
-  color: #667eea;
-  border-bottom-color: #667eea;
+  color: var(--owner-primary, #667eea);
+  border-bottom-color: var(--owner-primary, #667eea);
 }
 
 /* Content */
@@ -331,7 +333,7 @@
 }
 
 .brand-badge {
-  background: #667eea;
+  background: var(--owner-primary, #667eea);
   color: white;
   padding: 4px 12px;
   border-radius: 6px;
@@ -401,7 +403,7 @@
 }
 
 .fuel-price-item:hover {
-  border-color: #667eea;
+  border-color: var(--owner-primary, #667eea);
   transform: translateY(-2px);
 }
 
@@ -416,7 +418,7 @@
 .fuel-price {
   font-size: 18px;
   font-weight: 700;
-  color: #667eea;
+  color: var(--owner-primary, #667eea);
   margin: 4px 0;
 }
 
@@ -447,7 +449,7 @@
 }
 
 .edit-button {
-  background: #667eea;
+  background: var(--owner-primary, #667eea);
   color: white;
 }
 
@@ -497,7 +499,7 @@
 .report-price {
   font-size: 32px;
   font-weight: 700;
-  color: #667eea;
+  color: var(--owner-primary, #667eea);
   margin: 12px 0;
 }
 
@@ -793,7 +795,7 @@
 
 .modal-close:hover {
   background: #f7fafc;
-  color: #667eea;
+  color: var(--owner-primary, #667eea);
 }
 
 .modal-form {
@@ -810,7 +812,7 @@
   color: #2d3748;
   margin: 0 0 16px 0;
   padding-bottom: 8px;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid var(--owner-primary, #667eea);
 }
 
 .form-hint {
@@ -849,7 +851,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--owner-primary, #667eea);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -960,8 +962,8 @@
 .preset-fuel-button {
   padding: 8px 16px;
   background: white;
-  border: 2px solid #667eea;
-  color: #667eea;
+  border: 2px solid var(--owner-primary, #667eea);
+  color: var(--owner-primary, #667eea);
   border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
@@ -970,7 +972,7 @@
 }
 
 .preset-fuel-button:hover {
-  background: #667eea;
+  background: var(--owner-primary, #667eea);
   color: white;
   transform: translateY(-1px);
 }
@@ -985,7 +987,7 @@
 .custom-fuel-input input {
   flex: 1;
   padding: 12px;
-  border: 2px solid #667eea;
+  border: 2px solid var(--owner-primary, #667eea);
   border-radius: 8px;
   font-size: 14px;
 }
@@ -1025,7 +1027,7 @@
   padding: 12px;
   background: white;
   border: 2px dashed #cbd5e0;
-  color: #667eea;
+  color: var(--owner-primary, #667eea);
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -1035,7 +1037,7 @@
 }
 
 .add-custom-fuel-type-button:hover {
-  border-color: #667eea;
+  border-color: var(--owner-primary, #667eea);
   background: #f7fafc;
 }
 

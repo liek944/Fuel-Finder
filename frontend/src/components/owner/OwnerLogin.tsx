@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useOwnerTheme, ThemeConfig } from '../../contexts/OwnerThemeContext';
 import './OwnerLogin.css';
 
 interface OwnerLoginProps {
@@ -12,6 +13,7 @@ interface OwnerInfo {
   contact_person: string;
   email: string;
   phone?: string;
+  theme_config?: ThemeConfig;
 }
 
 const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
@@ -20,6 +22,7 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
   const [error, setError] = useState<string | null>(null);
   const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null);
   const navigate = useNavigate();
+  const { applyTheme } = useOwnerTheme();
 
   // Fetch public owner info on mount
   useEffect(() => {
@@ -38,6 +41,12 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
       if (response.ok) {
         const data = await response.json();
         setOwnerInfo(data);
+        
+        // Apply owner's theme if available
+        if (data.theme_config && Object.keys(data.theme_config).length > 0) {
+          console.log('🎨 Applying owner theme:', data.name);
+          applyTheme(data.theme_config);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch owner info:', err);
@@ -85,10 +94,16 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
     <div className="owner-login-container">
       <div className="owner-login-card">
         <div className="owner-login-header">
-          <h1>🏪 Owner Portal</h1>
+          {ownerInfo?.theme_config?.logoUrl ? (
+            <div className="owner-logo">
+              <img src={ownerInfo.theme_config.logoUrl} alt={ownerInfo.name} />
+            </div>
+          ) : (
+            <h1>🏪 Owner Portal</h1>
+          )}
           {ownerInfo ? (
             <div className="owner-info-badge">
-              <h2>{ownerInfo.name}</h2>
+              <h2>{ownerInfo.theme_config?.brandName || ownerInfo.name}</h2>
               <p className="subdomain">{subdomain}.fuelfinder.com</p>
             </div>
           ) : (
