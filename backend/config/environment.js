@@ -32,6 +32,9 @@ const config = {
   // API Configuration
   adminApiKey: process.env.ADMIN_API_KEY || "",
   
+  // CORS Configuration
+  allowedOrigins: process.env.ALLOWED_ORIGINS || "http://localhost:3000,http://localhost:3001",
+  
   // Rate Limiting
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || "60000", 10),
