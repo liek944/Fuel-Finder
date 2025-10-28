@@ -10,14 +10,17 @@ FROM owners
 WHERE domain = 'ifuel-dangay';
 
 -- 2. Extract specific theme fields (pretty formatted)
+-- ⚠️ IMPORTANT: Use nested access -> colors->>'primary' (not ->>'primaryColor')
 SELECT 
   domain,
   name,
+  theme_config->>'brandName' as brand_name,
   theme_config->>'logoUrl' as logo_url,
-  theme_config->>'primaryColor' as primary_color,
-  theme_config->>'secondaryColor' as secondary_color,
-  theme_config->>'backgroundColor' as background_color,
-  theme_config->>'textColor' as text_color
+  theme_config->'colors'->>'primary' as primary_color,
+  theme_config->'colors'->>'secondary' as secondary_color,
+  theme_config->'colors'->>'background' as background_color,
+  theme_config->'colors'->>'text' as text_color,
+  theme_config->>'mode' as mode
 FROM owners
 WHERE domain = 'ifuel-dangay';
 
