@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -19,6 +19,8 @@ import { getImageUrl, getApiUrl } from "../utils/api";
 import PWAInstallButton from "./PWAInstallButton";
 // import DonationWidget from "./DonationWidget"; // COMMENTED OUT: PayMongo payment integration disabled
 import ReviewWidget from "./ReviewWidget";
+import Toast from "./Toast";
+import { useToast } from "../hooks/useToast";
 // import { Trip } from '../utils/indexedDB';
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
@@ -30,7 +32,7 @@ import { arrivalNotifications } from "../utils/arrivalNotifications";
 // Types
 interface FuelPrice {
   fuel_type: string;
-  price: number;
+  price: number | string; // PostgreSQL NUMERIC returns strings to preserve precision
   price_updated_at?: string;
   price_updated_by?: string;
 }
@@ -124,6 +126,7 @@ const CenterToLocationButton: React.FC<{ position: [number, number] | null }> = 
         zIndex: 1000,
       }}
       title="Center to my location"
+      aria-label="Center map to my location"
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = "translateY(-50%) scale(1.1)";
         e.currentTarget.style.background = "#1976D2";
@@ -136,7 +139,7 @@ const CenterToLocationButton: React.FC<{ position: [number, number] | null }> = 
       📍
     </button>
   );
-};
+}
 
 // Component to fix popup scaling on zoom
 const PopupScaleFix: React.FC = () => {
@@ -259,12 +262,23 @@ const createUserLocationIcon = () => {
 
 const DefaultIcon = createUserLocationIcon();
 
-// Function to create brand-specific fuel station markers with sharp points
+// Icon cache to avoid redundant canvas operations
+const iconCache = new Map<string, L.Icon>();
+
+// Function to create brand-specific fuel station markers with sharp points (with caching)
 const createFuelStationIcon = (
   brand: string,
   proximity?: number,
   isClosed: boolean = false,
 ) => {
+  // Quantize proximity to reduce cache misses (group similar values)
+  const proxKey = proximity !== undefined ? Math.round(proximity * 4) / 4 : 'none';
+  const cacheKey = `fuel-${brand}-${proxKey}-${isClosed}`;
+  
+  // Return cached icon if available
+  if (iconCache.has(cacheKey)) {
+    return iconCache.get(cacheKey)!;
+  }
   const brandColors: { [key: string]: string } = {
     Shell: "#FFCC00",
     Petron: "#FF0000",
@@ -347,16 +361,26 @@ const createFuelStationIcon = (
     }
   }
 
-  return new L.Icon({
+  const icon = new L.Icon({
     iconUrl: canvas.toDataURL(),
     iconSize: [width + 10, height + 15],
     iconAnchor: [(width + 10) / 2, height + 15],
     popupAnchor: [0, -(height + 15)],
   });
+  
+  // Cache the icon for future use
+  iconCache.set(cacheKey, icon);
+  return icon;
 };
 
-// POI icon creator with sharp points
+// POI icon creator with sharp points (with caching)
 const createPOIIcon = (type: string) => {
+  const cacheKey = `poi-${type}`;
+  
+  // Return cached icon if available
+  if (iconCache.has(cacheKey)) {
+    return iconCache.get(cacheKey)!;
+  }
   const iconMap: { [key: string]: string } = {
     gas: "⛽",
     convenience: "🏪",
@@ -423,12 +447,16 @@ const createPOIIcon = (type: string) => {
     ctx.fillText(icon, centerX, circleY);
   }
 
-  return new L.Icon({
+  const poiIcon = new L.Icon({
     iconUrl: canvas.toDataURL(),
     iconSize: [width + 10, height + 10],
     iconAnchor: [(width + 10) / 2, height + 10],
     popupAnchor: [0, -(height + 10)],
   });
+  
+  // Cache the icon for future use
+  iconCache.set(cacheKey, poiIcon);
+  return poiIcon;
 };
 
 // Distance calculation function
@@ -842,6 +870,9 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
 };
 
 const MainApp: React.FC = () => {
+  // Toast notifications
+  const { toasts, hideToast, success, error, warning, info } = useToast();
+  
   const [position, setPosition] = useState<[number, number] | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
   const [pois, setPois] = useState<POI[]>([]);
@@ -982,41 +1013,63 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     if (!position) return;
 
+    const abortController = new AbortController();
+
     const fetchStations = async () => {
       // No loading indicator for automatic background updates
       try {
         const url = getApiUrl(
           `/api/stations/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
         );
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: abortController.signal });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         setStations(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Failed to fetch stations:", error);
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.error("Failed to fetch stations:", error);
+        }
       }
     };
 
     fetchStations();
+    
+    return () => {
+      abortController.abort();
+    };
   }, [position, radiusMeters]);
 
   // Fetch POIs
   useEffect(() => {
     if (!position) return;
 
+    const abortController = new AbortController();
+
     const fetchPOIs = async () => {
       try {
         const url = getApiUrl(
           `/api/pois/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
         );
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: abortController.signal });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
         setPois(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.warn("Failed to fetch POIs:", error);
+      } catch (error: any) {
+        if (error.name !== 'AbortError') {
+          console.warn("Failed to fetch POIs:", error);
+        }
       }
     };
 
     fetchPOIs();
+    
+    return () => {
+      abortController.abort();
+    };
   }, [position, radiusMeters]);
 
   // Auto-refresh timer - periodically refetch stations and POIs
@@ -1070,19 +1123,21 @@ const MainApp: React.FC = () => {
     };
   }, []);
 
-  // Initialize and sync arrival notification settings
-  useEffect(() => {
-    // Request notification permission on mount
-    arrivalNotifications.requestNotificationPermission();
-  }, []);
-
-  // Sync notification settings when changed
+  // Sync notification settings when changed (defer permission request until user enables)
   useEffect(() => {
     arrivalNotifications.setVoiceEnabled(voiceEnabled);
+    // Request permission only when user enables voice
+    if (voiceEnabled) {
+      arrivalNotifications.requestNotificationPermission();
+    }
   }, [voiceEnabled]);
 
   useEffect(() => {
     arrivalNotifications.setNotificationsEnabled(notificationsEnabled);
+    // Request permission only when user enables notifications
+    if (notificationsEnabled) {
+      arrivalNotifications.requestNotificationPermission();
+    }
   }, [notificationsEnabled]);
 
   // Debug routeData changes
@@ -1116,16 +1171,17 @@ const MainApp: React.FC = () => {
     }
   }, [position, routeData, routeStartPosition]);
 
-  // Filter stations based on search criteria
-  const filteredStations = stations.filter((station) => {
+  // Filter stations based on search criteria (with useMemo for performance)
+  const filteredStations = useMemo(() => stations.filter((station) => {
     const matchesBrand =
       selectedBrand === "All" || station.brand === selectedBrand;
 
     // Check if any fuel type matches the price filter
+    // NOTE: PostgreSQL NUMERIC returns strings - coerce to number for comparison
     const matchesPrice =
       station.fuel_prices && station.fuel_prices.length > 0
-        ? station.fuel_prices.some((fp) => fp.price <= maxPrice)
-        : station.fuel_price <= maxPrice; // Fallback to legacy price
+        ? station.fuel_prices.some((fp) => Number(fp.price) <= maxPrice)
+        : Number(station.fuel_price) <= maxPrice; // Fallback to legacy price
 
     const matchesSearch =
       searchQuery === "" ||
@@ -1137,7 +1193,7 @@ const MainApp: React.FC = () => {
         station.address.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesBrand && matchesPrice && matchesSearch;
-  });
+  }), [stations, selectedBrand, maxPrice, searchQuery]);
 
   // Get route to station or POI
   const getRoute = async (location: Station | POI) => {
@@ -1212,8 +1268,8 @@ const MainApp: React.FC = () => {
     }
 
     if (locations.length === 0) {
-      alert(
-        `No ${selectedRouteType === "gas" ? "gas stations" : selectedRouteType.replace("_", " ")} found in the area.`,
+      info(
+        `No ${selectedRouteType === "gas" ? "gas stations" : selectedRouteType.replace("_", " ")} found in the area.`
       );
       return;
     }
@@ -1254,8 +1310,8 @@ const MainApp: React.FC = () => {
     // Provide detailed feedback about the routing decision
     if (!targetLocation && sortedLocations.length > 0) {
       targetLocation = sortedLocations[0].location;
-      alert(
-        `⚠️ All ${sortedLocations.length} nearby locations appear to be closed.\n\nRouting to: ${targetLocation.name} (${sortedLocations[0].distance.toFixed(1)}km)`,
+      warning(
+        `⚠️ All ${sortedLocations.length} nearby locations appear to be closed.\n\nRouting to: ${targetLocation.name} (${sortedLocations[0].distance.toFixed(1)}km)`
       );
     } else if (targetLocation && skippedClosed.length > 0) {
       const skippedNames = skippedClosed
@@ -1264,8 +1320,8 @@ const MainApp: React.FC = () => {
         .join(", ");
       const moreText =
         skippedClosed.length > 2 ? ` and ${skippedClosed.length - 2} more` : "";
-      alert(
-        `ℹ️ Skipping ${skippedClosed.length} closed location${skippedClosed.length > 1 ? "s" : ""}:\n${skippedNames}${moreText}\n\nRouting to: ${targetLocation.name} (${sortedLocations[targetIndex].distance.toFixed(1)}km)`,
+      info(
+        `ℹ️ Skipping ${skippedClosed.length} closed location${skippedClosed.length > 1 ? "s" : ""}:\n${skippedNames}${moreText}\n\nRouting to: ${targetLocation.name} (${sortedLocations[targetIndex].distance.toFixed(1)}km)`
       );
     }
 
@@ -1274,10 +1330,11 @@ const MainApp: React.FC = () => {
     }
   };
 
-  // Get unique brands for filter
-  const uniqueBrands = Array.from(
-    new Set(stations.map((station) => station.brand)),
-  ).sort();
+  // Get unique brands for filter (memoized for performance)
+  const uniqueBrands = useMemo(() => 
+    Array.from(new Set(stations.map((station) => station.brand))).sort(),
+    [stations]
+  );
 
   if (!position) {
     return (
@@ -2064,6 +2121,9 @@ const MainApp: React.FC = () => {
             transition: "all 0.2s ease",
           }}
           title={voiceEnabled ? "Voice Announcements: ON" : "Voice Announcements: OFF"}
+          aria-label={voiceEnabled ? "Disable voice announcements" : "Enable voice announcements"}
+          role="switch"
+          aria-checked={voiceEnabled}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "scale(1.1)";
           }}
@@ -2100,6 +2160,9 @@ const MainApp: React.FC = () => {
             transition: "all 0.2s ease",
           }}
           title={notificationsEnabled ? "Arrival Notifications: ON" : "Arrival Notifications: OFF"}
+          aria-label={notificationsEnabled ? "Disable arrival notifications" : "Enable arrival notifications"}
+          role="switch"
+          aria-checked={notificationsEnabled}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "scale(1.1)";
           }}
@@ -2113,6 +2176,16 @@ const MainApp: React.FC = () => {
 
       {/* PWA Install Button */}
       <PWAInstallButton />
+
+      {/* Toast Notifications */}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          onClose={() => hideToast(toast.id)}
+        />
+      ))}
 
       {/* Floating Donation Button - COMMENTED OUT: PayMongo payment integration disabled */}
       {/*
