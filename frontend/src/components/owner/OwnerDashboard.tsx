@@ -353,7 +353,6 @@ const OwnerDashboard: React.FC = () => {
         <div className="header-content">
           <div>
             <h1>{stats.owner_name}</h1>
-            <p className="domain-badge">{stats.domain}.fuelfinder.com</p>
           </div>
           <div className="header-actions">
             <button 

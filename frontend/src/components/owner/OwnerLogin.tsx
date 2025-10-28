@@ -101,13 +101,10 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
           ) : (
             <h1>🏪 Owner Portal</h1>
           )}
-          {ownerInfo ? (
+          {ownerInfo && (
             <div className="owner-info-badge">
               <h2>{ownerInfo.theme_config?.brandName || ownerInfo.name}</h2>
-              <p className="subdomain">{subdomain}.fuelfinder.com</p>
             </div>
-          ) : (
-            <p className="subdomain">{subdomain}.fuelfinder.com</p>
           )}
         </div>
 
