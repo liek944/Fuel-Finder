@@ -314,7 +314,7 @@ async function deleteReview(req, res) {
  */
 async function getReviewsForOwner(req, res) {
   try {
-    const ownerId = req.ownerId; // Set by ownerAuth middleware
+    const ownerId = req.ownerData.id; // Set by ownerAuth middleware (req.ownerData)
 
     const {
       status,
@@ -351,7 +351,7 @@ async function updateReviewStatusByOwner(req, res) {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const ownerId = req.ownerId;
+    const ownerId = req.ownerData.id; // Set by ownerAuth middleware (req.ownerData)
 
     if (!status || !['published', 'rejected'].includes(status)) {
       return res.status(400).json({
