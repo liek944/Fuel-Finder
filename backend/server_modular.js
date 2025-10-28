@@ -2410,9 +2410,9 @@ app.delete(
 );
 
 // ============================================================================
-// DONATION ENDPOINTS
+// DONATION ENDPOINTS - COMMENTED OUT: PayMongo payment integration disabled
 // ============================================================================
-
+/*
 const paymentService = require("./services/paymentService");
 
 // Create donation and generate payment link
@@ -2767,6 +2767,8 @@ app.patch("/api/admin/donations/:id/status", async (req, res) => {
     });
   }
 });
+*/
+// END OF COMMENTED OUT DONATION ENDPOINTS
 
 // ============================================================================
 // USER ACTIVITY TRACKING - Lightweight in-memory tracking for admin dashboard

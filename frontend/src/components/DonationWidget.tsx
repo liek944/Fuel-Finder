@@ -71,6 +71,8 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
     }
   };
 
+  // COMMENTED OUT: PayMongo payment integration disabled
+  /*
   const handleDonate = async () => {
     if (amount < 100) {
       alert('⚠️ Minimum donation is ₱100 (PayMongo requirement)');
@@ -107,6 +109,11 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
     } finally {
       setLoading(false);
     }
+  };
+  */
+
+  const handleDonate = () => {
+    alert('Donation feature is currently disabled.');
   };
 
   const formatAmount = (num: number): string => {
@@ -214,9 +221,12 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
                 min="100"
                 max="10000"
               />
+              {/* COMMENTED OUT: PayMongo requirement message */}
+              {/*
               {amount > 0 && amount < 100 && (
                 <span className="input-error">Minimum: ₱100 (PayMongo requirement)</span>
               )}
+              */}
               {amount > 10000 && (
                 <span className="input-error">Maximum: ₱10,000</span>
               )}
@@ -263,10 +273,16 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
               {loading ? 'Processing...' : `Donate ₱${formatAmount(amount)}`}
             </button>
 
+            {/* COMMENTED OUT: PayMongo payment info */}
+            {/*
             <div className="payment-info">
               <p>💳 Secure payment via PayMongo</p>
               <p style={{ color: '#ff9800', fontWeight: 600 }}>🧪 Test Mode: Use test number 09123456789 with OTP 123456</p>
               <p className="tax-note">No real money will be charged in test mode</p>
+            </div>
+            */}
+            <div className="payment-info">
+              <p style={{ color: '#ff9800', fontWeight: 600 }}>⚠️ Donation feature is currently disabled</p>
             </div>
           </div>
         ) : (

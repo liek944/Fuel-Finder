@@ -1439,9 +1439,9 @@ app.delete("/api/stations/:id/fuel-prices/:fuel_type", rateLimit, async (req, re
 });
 
 // ============================================================================
-// DONATION ENDPOINTS
+// DONATION ENDPOINTS - COMMENTED OUT: PayMongo payment integration disabled
 // ============================================================================
-
+/*
 // Create donation and generate payment link
 app.post("/api/donations/create", rateLimit, async (req, res) => {
   try {
@@ -1724,6 +1724,8 @@ app.patch("/api/admin/donations/:id/status", async (req, res) => {
     res.status(500).json({ error: "Failed to update donation status", message: error.message });
   }
 });
+*/
+// END OF COMMENTED OUT DONATION ENDPOINTS
 
 // ============================================================================
 // USER ACTIVITY TRACKING

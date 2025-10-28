@@ -17,7 +17,7 @@ import { getImageUrl, getApiUrl } from "../utils/api";
 // import TripHistoryPanel from './TripHistoryPanel';
 // import TripReplayVisualizer from './TripReplayVisualizer';
 import PWAInstallButton from "./PWAInstallButton";
-import DonationWidget from "./DonationWidget";
+// import DonationWidget from "./DonationWidget"; // COMMENTED OUT: PayMongo payment integration disabled
 import ReviewWidget from "./ReviewWidget";
 // import { Trip } from '../utils/indexedDB';
 import "../styles/TripReplayVisualizer.css";
@@ -863,7 +863,7 @@ const MainApp: React.FC = () => {
   // const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
 
   // Donation widget state
-  const [showDonations, setShowDonations] = useState<boolean>(false);
+  // const [showDonations, setShowDonations] = useState<boolean>(false); // COMMENTED OUT: PayMongo payment integration disabled
 
   // Auto-refresh states
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true); // Auto-refresh enabled by default
@@ -2114,19 +2114,22 @@ const MainApp: React.FC = () => {
       {/* PWA Install Button */}
       <PWAInstallButton />
 
-      {/* Floating Donation Button */}
-
+      {/* Floating Donation Button - COMMENTED OUT: PayMongo payment integration disabled */}
+      {/*
       <button
         onClick={() => setShowDonations(true)}
         className="donation-button"
       >
         💝 Support Community
       </button>
+      */}
 
-      {/* Donation Widget */}
+      {/* Donation Widget - COMMENTED OUT: PayMongo payment integration disabled */}
+      {/*
       {showDonations && (
         <DonationWidget onClose={() => setShowDonations(false)} />
       )}
+      */}
     </div>
   );
 };
