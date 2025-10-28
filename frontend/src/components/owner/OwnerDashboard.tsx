@@ -70,6 +70,14 @@ const OwnerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports' | 'reviews'>('overview');
+  
+  // Reviews filtering and pagination
+  const [reviewsFilter, setReviewsFilter] = useState<string>('all'); // all, published, rejected
+  const [reviewsStationFilter, setReviewsStationFilter] = useState<number | 'all'>('all');
+  const [reviewsSearch, setReviewsSearch] = useState('');
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [reviewsTotalPages, setReviewsTotalPages] = useState(1);
+  const reviewsPageSize = 20;
   const [processingReportId, setProcessingReportId] = useState<number | null>(null);
   const [editingStation, setEditingStation] = useState<Station | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -90,6 +98,14 @@ const OwnerDashboard: React.FC = () => {
 
     fetchData(apiKey);
   }, []);
+
+  // Refetch reviews when filter/pagination changes
+  useEffect(() => {
+    const apiKey = getApiKey();
+    if (apiKey && activeTab === 'reviews') {
+      fetchData(apiKey);
+    }
+  }, [reviewsFilter, reviewsStationFilter, reviewsPage]);
 
   const fetchData = async (apiKey: string) => {
     const subdomain = getSubdomain();
@@ -145,8 +161,14 @@ const OwnerDashboard: React.FC = () => {
         console.warn('Failed to fetch pending reports:', reportsRes.status);
       }
 
-      // Fetch reviews
-      const reviewsRes = await fetch(`${apiUrl}/api/owner/reviews?status=published&pageSize=50`, {
+      // Fetch reviews with filters
+      const reviewsParams = new URLSearchParams();
+      if (reviewsFilter !== 'all') reviewsParams.append('status', reviewsFilter);
+      if (reviewsStationFilter !== 'all') reviewsParams.append('stationId', reviewsStationFilter.toString());
+      reviewsParams.append('page', reviewsPage.toString());
+      reviewsParams.append('pageSize', reviewsPageSize.toString());
+
+      const reviewsRes = await fetch(`${apiUrl}/api/owner/reviews?${reviewsParams.toString()}`, {
         headers: {
           'x-api-key': apiKey,
           'x-owner-domain': subdomain || ''
@@ -156,6 +178,9 @@ const OwnerDashboard: React.FC = () => {
       if (reviewsRes.ok) {
         const reviewsData = await reviewsRes.json();
         setReviews(reviewsData.reviews || []);
+        if (reviewsData.pagination) {
+          setReviewsTotalPages(reviewsData.pagination.totalPages || 1);
+        }
       } else {
         console.warn('Failed to fetch reviews:', reviewsRes.status);
       }
@@ -590,111 +615,215 @@ const OwnerDashboard: React.FC = () => {
 
         {activeTab === 'reviews' && (
           <div className="reviews-tab">
-            <h2>Station Reviews</h2>
-            {reviews.length === 0 ? (
+            <div className="reviews-header-section">
+              <h2>⭐ Station Reviews</h2>
+              <div className="reviews-stats-badge">
+                Total: {reviews.length}
+              </div>
+            </div>
+
+            {/* Filters Section */}
+            <div className="reviews-filters">
+              <div className="filter-group">
+                <label htmlFor="status-filter">Status:</label>
+                <select 
+                  id="status-filter"
+                  value={reviewsFilter} 
+                  onChange={(e) => {
+                    setReviewsFilter(e.target.value);
+                    setReviewsPage(1);
+                  }}
+                  className="filter-select"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="published">Published</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label htmlFor="station-filter">Station:</label>
+                <select 
+                  id="station-filter"
+                  value={reviewsStationFilter} 
+                  onChange={(e) => {
+                    setReviewsStationFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value));
+                    setReviewsPage(1);
+                  }}
+                  className="filter-select"
+                >
+                  <option value="all">All Stations</option>
+                  {stations.map(station => (
+                    <option key={station.id} value={station.id}>
+                      {station.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-group search-group">
+                <label htmlFor="search-input">Search:</label>
+                <input
+                  id="search-input"
+                  type="text"
+                  placeholder="Search comments or names..."
+                  value={reviewsSearch}
+                  onChange={(e) => setReviewsSearch(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+            </div>
+
+            {/* Reviews List */}
+            {loading ? (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading reviews...</p>
+              </div>
+            ) : reviews.length === 0 ? (
               <div className="empty-state">
-                <p>📝 No reviews yet for your stations</p>
+                <p>📝 No reviews found matching your criteria</p>
               </div>
             ) : (
-              <div className="reviews-list">
-                {reviews.map(review => (
-                  <div key={review.id} className="review-card">
-                    <div className="review-header">
-                      <div className="review-meta">
-                        <h3>{review.station_name || `Station #${review.target_id}`}</h3>
-                        <span className="review-author">
-                          {review.display_name || 'Anonymous'}
-                        </span>
-                      </div>
-                      <div className="review-rating">
-                        <span className="stars">
-                          {[1, 2, 3, 4, 5].map(star => (
-                            <span key={star} className={star <= review.rating ? 'star filled' : 'star'}>
-                              ★
+              <>
+                <div className="reviews-list">
+                  {reviews
+                    .filter(review => {
+                      // Client-side search filtering
+                      if (!reviewsSearch.trim()) return true;
+                      const searchLower = reviewsSearch.toLowerCase();
+                      return (
+                        (review.comment && review.comment.toLowerCase().includes(searchLower)) ||
+                        (review.display_name && review.display_name.toLowerCase().includes(searchLower)) ||
+                        (review.station_name && review.station_name.toLowerCase().includes(searchLower))
+                      );
+                    })
+                    .map(review => (
+                      <div key={review.id} className="review-card">
+                        <div className="review-header">
+                          <div className="review-meta">
+                            <h3>{review.station_name || `Station #${review.target_id}`}</h3>
+                            <span className="review-author">
+                              👤 {review.display_name || 'Anonymous'}
                             </span>
-                          ))}
-                        </span>
-                        <span className="rating-number">{review.rating}/5</span>
-                      </div>
-                    </div>
-                    {review.comment && (
-                      <p className="review-comment">{review.comment}</p>
-                    )}
-                    <div className="review-footer">
-                      <span className="review-date">
-                        {new Date(review.created_at).toLocaleDateString()}
-                      </span>
-                      <div className="review-actions">
-                        {review.status === 'published' && (
-                          <button
-                            className="action-btn reject-btn"
-                            onClick={async () => {
-                              const apiKey = getApiKey();
-                              const subdomain = getSubdomain();
-                              const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-                              try {
-                                const res = await fetch(`${apiUrl}/api/owner/reviews/${review.id}`, {
-                                  method: 'PATCH',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'x-api-key': apiKey || '',
-                                    'x-owner-domain': subdomain || ''
-                                  },
-                                  body: JSON.stringify({ status: 'rejected' })
-                                });
-                                if (res.ok) {
-                                  showToast('Review rejected', 'success');
-                                  handleRefresh();
-                                } else {
-                                  showToast('Failed to reject review', 'error');
-                                }
-                              } catch (err) {
-                                showToast('Error rejecting review', 'error');
-                              }
-                            }}
-                          >
-                            ✕ Hide Review
-                          </button>
+                          </div>
+                          <div className="review-rating">
+                            <span className="stars">
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <span key={star} className={star <= review.rating ? 'star filled' : 'star'}>
+                                  ★
+                                </span>
+                              ))}
+                            </span>
+                            <span className="rating-number">{review.rating}/5</span>
+                          </div>
+                        </div>
+                        {review.comment && (
+                          <p className="review-comment">"{review.comment}"</p>
                         )}
-                        {review.status === 'rejected' && (
-                          <button
-                            className="action-btn publish-btn"
-                            onClick={async () => {
-                              const apiKey = getApiKey();
-                              const subdomain = getSubdomain();
-                              const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-                              try {
-                                const res = await fetch(`${apiUrl}/api/owner/reviews/${review.id}`, {
-                                  method: 'PATCH',
-                                  headers: {
-                                    'Content-Type': 'application/json',
-                                    'x-api-key': apiKey || '',
-                                    'x-owner-domain': subdomain || ''
-                                  },
-                                  body: JSON.stringify({ status: 'published' })
-                                });
-                                if (res.ok) {
-                                  showToast('Review published', 'success');
-                                  handleRefresh();
-                                } else {
-                                  showToast('Failed to publish review', 'error');
-                                }
-                              } catch (err) {
-                                showToast('Error publishing review', 'error');
-                              }
-                            }}
-                          >
-                            ✓ Show Review
-                          </button>
-                        )}
-                        <span className={`status-badge status-${review.status}`}>
-                          {review.status}
-                        </span>
+                        <div className="review-footer">
+                          <span className="review-date">
+                            📅 {new Date(review.created_at).toLocaleString()}
+                          </span>
+                          <div className="review-actions">
+                            {review.status === 'published' && (
+                              <button
+                                className="action-btn reject-btn"
+                                onClick={async () => {
+                                  if (!confirm('Hide this review from public display?')) return;
+                                  const apiKey = getApiKey();
+                                  const subdomain = getSubdomain();
+                                  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+                                  try {
+                                    const res = await fetch(`${apiUrl}/api/owner/reviews/${review.id}`, {
+                                      method: 'PATCH',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        'x-api-key': apiKey || '',
+                                        'x-owner-domain': subdomain || ''
+                                      },
+                                      body: JSON.stringify({ status: 'rejected' })
+                                    });
+                                    if (res.ok) {
+                                      showToast('✓ Review hidden successfully', 'success');
+                                      handleRefresh();
+                                    } else {
+                                      showToast('Failed to hide review', 'error');
+                                    }
+                                  } catch (err) {
+                                    showToast('Error hiding review', 'error');
+                                  }
+                                }}
+                                title="Hide this review"
+                              >
+                                ✕ Hide
+                              </button>
+                            )}
+                            {review.status === 'rejected' && (
+                              <button
+                                className="action-btn publish-btn"
+                                onClick={async () => {
+                                  if (!confirm('Show this review publicly?')) return;
+                                  const apiKey = getApiKey();
+                                  const subdomain = getSubdomain();
+                                  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+                                  try {
+                                    const res = await fetch(`${apiUrl}/api/owner/reviews/${review.id}`, {
+                                      method: 'PATCH',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        'x-api-key': apiKey || '',
+                                        'x-owner-domain': subdomain || ''
+                                      },
+                                      body: JSON.stringify({ status: 'published' })
+                                    });
+                                    if (res.ok) {
+                                      showToast('✓ Review published successfully', 'success');
+                                      handleRefresh();
+                                    } else {
+                                      showToast('Failed to publish review', 'error');
+                                    }
+                                  } catch (err) {
+                                    showToast('Error publishing review', 'error');
+                                  }
+                                }}
+                                title="Publish this review"
+                              >
+                                ✓ Publish
+                              </button>
+                            )}
+                            <span className={`status-badge status-${review.status}`}>
+                              {review.status === 'published' ? '👁️ Visible' : '🔒 Hidden'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    ))}
+                </div>
+
+                {/* Pagination Controls */}
+                {reviewsTotalPages > 1 && (
+                  <div className="pagination-controls">
+                    <button
+                      className="pagination-btn"
+                      disabled={reviewsPage === 1}
+                      onClick={() => setReviewsPage(prev => Math.max(1, prev - 1))}
+                    >
+                      ← Previous
+                    </button>
+                    <span className="pagination-info">
+                      Page {reviewsPage} of {reviewsTotalPages}
+                    </span>
+                    <button
+                      className="pagination-btn"
+                      disabled={reviewsPage >= reviewsTotalPages}
+                      onClick={() => setReviewsPage(prev => Math.min(reviewsTotalPages, prev + 1))}
+                    >
+                      Next →
+                    </button>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </div>
         )}
