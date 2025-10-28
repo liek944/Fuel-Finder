@@ -60,7 +60,7 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
   const fetchSummary = async () => {
     try {
       const response = await fetch(
-        `${getApiUrl()}/reviews/summary?targetType=${targetType}&targetId=${targetId}`
+        `${getApiUrl('/api')}/reviews/summary?targetType=${targetType}&targetId=${targetId}`
       );
       if (response.ok) {
         const data = await response.json();
@@ -75,7 +75,7 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
   const fetchReviews = async () => {
     try {
       const response = await fetch(
-        `${getApiUrl()}/reviews?targetType=${targetType}&targetId=${targetId}&pageSize=10&sortBy=created_at&sortOrder=DESC`
+        `${getApiUrl('/api')}/reviews?targetType=${targetType}&targetId=${targetId}&pageSize=10&sortBy=created_at&sortOrder=DESC`
       );
       if (response.ok) {
         const data = await response.json();
@@ -112,7 +112,7 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
     setSuccess(null);
 
     try {
-      const response = await fetch(`${getApiUrl()}/reviews`, {
+      const response = await fetch(`${getApiUrl('/api')}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -198,7 +198,11 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
           </div>
           <button
             className="view-reviews-btn"
-            onClick={() => setShowReviews(!showReviews)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowReviews(!showReviews);
+            }}
           >
             {showReviews ? '▲ Hide Reviews' : '▼ View All Reviews'}
           </button>
@@ -233,7 +237,11 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
       {!showForm && (
         <button
           className="write-review-btn"
-          onClick={() => setShowForm(true)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setShowForm(true);
+          }}
         >
           ✍️ Write a Review
         </button>
@@ -243,7 +251,14 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
         <div className="review-form">
           <div className="form-header">
             <h4>Rate {targetName}</h4>
-            <button className="close-form-btn" onClick={() => setShowForm(false)}>
+            <button
+              className="close-form-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowForm(false);
+              }}
+            >
               ✕
             </button>
           </div>
@@ -280,14 +295,22 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
 
           <div className="form-actions">
             <button
-              onClick={() => setShowForm(false)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowForm(false);
+              }}
               disabled={submitting}
               className="cancel-btn"
             >
               Cancel
             </button>
             <button
-              onClick={handleSubmit}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSubmit();
+              }}
               disabled={submitting || rating === 0}
               className="submit-btn"
             >
