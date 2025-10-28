@@ -102,21 +102,37 @@
   color: #2196F3;
 }
 
-/* Mobile responsive */
-@media (max-width: 768px) {
-  .toast {
-    top: 10px;
-    right: 10px;
-    left: 10px;
-    max-width: none;
-    min-width: auto;
-  }
+/* Toast container for proper stacking */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
 }
 
-/* Ensure toasts don't overlap PWA install button */
+.toast-container .toast {
+  position: relative;
+  top: auto;
+  right: auto;
+  pointer-events: auto;
+}
+
+/* Mobile responsive - consolidated */
 @media (max-width: 768px) {
-  .toast {
+  .toast-container {
     top: auto;
-    bottom: 100px; /* Above PWA button */
+    bottom: 110px; /* Above PWA button */
+    left: 10px;
+    right: 10px;
+  }
+
+  .toast {
+    max-width: 100%;
+    min-width: auto;
+    width: 100%;
   }
 }
