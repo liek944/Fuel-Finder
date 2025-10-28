@@ -18,6 +18,7 @@ import {
   getImageUrl,
 } from "../utils/api";
 import { PriceReportsManagement } from "./PriceReportsManagement";
+import { ReviewsManagement } from "./ReviewsManagement";
 import UserAnalytics from "./UserAnalytics";
 import "../styles/AdminPortal.css";
 
@@ -520,7 +521,7 @@ const AdminPortal: React.FC = () => {
 
   // Admin view management
   const [currentAdminView, setCurrentAdminView] = useState<
-    "map" | "price-reports" | "user-analytics"
+    "map" | "price-reports" | "user-analytics" | "reviews"
   >("map");
 
   // Form states - unified for all POI types
@@ -1392,6 +1393,12 @@ const AdminPortal: React.FC = () => {
             >
               👥 User Analytics
             </button>
+            <button
+              onClick={() => setCurrentAdminView("reviews")}
+              className={`view-switcher-button ${currentAdminView === "reviews" ? "active" : ""}`}
+            >
+              📝 Reviews
+            </button>
           </div>
         )}
         <div
@@ -1410,6 +1417,11 @@ const AdminPortal: React.FC = () => {
       ) : currentAdminView === "user-analytics" ? (
         <div className="user-analytics-container">
           <UserAnalytics />
+        </div>
+      ) : currentAdminView === "reviews" ? (
+        <div className="admin-content">
+          <div className="admin-content-offset" />
+          <ReviewsManagement adminApiKey={adminApiKey} />
         </div>
       ) : (
         <>

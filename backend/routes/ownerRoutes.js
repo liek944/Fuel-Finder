@@ -142,4 +142,23 @@ router.get(
   asyncHandler(ownerController.getAnalytics)
 );
 
+/**
+ * GET /api/owner/reviews
+ * Get reviews for owner's stations
+ */
+const reviewController = require("../controllers/reviewController");
+router.get(
+  "/reviews",
+  asyncHandler(reviewController.getReviewsForOwner)
+);
+
+/**
+ * PATCH /api/owner/reviews/:id
+ * Update review status (publish/reject)
+ */
+router.patch(
+  "/reviews/:id",
+  asyncHandler(reviewController.updateReviewStatusByOwner)
+);
+
 module.exports = router;
