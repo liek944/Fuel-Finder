@@ -18,6 +18,7 @@ import { getImageUrl, getApiUrl } from "../utils/api";
 // import TripReplayVisualizer from './TripReplayVisualizer';
 import PWAInstallButton from "./PWAInstallButton";
 import DonationWidget from "./DonationWidget";
+import ReviewWidget from "./ReviewWidget";
 // import { Trip } from '../utils/indexedDB';
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
@@ -1658,6 +1659,13 @@ const MainApp: React.FC = () => {
                         : ["Regular", "Premium", "Diesel"]
                     }
                   />
+
+                  {/* Reviews Widget */}
+                  <ReviewWidget
+                    targetType="station"
+                    targetId={station.id}
+                    targetName={station.name}
+                  />
                 </div>
               </Popup>
             </Marker>
@@ -1711,6 +1719,13 @@ const MainApp: React.FC = () => {
                   ).toFixed(2)}{" "}
                   km
                 </div>
+
+                {/* Reviews Widget */}
+                <ReviewWidget
+                  targetType="poi"
+                  targetId={poi.id}
+                  targetName={poi.name}
+                />
 
                 <div style={{ marginTop: 8 }}>
                   {routingTo?.id === poi.id ? (

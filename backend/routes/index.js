@@ -14,6 +14,7 @@ const ownerRoutes = require("./ownerRoutes");
 const adminRoutes = require("./adminRoutes");
 const userRoutes = require("./userRoutes");
 const routeRoutes = require("./routeRoutes");
+const reviewRoutes = require("./reviewRoutes");
 
 // Register routes
 router.use("/stations", stationRoutes);
@@ -22,6 +23,7 @@ router.use("/owner", ownerRoutes);
 router.use("/admin", adminRoutes);
 router.use("/user", userRoutes);
 router.use("/route", routeRoutes);
+router.use("/reviews", reviewRoutes);
 
 // Health and stats routes
 router.use("/", healthRoutes);

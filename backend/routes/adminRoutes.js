@@ -28,4 +28,10 @@ router.delete("/price-reports/:id", asyncHandler(adminController.deletePriceRepo
 // Station price management routes
 router.put("/stations/:id/prices", asyncHandler(adminController.updateStationPrices));
 
+// Review management routes
+const reviewController = require("../controllers/reviewController");
+router.get("/reviews", asyncHandler(reviewController.getAllReviewsForAdmin));
+router.patch("/reviews/:id", asyncHandler(reviewController.updateReviewStatus));
+router.delete("/reviews/:id", asyncHandler(reviewController.deleteReview));
+
 module.exports = router;

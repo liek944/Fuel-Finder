@@ -1072,3 +1072,173 @@
     flex-direction: column;
   }
 }
+
+/* Reviews Tab Styles */
+.reviews-tab {
+  padding: 24px;
+}
+
+.reviews-tab h2 {
+  margin: 0 0 24px 0;
+  color: #2d3748;
+  font-size: 24px;
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s;
+}
+
+.review-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 16px;
+}
+
+.review-meta h3 {
+  margin: 0 0 4px 0;
+  color: #2d3748;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.review-author {
+  color: #718096;
+  font-size: 13px;
+}
+
+.review-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-rating .stars {
+  display: flex;
+  gap: 2px;
+}
+
+.review-rating .star {
+  font-size: 18px;
+  color: #e2e8f0;
+}
+
+.review-rating .star.filled {
+  color: #f6ad55;
+}
+
+.review-rating .rating-number {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.review-comment {
+  color: #4a5568;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 12px 0;
+  white-space: pre-wrap;
+}
+
+.review-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.review-date {
+  font-size: 12px;
+  color: #a0aec0;
+}
+
+.review-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-actions .action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.review-actions .publish-btn {
+  background: #48bb78;
+  color: white;
+}
+
+.review-actions .publish-btn:hover {
+  background: #38a169;
+}
+
+.review-actions .reject-btn {
+  background: #fc8181;
+  color: white;
+}
+
+.review-actions .reject-btn:hover {
+  background: #f56565;
+}
+
+.review-actions .status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.review-actions .status-badge.status-published {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.review-actions .status-badge.status-rejected {
+  background: #fed7d7;
+  color: #742a2a;
+}
+
+@media (max-width: 768px) {
+  .reviews-tab {
+    padding: 16px;
+  }
+
+  .review-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .review-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .review-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}

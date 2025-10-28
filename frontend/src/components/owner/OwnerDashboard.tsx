@@ -49,13 +49,27 @@ interface PriceReport {
   created_at: string;
 }
 
+interface Review {
+  id: number;
+  target_type: string;
+  target_id: number;
+  station_name?: string;
+  rating: number;
+  comment: string | null;
+  display_name: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const OwnerDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
   const [pendingReports, setPendingReports] = useState<PriceReport[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports' | 'reviews'>('overview');
   const [processingReportId, setProcessingReportId] = useState<number | null>(null);
   const [editingStation, setEditingStation] = useState<Station | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -129,6 +143,21 @@ const OwnerDashboard: React.FC = () => {
         setPendingReports(reportsData.reports || []);
       } else {
         console.warn('Failed to fetch pending reports:', reportsRes.status);
+      }
+
+      // Fetch reviews
+      const reviewsRes = await fetch(`${apiUrl}/api/owner/reviews?status=published&pageSize=50`, {
+        headers: {
+          'x-api-key': apiKey,
+          'x-owner-domain': subdomain || ''
+        }
+      });
+
+      if (reviewsRes.ok) {
+        const reviewsData = await reviewsRes.json();
+        setReviews(reviewsData.reviews || []);
+      } else {
+        console.warn('Failed to fetch reviews:', reviewsRes.status);
       }
 
     } catch (error: any) {
@@ -390,6 +419,12 @@ const OwnerDashboard: React.FC = () => {
         >
           ⏳ Pending Reports ({pendingReports.length})
         </button>
+        <button
+          className={activeTab === 'reviews' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('reviews')}
+        >
+          ⭐ Reviews ({reviews.length})
+        </button>
       </div>
 
       {/* Content */}
@@ -545,6 +580,117 @@ const OwnerDashboard: React.FC = () => {
                       >
                         {processingReportId === report.id ? '⏳ Processing...' : '❌ Reject'}
                       </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'reviews' && (
+          <div className="reviews-tab">
+            <h2>Station Reviews</h2>
+            {reviews.length === 0 ? (
+              <div className="empty-state">
+                <p>📝 No reviews yet for your stations</p>
+              </div>
+            ) : (
+              <div className="reviews-list">
+                {reviews.map(review => (
+                  <div key={review.id} className="review-card">
+                    <div className="review-header">
+                      <div className="review-meta">
+                        <h3>{review.station_name || `Station #${review.target_id}`}</h3>
+                        <span className="review-author">
+                          {review.display_name || 'Anonymous'}
+                        </span>
+                      </div>
+                      <div className="review-rating">
+                        <span className="stars">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <span key={star} className={star <= review.rating ? 'star filled' : 'star'}>
+                              ★
+                            </span>
+                          ))}
+                        </span>
+                        <span className="rating-number">{review.rating}/5</span>
+                      </div>
+                    </div>
+                    {review.comment && (
+                      <p className="review-comment">{review.comment}</p>
+                    )}
+                    <div className="review-footer">
+                      <span className="review-date">
+                        {new Date(review.created_at).toLocaleDateString()}
+                      </span>
+                      <div className="review-actions">
+                        {review.status === 'published' && (
+                          <button
+                            className="action-btn reject-btn"
+                            onClick={async () => {
+                              const apiKey = getApiKey();
+                              const subdomain = getSubdomain();
+                              const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+                              try {
+                                const res = await fetch(`${apiUrl}/api/owner/reviews/${review.id}`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'x-api-key': apiKey || '',
+                                    'x-owner-domain': subdomain || ''
+                                  },
+                                  body: JSON.stringify({ status: 'rejected' })
+                                });
+                                if (res.ok) {
+                                  showToast('Review rejected', 'success');
+                                  handleRefresh();
+                                } else {
+                                  showToast('Failed to reject review', 'error');
+                                }
+                              } catch (err) {
+                                showToast('Error rejecting review', 'error');
+                              }
+                            }}
+                          >
+                            ✕ Hide Review
+                          </button>
+                        )}
+                        {review.status === 'rejected' && (
+                          <button
+                            className="action-btn publish-btn"
+                            onClick={async () => {
+                              const apiKey = getApiKey();
+                              const subdomain = getSubdomain();
+                              const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+                              try {
+                                const res = await fetch(`${apiUrl}/api/owner/reviews/${review.id}`, {
+                                  method: 'PATCH',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'x-api-key': apiKey || '',
+                                    'x-owner-domain': subdomain || ''
+                                  },
+                                  body: JSON.stringify({ status: 'published' })
+                                });
+                                if (res.ok) {
+                                  showToast('Review published', 'success');
+                                  handleRefresh();
+                                } else {
+                                  showToast('Failed to publish review', 'error');
+                                }
+                              } catch (err) {
+                                showToast('Error publishing review', 'error');
+                              }
+                            }}
+                          >
+                            ✓ Show Review
+                          </button>
+                        )}
+                        <span className={`status-badge status-${review.status}`}>
+                          {review.status}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
