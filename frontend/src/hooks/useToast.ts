@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { ToastType } from '../components/Toast';
 
 export interface ToastState {
@@ -11,8 +11,25 @@ let toastId = 0;
 
 export const useToast = () => {
   const [toasts, setToasts] = useState<ToastState[]>([]);
+  const recentToasts = useRef<Map<string, number>>(new Map());
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
+    // Deduplicate: prevent showing the same message within 1 second
+    const key = `${type}:${message}`;
+    const now = Date.now();
+    const lastShown = recentToasts.current.get(key);
+    
+    if (lastShown && now - lastShown < 1000) {
+      return; // Skip duplicate toast
+    }
+    
+    recentToasts.current.set(key, now);
+    
+    // Clean up old entries after 2 seconds
+    setTimeout(() => {
+      recentToasts.current.delete(key);
+    }, 2000);
+    
     const id = toastId++;
     setToasts((prev) => [...prev, { id, message, type }]);
   }, []);

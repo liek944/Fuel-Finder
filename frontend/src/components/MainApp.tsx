@@ -2178,14 +2178,16 @@ const MainApp: React.FC = () => {
       <PWAInstallButton />
 
       {/* Toast Notifications */}
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          onClose={() => hideToast(toast.id)}
-        />
-      ))}
+      <div className="toast-container">
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => hideToast(toast.id)}
+          />
+        ))}
+      </div>
 
       {/* Floating Donation Button - COMMENTED OUT: PayMongo payment integration disabled */}
       {/*
