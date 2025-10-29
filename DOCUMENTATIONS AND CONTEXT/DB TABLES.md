@@ -132,26 +132,6 @@ CREATE TABLE public.pois (
   operating_hours jsonb,
   CONSTRAINT pois_pkey PRIMARY KEY (id)
 );
-CREATE TABLE public.reviews (
-  id integer NOT NULL DEFAULT nextval('reviews_id_seq'::regclass),
-  target_type character varying NOT NULL CHECK (target_type IN ('station', 'poi')),
-  target_id integer NOT NULL,
-  rating smallint NOT NULL CHECK (rating BETWEEN 1 AND 5),
-  comment text CHECK (comment IS NULL OR LENGTH(comment) <= 500),
-  status character varying NOT NULL DEFAULT 'published' CHECK (status IN ('published', 'pending', 'rejected')),
-  display_name character varying,
-  session_id character varying,
-  ip inet,
-  user_agent text,
-  created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-  updated_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT reviews_pkey PRIMARY KEY (id)
-);
-CREATE INDEX idx_reviews_target ON public.reviews(target_type, target_id);
-CREATE INDEX idx_reviews_status ON public.reviews(status);
-CREATE INDEX idx_reviews_created_at ON public.reviews(created_at DESC);
-CREATE INDEX idx_reviews_session_target ON public.reviews(session_id, target_type, target_id, created_at);
-
 CREATE TABLE public.research_access_logs (
   id bigint NOT NULL DEFAULT nextval('research_access_logs_id_seq'::regclass),
   api_key_hash character varying,
@@ -211,6 +191,21 @@ CREATE TABLE public.research_user_consents (
   ip_address character varying,
   user_agent text,
   CONSTRAINT research_user_consents_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.reviews (
+  id integer NOT NULL DEFAULT nextval('reviews_id_seq'::regclass),
+  target_type text NOT NULL CHECK (target_type = ANY (ARRAY['station'::text, 'poi'::text])),
+  target_id integer NOT NULL,
+  rating smallint NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment text CHECK (comment IS NULL OR length(comment) <= 500),
+  status text NOT NULL DEFAULT 'published'::text CHECK (status = ANY (ARRAY['published'::text, 'pending'::text, 'rejected'::text])),
+  display_name text,
+  session_id text,
+  ip inet,
+  user_agent text,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT reviews_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.schema_migrations (
   version character varying NOT NULL,
