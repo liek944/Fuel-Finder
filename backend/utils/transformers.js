@@ -100,6 +100,9 @@ function transformPoiData(pois) {
       id: poi.id,
       name: poi.name,
       type: poi.type,
+      address: poi.address || null,
+      phone: poi.phone || null,
+      operating_hours: poi.operating_hours || null,
       location: {
         lat: parseFloat(poi.lat),
         lng: parseFloat(poi.lng),
