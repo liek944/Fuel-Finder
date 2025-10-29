@@ -2097,13 +2097,18 @@ const MainApp: React.FC = () => {
 
         {/* Voice Announcement Toggle Button */}
         <button
-          onClick={() => {
-            setVoiceEnabled(!voiceEnabled);
-            if (!voiceEnabled) {
-              // Test voice when enabling
+          onClick={async () => {
+            const newState = !voiceEnabled;
+            setVoiceEnabled(newState);
+            
+            if (newState) {
+              // Request permission and test voice when enabling
+              console.log('🔊 Enabling voice announcements...');
+              await arrivalNotifications.requestNotificationPermission();
               arrivalNotifications.testVoice("Voice announcements enabled");
+            } else {
+              console.log('🔇 Voice: OFF');
             }
-            console.log(voiceEnabled ? "🔇 Voice: OFF" : "🔊 Voice: ON");
           }}
           style={{
             width: window.innerWidth <= 768 ? "48px" : "50px",
@@ -2136,13 +2141,25 @@ const MainApp: React.FC = () => {
 
         {/* Notification Toggle Button */}
         <button
-          onClick={() => {
-            setNotificationsEnabled(!notificationsEnabled);
-            if (!notificationsEnabled) {
-              // Test notification when enabling
-              arrivalNotifications.testNotification();
+          onClick={async () => {
+            const newState = !notificationsEnabled;
+            setNotificationsEnabled(newState);
+            
+            if (newState) {
+              // Request permission first, then test
+              console.log('🔔 Requesting notification permission...');
+              const granted = await arrivalNotifications.requestNotificationPermission();
+              
+              if (granted) {
+                console.log('✅ Permission granted, testing notification...');
+                arrivalNotifications.testNotification();
+              } else {
+                console.warn('❌ Notification permission denied');
+                alert('Please enable notifications in your browser settings to receive arrival alerts.');
+              }
+            } else {
+              console.log('🔕 Notifications: OFF');
             }
-            console.log(notificationsEnabled ? "🔕 Notifications: OFF" : "🔔 Notifications: ON");
           }}
           style={{
             width: window.innerWidth <= 768 ? "48px" : "50px",
