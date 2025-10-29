@@ -76,7 +76,7 @@ async function getPoiById(req, res) {
  * Create a new POI
  */
 async function createPoi(req, res) {
-  const { name, type, location } = req.body;
+  const { name, type, location, address, phone, operating_hours } = req.body;
 
   // Validation
   if (!name || !type || !location || !location.lat || !location.lng) {
@@ -100,6 +100,9 @@ async function createPoi(req, res) {
     type,
     lat: location.lat,
     lng: location.lng,
+    address,
+    phone,
+    operating_hours,
   });
 
   const data = transformPoiData([newPoi])[0];
@@ -113,7 +116,7 @@ async function createPoi(req, res) {
  */
 async function updatePoi(req, res) {
   const poiId = parseInt(req.params.id);
-  const { name, type, location } = req.body;
+  const { name, type, location, address, phone, operating_hours } = req.body;
 
   if (!poiId || isNaN(poiId)) {
     return res.status(400).json({
@@ -146,6 +149,9 @@ async function updatePoi(req, res) {
     type: type || existing.type,
     lat: location?.lat || existing.lat,
     lng: location?.lng || existing.lng,
+    address: address !== undefined ? address : existing.address,
+    phone: phone !== undefined ? phone : existing.phone,
+    operating_hours: operating_hours !== undefined ? operating_hours : existing.operating_hours,
   });
 
   const data = transformPoiData([updated])[0];

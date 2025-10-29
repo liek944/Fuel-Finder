@@ -85,6 +85,12 @@ interface POI {
   id: number;
   name: string;
   type: string;
+  address?: string;
+  phone?: string;
+  operating_hours?: {
+    open: string;
+    close: string;
+  };
   location: {
     lat: number;
     lng: number;
@@ -2459,17 +2465,17 @@ const AdminPortal: React.FC = () => {
                           {poi.location.lat.toFixed(6)},{" "}
                           {poi.location.lng.toFixed(6)}
                         </div>
-                        {(poi as any).address && (
+                        {poi.address && (
                           <div style={{ marginTop: 4, fontSize: 12 }}>
-                            📍 {(poi as any).address}
+                            📍 {poi.address}
                           </div>
                         )}
-                        {(poi as any).phone && (
+                        {poi.phone && (
                           <div style={{ marginTop: 4, fontSize: 12 }}>
-                            📞 {(poi as any).phone}
+                            📞 {poi.phone}
                           </div>
                         )}
-                        {(poi as any).operating_hours && (
+                        {poi.operating_hours && (
                           <div
                             style={{
                               marginTop: 4,
@@ -2477,8 +2483,8 @@ const AdminPortal: React.FC = () => {
                               color: "#666",
                             }}
                           >
-                            🕐 {(poi as any).operating_hours.open} -{" "}
-                            {(poi as any).operating_hours.close}
+                            🕐 {poi.operating_hours.open} -{" "}
+                            {poi.operating_hours.close}
                           </div>
                         )}
 
