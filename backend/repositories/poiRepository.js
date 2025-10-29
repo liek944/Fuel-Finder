@@ -37,6 +37,9 @@ async function getAllPois() {
       p.type, 
       ST_X(p.geom) AS lng, 
       ST_Y(p.geom) AS lat,
+      p.address,
+      p.phone,
+      p.operating_hours,
       p.created_at,
       p.updated_at,
       COALESCE(
@@ -53,7 +56,7 @@ async function getAllPois() {
       ) AS images
     FROM pois p
     LEFT JOIN images i ON i.poi_id = p.id
-    GROUP BY p.id, p.name, p.type, p.geom, p.created_at, p.updated_at
+    GROUP BY p.id, p.name, p.type, p.geom, p.address, p.phone, p.operating_hours, p.created_at, p.updated_at
     ORDER BY p.name
   `;
   const result = await pool.query(query);
@@ -75,6 +78,9 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
         p.geom::geography,
         ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography
       ) AS distance_meters,
+      p.address,
+      p.phone,
+      p.operating_hours,
       p.created_at,
       p.updated_at,
       COALESCE(
@@ -96,7 +102,7 @@ async function getNearbyPois(latitude, longitude, radiusMeters = 3000) {
       ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
       $3
     )
-    GROUP BY p.id, p.name, p.type, p.geom, p.created_at, p.updated_at
+    GROUP BY p.id, p.name, p.type, p.geom, p.address, p.phone, p.operating_hours, p.created_at, p.updated_at
     ORDER BY distance_meters ASC
     LIMIT 50
   `;
@@ -115,6 +121,9 @@ async function getPoiById(id) {
       p.type, 
       ST_X(p.geom) AS lng, 
       ST_Y(p.geom) AS lat,
+      p.address,
+      p.phone,
+      p.operating_hours,
       p.created_at,
       p.updated_at,
       COALESCE(
@@ -132,7 +141,7 @@ async function getPoiById(id) {
     FROM pois p
     LEFT JOIN images i ON i.poi_id = p.id
     WHERE p.id = $1
-    GROUP BY p.id, p.name, p.type, p.geom, p.created_at, p.updated_at
+    GROUP BY p.id, p.name, p.type, p.geom, p.address, p.phone, p.operating_hours, p.created_at, p.updated_at
   `;
   const result = await pool.query(query, [id]);
   return result.rows[0];
@@ -142,15 +151,15 @@ async function getPoiById(id) {
  * Add a new POI
  */
 async function addPoi(poi) {
-  const { name, type, lat, lng } = poi;
+  const { name, type, lat, lng, address, phone, operating_hours } = poi;
   
   const query = `
-    INSERT INTO pois (name, type, geom) 
-    VALUES ($1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326))
-    RETURNING id, name, type, ST_X(geom) AS lng, ST_Y(geom) AS lat, created_at, updated_at
+    INSERT INTO pois (name, type, geom, address, phone, operating_hours) 
+    VALUES ($1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326), $5, $6, $7)
+    RETURNING id, name, type, ST_X(geom) AS lng, ST_Y(geom) AS lat, address, phone, operating_hours, created_at, updated_at
   `;
   
-  const result = await pool.query(query, [name, type, lat, lng]);
+  const result = await pool.query(query, [name, type, lat, lng, address || null, phone || null, operating_hours || null]);
   return result.rows[0];
 }
 
@@ -158,19 +167,22 @@ async function addPoi(poi) {
  * Update a POI
  */
 async function updatePoi(id, updates) {
-  const { name, type, lat, lng } = updates;
+  const { name, type, lat, lng, address, phone, operating_hours } = updates;
   
   const query = `
     UPDATE pois 
     SET name = $2, 
         type = $3, 
         geom = ST_SetSRID(ST_MakePoint($5, $4), 4326),
+        address = $6,
+        phone = $7,
+        operating_hours = $8,
         updated_at = CURRENT_TIMESTAMP
     WHERE id = $1
-    RETURNING id, name, type, ST_X(geom) AS lng, ST_Y(geom) AS lat, created_at, updated_at
+    RETURNING id, name, type, ST_X(geom) AS lng, ST_Y(geom) AS lat, address, phone, operating_hours, created_at, updated_at
   `;
   
-  const result = await pool.query(query, [id, name, type, lat, lng]);
+  const result = await pool.query(query, [id, name, type, lat, lng, address || null, phone || null, operating_hours || null]);
   return result.rows[0];
 }
 
