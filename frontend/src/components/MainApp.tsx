@@ -910,9 +910,8 @@ const MainApp: React.FC = () => {
   const lastUpdateRef = useRef<number>(0);
   const UPDATE_THROTTLE = 3000; // 3 seconds minimum between position updates
 
-  // Arrival notification states
+  // Arrival notification state (voice only)
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
 
   // Convert position to L.LatLng for follow camera
   const userLatLng = position ? L.latLng(position[0], position[1]) : null;
@@ -1123,22 +1122,10 @@ const MainApp: React.FC = () => {
     };
   }, []);
 
-  // Sync notification settings when changed (defer permission request until user enables)
+  // Sync voice settings when changed
   useEffect(() => {
     arrivalNotifications.setVoiceEnabled(voiceEnabled);
-    // Request permission only when user enables voice
-    if (voiceEnabled) {
-      arrivalNotifications.requestNotificationPermission();
-    }
   }, [voiceEnabled]);
-
-  useEffect(() => {
-    arrivalNotifications.setNotificationsEnabled(notificationsEnabled);
-    // Request permission only when user enables notifications
-    if (notificationsEnabled) {
-      arrivalNotifications.requestNotificationPermission();
-    }
-  }, [notificationsEnabled]);
 
   // Debug routeData changes
   useEffect(() => {
@@ -2097,14 +2084,13 @@ const MainApp: React.FC = () => {
 
         {/* Voice Announcement Toggle Button */}
         <button
-          onClick={async () => {
+          onClick={() => {
             const newState = !voiceEnabled;
             setVoiceEnabled(newState);
             
             if (newState) {
-              // Request permission and test voice when enabling
+              // Test voice when enabling
               console.log('🔊 Enabling voice announcements...');
-              await arrivalNotifications.requestNotificationPermission();
               arrivalNotifications.testVoice("Voice announcements enabled");
             } else {
               console.log('🔇 Voice: OFF');
@@ -2137,57 +2123,6 @@ const MainApp: React.FC = () => {
           }}
         >
           {voiceEnabled ? "🔊" : "🔇"}
-        </button>
-
-        {/* Notification Toggle Button */}
-        <button
-          onClick={async () => {
-            const newState = !notificationsEnabled;
-            setNotificationsEnabled(newState);
-            
-            if (newState) {
-              // Request permission first, then test
-              console.log('🔔 Requesting notification permission...');
-              const granted = await arrivalNotifications.requestNotificationPermission();
-              
-              if (granted) {
-                console.log('✅ Permission granted, testing notification...');
-                arrivalNotifications.testNotification();
-              } else {
-                console.warn('❌ Notification permission denied');
-                alert('Please enable notifications in your browser settings to receive arrival alerts.');
-              }
-            } else {
-              console.log('🔕 Notifications: OFF');
-            }
-          }}
-          style={{
-            width: window.innerWidth <= 768 ? "48px" : "50px",
-            height: window.innerWidth <= 768 ? "48px" : "50px",
-            borderRadius: "50%",
-            background: notificationsEnabled ? "#9C27B0" : "#757575",
-            color: "white",
-            border: window.innerWidth <= 768 ? "2px solid white" : "3px solid white",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-            cursor: "pointer",
-            fontSize: window.innerWidth <= 768 ? "18px" : "20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s ease",
-          }}
-          title={notificationsEnabled ? "Arrival Notifications: ON" : "Arrival Notifications: OFF"}
-          aria-label={notificationsEnabled ? "Disable arrival notifications" : "Enable arrival notifications"}
-          role="switch"
-          aria-checked={notificationsEnabled}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.1)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
-        >
-          {notificationsEnabled ? "🔔" : "🔕"}
         </button>
       </div>
 
