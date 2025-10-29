@@ -25,16 +25,13 @@ class ArrivalNotificationManager {
   private speechSynthesis: SpeechSynthesis | null = null;
   private permissionGranted: boolean = false;
   private voiceEnabled: boolean = true;
-  private notificationsEnabled: boolean = true;
+  private notificationsEnabled: boolean = false; // Disabled - using voice only
 
   constructor() {
     // Check if Speech Synthesis is available
     if ('speechSynthesis' in window) {
       this.speechSynthesis = window.speechSynthesis;
     }
-
-    // Request notification permission on first use
-    this.requestNotificationPermission();
   }
 
   /**
