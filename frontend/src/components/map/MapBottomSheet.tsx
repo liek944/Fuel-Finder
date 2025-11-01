@@ -30,6 +30,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   const dragStartRef = useRef<number>(0);
   const dragCurrentRef = useRef<number>(0);
   const isDraggingRef = useRef<boolean>(false);
+  const didDragRef = useRef<boolean>(false);
 
   // Focus trap when expanded - prevents Tab from escaping sheet (WCAG 2.1 requirement)
   // This ensures keyboard users stay within the modal context until they explicitly close it
@@ -124,6 +125,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (!isDraggingRef.current || !sheetRef.current) return;
 
     const delta = dragCurrentRef.current - dragStartRef.current;
+    didDragRef.current = Math.abs(delta) > 5;
     
     // Reset transform and transition
     sheetRef.current.style.transition = '';
@@ -173,6 +175,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   // Drag start handler (now has access to all the callbacks)
   const handleDragStart = useCallback((clientY: number, isTouch: boolean) => {
     isDraggingRef.current = true;
+    didDragRef.current = false;
     dragStartRef.current = clientY;
     dragCurrentRef.current = clientY;
     
@@ -210,6 +213,12 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     // Prevent click from propagating to content below (e.g., ImageSlideshow buttons)
     e.stopPropagation();
     e.preventDefault();
+    
+    // Ignore the synthetic click that typically fires after a drag gesture
+    if (didDragRef.current) {
+      didDragRef.current = false;
+      return;
+    }
     
     // Only toggle if this wasn't a drag operation
     if (!isDraggingRef.current) {
