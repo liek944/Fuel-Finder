@@ -171,12 +171,13 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
   // Touch events
   const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent scroll bounce on iOS
+    // Don't preventDefault - would block click events on passive listeners
+    // Use CSS touch-action instead to control gesture behavior
     handleDragStart(e.touches[0].clientY);
   };
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
-    e.preventDefault(); // Prevent competing gestures
+    // Don't preventDefault - handled via CSS touch-action on the handle
     handleDragMove(e.touches[0].clientY);
   }, [handleDragMove]);
 
@@ -190,7 +191,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchmove', handleTouchMove, { passive: true });
     document.addEventListener('touchend', handleTouchEnd);
 
     return () => {
