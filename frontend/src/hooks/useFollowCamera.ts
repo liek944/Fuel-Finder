@@ -63,7 +63,19 @@ export function useFollowCamera({
   useEffect(() => {
     if (!map) return;
 
-    const onInteractStart = () => {
+    const onInteractStart = (e: L.LeafletEvent) => {
+      // Ignore events from bottom sheet or other non-map interactions
+      // Check if the event originated from an element with bottom sheet classes
+      const target = (e.originalEvent as any)?.target;
+      if (target && target.closest) {
+        const isBottomSheet = target.closest('.map-bottom-sheet');
+        const isBottomSheetBackdrop = target.closest('.map-bottom-sheet-backdrop');
+        if (isBottomSheet || isBottomSheetBackdrop) {
+          console.log('📷 Ignoring bottom sheet interaction');
+          return;
+        }
+      }
+      
       setPaused(true);
       setLastInteractionAt(Date.now());
       console.log('📷 Follow camera paused (user interaction)');
