@@ -40,7 +40,7 @@
 
 /* Collapsed State */
 .map-bottom-sheet--collapsed {
-  height: 96px;
+  height: 180px; /* Increased from 96px to show station name, brand, and basic info */
   animation: sheet-slide-up 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
@@ -61,7 +61,7 @@
 
 @keyframes sheet-expand {
   from {
-    height: 96px;
+    height: 180px;
   }
   to {
     height: 80vh;
@@ -188,9 +188,10 @@
   border-radius: 4px;
 }
 
-/* Collapsed State - Hide scrollable content */
+/* Collapsed State - Allow visible content but prevent scrolling */
 .map-bottom-sheet--collapsed .map-bottom-sheet__content {
-  overflow: hidden;
+  overflow-y: hidden;
+  overflow-x: hidden;
 }
 
 /* Responsive adjustments */
@@ -213,7 +214,7 @@
 /* Landscape mode on mobile */
 @media (max-height: 500px) and (orientation: landscape) {
   .map-bottom-sheet--collapsed {
-    height: 80px;
+    height: 120px; /* Reduced in landscape but still shows essential info */
   }
 
   .map-bottom-sheet--expanded {

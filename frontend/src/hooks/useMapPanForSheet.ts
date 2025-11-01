@@ -52,8 +52,8 @@ export function useMapPanForSheet({
     // Calculate sheet height based on mode
     const viewportHeight = window.innerHeight;
     const sheetHeight = sheetMode === 'collapsed' 
-      ? 96 // Collapsed height in pixels
-      : viewportHeight * 0.7; // 70vh for expanded
+      ? 180 // Collapsed height in pixels (updated to show more content)
+      : viewportHeight * 0.8; // 80vh for expanded
 
     // Get marker position in pixel coordinates
     const markerPoint = map.latLngToContainerPoint(markerLatLng);
