@@ -1166,7 +1166,7 @@ const MainApp: React.FC = () => {
                 eventHandlers={isMobile ? {
                   click: () => {
                     setSelectedItem({ type: 'station', data: station });
-                    setSheetMode('collapsed');
+                    setSheetMode('expanded');
                   },
                 } : undefined}
               >
@@ -1215,7 +1215,7 @@ const MainApp: React.FC = () => {
                 eventHandlers={isMobile ? {
                   click: () => {
                     setSelectedItem({ type: 'poi', data: poi });
-                    setSheetMode('collapsed');
+                    setSheetMode('expanded');
                   },
                 } : undefined}
               >
