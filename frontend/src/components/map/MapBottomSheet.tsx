@@ -252,10 +252,9 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
   const sheetContent = (
     <>
-      {/* Backdrop */}
+      {/* Backdrop - No click to close, users must use X button or drag down */}
       <div 
         className="map-bottom-sheet-backdrop"
-        onClick={onClose}
         aria-hidden="true"
       />
 
