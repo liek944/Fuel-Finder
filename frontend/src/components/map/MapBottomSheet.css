@@ -76,6 +76,8 @@
   cursor: grab;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  /* Disable native touch gestures - we handle dragging via JS */
+  touch-action: none;
 }
 
 .map-bottom-sheet__handle-container:active {
@@ -109,6 +111,8 @@
   overflow-x: hidden;
   padding: 16px;
   -webkit-overflow-scrolling: touch;
+  /* Allow vertical scrolling inside content area */
+  touch-action: pan-y;
 }
 
 /* Custom scrollbar for webkit browsers */
