@@ -12,16 +12,20 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import FollowCameraController from "./FollowCameraController";
-import { getImageUrl, getApiUrl } from "../utils/api";
+import { getApiUrl } from "../utils/api";
 // import TripRecorder from './TripRecorder';
 // import TripHistoryPanel from './TripHistoryPanel';
 // import TripReplayVisualizer from './TripReplayVisualizer';
 import PWAInstallButton from "./PWAInstallButton";
 // import DonationWidget from "./DonationWidget"; // COMMENTED OUT: PayMongo payment integration disabled
-import ReviewWidget from "./ReviewWidget";
 import Toast from "./Toast";
 import { useToast } from "../hooks/useToast";
 // import { Trip } from '../utils/indexedDB';
+import StationDetail from "./details/StationDetail";
+import PoiDetail from "./details/PoiDetail";
+import { MapBottomSheet, SheetMode } from "./map/MapBottomSheet";
+import MapPanController from "./map/MapPanController";
+import { useIsMobile } from "../hooks/useIsMobile";
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
 import userTracking from "../utils/userTracking";
@@ -141,7 +145,9 @@ const CenterToLocationButton: React.FC<{ position: [number, number] | null }> = 
   );
 }
 
-// Component to fix popup scaling on zoom
+// Component to fix popup scaling on zoom (Desktop only - mobile uses bottom sheet)
+// Leaflet bug: popups scale during zoom, causing visual glitches
+// This removes scale transforms while preserving position
 const PopupScaleFix: React.FC = () => {
   const map = useMap();
 
@@ -480,398 +486,13 @@ const calculateDistance = (
   return distance;
 };
 
-// PriceReport interface
-interface PriceReport {
-  id: number;
-  fuel_type: string;
-  price: number;
-  is_verified: boolean;
-  verified_by?: string;
-  verified_at?: string;
-  notes?: string;
-  created_at: string;
-}
-
-import "../styles/PriceReportWidget.css";
-
-// PriceReportWidget Component
-const PriceReportWidget: React.FC<{
-  stationId: number;
-  stationName: string;
-  availableFuelTypes?: string[];
-}> = ({
-  stationId,
-  stationName: _stationName,
-  availableFuelTypes = ["Regular", "Premium", "Diesel"],
-}) => {
-  const [showForm, setShowForm] = useState(false);
-  const defaultFuel =
-    availableFuelTypes && availableFuelTypes.length > 0
-      ? availableFuelTypes[0]
-      : "Regular";
-  const [fuelType, setFuelType] = useState(defaultFuel);
-  const [price, setPrice] = useState("");
-  const [notes, setNotes] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
-  const [recentReports, setRecentReports] = useState<PriceReport[]>([]);
-  const [showReports, setShowReports] = useState(false);
-
-  // Reset selected fuel when station or available fuels change
-  useEffect(() => {
-    const nextDefault =
-      availableFuelTypes && availableFuelTypes.length > 0
-        ? availableFuelTypes[0]
-        : "Regular";
-    setFuelType(nextDefault);
-  }, [stationId, availableFuelTypes]);
-
-  // Fetch recent reports
-  useEffect(() => {
-    const fetchReports = async () => {
-      try {
-        const response = await fetch(
-          getApiUrl(`/api/stations/${stationId}/price-reports?limit=5`),
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setRecentReports(data.reports || []);
-        }
-      } catch (err) {
-        console.error("Error fetching reports:", err);
-        setMessage({ type: "error", text: "Failed to fetch recent reports" });
-      }
-    };
-
-    if (showReports) {
-      fetchReports();
-    }
-  }, [showReports, stationId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const priceNum = parseFloat(price);
-    if (isNaN(priceNum) || priceNum <= 0) {
-      setMessage({ type: "error", text: "Please enter a valid price" });
-      return;
-    }
-
-    if (priceNum < 30 || priceNum > 200) {
-      setMessage({ type: "error", text: "Price must be between ₱30 and ₱200" });
-      return;
-    }
-
-    setSubmitting(true);
-    setMessage(null);
-
-    try {
-      const response = await fetch(
-        getApiUrl(`/api/stations/${stationId}/report-price`),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            fuel_type: fuelType,
-            price: priceNum,
-            notes: notes.trim() || null,
-          }),
-        },
-      );
-
-      if (response.ok) {
-        setMessage({
-          type: "success",
-          text: "Price reported successfully! Thank you for contributing.",
-        });
-        setPrice("");
-        setNotes("");
-        setFuelType("Regular");
-        setTimeout(() => {
-          setShowForm(false);
-          setMessage(null);
-        }, 2000);
-      } else {
-        const errorData = await response.json();
-        setMessage({
-          type: "error",
-          text: errorData.message || "Failed to submit report",
-        });
-      }
-    } catch (err) {
-      setMessage({ type: "error", text: "Network error. Please try again." });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24)
-      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
-    return date.toLocaleDateString();
-  };
-
-  return (
-    <div className="price-report-widget" onClick={(e) => e.stopPropagation()}>
-      {!showForm && !showReports && (
-        <div className="price-report-widget-buttons">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowForm(true);
-            }}
-            className="report-price-button"
-          >
-            💰 Report Price
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowReports(true);
-            }}
-            className="view-reports-button"
-          >
-            📊 View Reports
-          </button>
-        </div>
-      )}
-
-      {showForm && (
-        <div>
-          <div className="price-report-widget-header">
-            <strong>Report Fuel Price</strong>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowForm(false);
-                setMessage(null);
-              }}
-              className="close-button"
-            >
-              ✕
-            </button>
-          </div>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleSubmit(e);
-            }}
-          >
-            <div className="form-group">
-              <label>Fuel Type:</label>
-              <select
-                value={fuelType}
-                onChange={(e) => setFuelType(e.target.value)}
-              >
-                {(availableFuelTypes && availableFuelTypes.length > 0
-                  ? availableFuelTypes
-                  : ["Regular", "Premium", "Diesel"]
-                ).map((ft) => (
-                  <option key={ft} value={ft}>
-                    {ft}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Price per Liter (₱):</label>
-              <input
-                type="number"
-                step="0.01"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="e.g., 58.50"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Notes (optional):</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any additional info..."
-                maxLength={200}
-              />
-            </div>
-
-            {message && (
-              <div className={`message ${message.type}`}>{message.text}</div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="submit-button"
-            >
-              {submitting ? "Submitting..." : "Submit Report"}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {showReports && (
-        <div>
-          <div className="price-report-widget-header">
-            <strong>Recent Price Reports</strong>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowReports(false);
-              }}
-              className="close-button"
-            >
-              ✕
-            </button>
-          </div>
-
-          {recentReports.length === 0 ? (
-            <div className="no-reports">
-              No price reports yet. Be the first to contribute!
-            </div>
-          ) : (
-            <div className="reports-list">
-              {recentReports.map((report) => (
-                <div
-                  key={report.id}
-                  className={`report-item ${report.is_verified ? "verified" : ""}`}
-                >
-                  <div className="report-item-header">
-                    <span>
-                      {report.fuel_type}: ₱{Number(report.price).toFixed(2)}
-                    </span>
-                    {report.is_verified && (
-                      <span className="verified-badge">✓ Verified</span>
-                    )}
-                  </div>
-                  <div className="report-item-timestamp">
-                    {formatDate(report.created_at)}
-                  </div>
-                  {report.notes && (
-                    <div className="report-item-notes">"{report.notes}"</div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowReports(false);
-              setShowForm(true);
-            }}
-            className="add-new-report-button"
-          >
-            + Add New Report
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-import "../styles/ImageSlideshow.css";
-
-// ImageSlideshow component
-interface ImageSlideshowProps {
-  images: Array<{
-    id: number;
-    filename: string;
-    original_filename: string;
-    url: string;
-    thumbnailUrl: string;
-    alt_text?: string;
-  }>;
-  entityId: string;
-}
-
-const ImageSlideshow: React.FC<ImageSlideshowProps> = ({
-  images,
-  entityId: _entityId,
-}) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  if (!images || images.length === 0) return null;
-
-  const currentImage = images[currentIndex];
-
-  const nextImage = () => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
-  };
-
-  const prevImage = () => {
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
-
-  const goToImage = (index: number) => {
-    setCurrentIndex(index);
-  };
-
-  return (
-    <div className="image-slideshow">
-      <div className="image-container">
-        <img
-          src={getImageUrl(currentImage.url)}
-          alt={currentImage.alt_text || currentImage.original_filename}
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = getImageUrl(currentImage.thumbnailUrl);
-          }}
-        />
-
-        {images.length > 1 && (
-          <>
-            <button onClick={prevImage} className="prev-button">
-              ←
-            </button>
-
-            <button onClick={nextImage} className="next-button">
-              →
-            </button>
-
-            <div className="dots-container">
-              {images.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => goToImage(index)}
-                  className={`dot ${index === currentIndex ? "active" : ""}`}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-
-      {images.length > 1 && (
-        <div className="image-counter">
-          {currentIndex + 1} of {images.length}
-        </div>
-      )}
-    </div>
-  );
-};
 
 const MainApp: React.FC = () => {
   // Toast notifications
-  const { toasts, hideToast, success, error, warning, info } = useToast();
+  const { toasts, hideToast, warning, info } = useToast();
+  
+  // Mobile detection for bottom sheet vs popups
+  const isMobile = useIsMobile();
   
   const [position, setPosition] = useState<[number, number] | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
@@ -884,6 +505,17 @@ const MainApp: React.FC = () => {
   const [routingTo, setRoutingTo] = useState<Station | POI | null>(null);
   const [routeStartPosition, setRouteStartPosition] = useState<[number, number] | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  
+  // Bottom sheet state for mobile marker details
+  const [selectedItem, setSelectedItem] = useState<{ type: 'station' | 'poi'; data: Station | POI } | null>(null);
+  const [sheetMode, setSheetMode] = useState<SheetMode>('collapsed');
+  
+  // Convert selectedItem to LatLng for map panning
+  const selectedMarkerLatLng = useMemo(() => {
+    if (!selectedItem) return null;
+    const loc = selectedItem.data.location;
+    return new L.LatLng(loc.lat, loc.lng);
+  }, [selectedItem]);
   // followMe removed - map only centers when user clicks the center button
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] =
     useState<boolean>(false);
@@ -1406,7 +1038,14 @@ const MainApp: React.FC = () => {
           onControlsChange={() => {}} // No UI controls needed
         />
         
-        {/* Fix popup scaling during zoom */}
+        {/* Map Pan Controller - pans map when bottom sheet opens/expands */}
+        <MapPanController
+          markerLatLng={selectedMarkerLatLng}
+          sheetMode={selectedItem ? sheetMode : null}
+          isSheetOpen={isMobile && !!selectedItem}
+        />
+        
+        {/* Fix popup scaling during zoom (desktop only - mobile uses bottom sheet) */}
         <PopupScaleFix />
 
         {/* Search radius circle */}
@@ -1502,335 +1141,105 @@ const MainApp: React.FC = () => {
           const proximity = Math.min(1, distance / 5); // 0-1 scale based on 5km max
 
           const isOpen = isLocationOpen(station.operating_hours);
+          const isSelected = selectedItem?.type === 'station' && selectedItem?.data.id === station.id;
 
           return (
-            <Marker
-              key={`station-${station.id}`}
-              position={[station.location.lat, station.location.lng]}
-              icon={createFuelStationIcon(station.brand, proximity, !isOpen)}
-            >
-              <Popup autoPan={false}>
-                <div style={{ minWidth: 250 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <b style={{ fontSize: 16 }}>⛽ {station.name}</b>
-                    {routingTo?.id === station.id && (
-                      <span
-                        style={{
-                          background: "#4CAF50",
-                          color: "white",
-                          padding: "2px 6px",
-                          borderRadius: 4,
-                          fontSize: 10,
-                          fontWeight: 600,
-                        }}
-                      >
-                        ROUTING
-                      </span>
-                    )}
-                    {!isOpen && (
-                      <span
-                        style={{
-                          background: "#f44336",
-                          color: "white",
-                          padding: "2px 6px",
-                          borderRadius: 4,
-                          fontSize: 10,
-                          fontWeight: 600,
-                        }}
-                      >
-                        CLOSED
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ marginBottom: 4 }}>
-                    <strong>Brand:</strong> {station.brand}
-                  </div>
-                  {/* Display fuel prices */}
-                  <div style={{ marginBottom: 4 }}>
-                    <strong>Fuel Prices:</strong>
-                    {station.fuel_prices && station.fuel_prices.length > 0 ? (
-                      <div style={{ marginLeft: 8, marginTop: 4 }}>
-                        {station.fuel_prices.map((fp) => (
-                          <div
-                            key={fp.fuel_type}
-                            style={{ fontSize: 12, marginBottom: 2 }}
-                          >
-                            <span style={{ fontWeight: 500 }}>
-                              {fp.fuel_type}:
-                            </span>{" "}
-                            ₱{Number(fp.price).toFixed(2)}/L
-                            {fp.price_updated_by === "owner" && (
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  color: "#2563eb",
-                                  marginLeft: 4,
-                                  fontWeight: 500,
-                                }}
-                              >
-                                (verified by owner)
-                              </span>
-                            )}
-                            {fp.price_updated_by === "community" && (
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  color: "#666",
-                                  marginLeft: 4,
-                                }}
-                              >
-                                (community)
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span> ₱{station.fuel_price}/L</span>
-                    )}
-                  </div>
-                  <div style={{ marginBottom: 4 }}>
-                    <strong>Distance:</strong> {distance.toFixed(2)} km
-                  </div>
-                  {station.services.length > 0 && (
-                    <div style={{ marginBottom: 4 }}>
-                      <strong>Services:</strong> {station.services.join(", ")}
-                    </div>
-                  )}
-                  {station.address && (
-                    <div style={{ marginBottom: 4 }}>
-                      <strong>Address:</strong> {station.address}
-                    </div>
-                  )}
-                  {station.phone && (
-                    <div style={{ marginBottom: 8 }}>
-                      <strong>Phone:</strong> {station.phone}
-                    </div>
-                  )}
-                  {station.operating_hours && (
-                    <div
-                      style={{ marginBottom: 8, fontSize: 12, color: "#666" }}
-                    >
-                      <strong>🕐 Hours:</strong> {station.operating_hours.open}{" "}
-                      - {station.operating_hours.close}
-                    </div>
-                  )}
-
-                  {/* Station Images */}
-                  {station.images && station.images.length > 0 && (
-                    <ImageSlideshow
-                      images={station.images}
-                      entityId={`station-${station.id}`}
+            <React.Fragment key={`station-${station.id}`}>
+              {/* Highlight circle for selected marker */}
+              {isSelected && (
+                <Circle
+                  center={[station.location.lat, station.location.lng]}
+                  radius={50}
+                  pathOptions={{
+                    color: '#2196F3',
+                    fillColor: '#2196F3',
+                    fillOpacity: 0.15,
+                    weight: 3,
+                    opacity: 0.8,
+                  }}
+                  className="selected-marker-highlight"
+                />
+              )}
+              <Marker
+                position={[station.location.lat, station.location.lng]}
+                icon={createFuelStationIcon(station.brand, proximity, !isOpen)}
+                eventHandlers={isMobile ? {
+                  click: () => {
+                    setSelectedItem({ type: 'station', data: station });
+                    setSheetMode('collapsed');
+                  },
+                } : undefined}
+              >
+                {!isMobile && (
+                  <Popup autoPan={false}>
+                    <StationDetail
+                      station={station}
+                      distance={distance}
+                      isOpen={isOpen}
+                      isRoutingTo={routingTo?.id === station.id}
+                      routeData={routeData}
+                      onGetDirections={() => getRoute(station)}
+                      onClearRoute={clearRoute}
                     />
-                  )}
-
-                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                    {routingTo?.id === station.id ? (
-                      <button
-                        onClick={clearRoute}
-                        style={{
-                          background: "#f44336",
-                          color: "white",
-                          border: "none",
-                          padding: "6px 12px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          fontSize: 12,
-                          fontWeight: 600,
-                        }}
-                      >
-                        ❌ Clear Route
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => getRoute(station)}
-                        style={{
-                          background: "#4CAF50",
-                          color: "white",
-                          border: "none",
-                          padding: "6px 12px",
-                          borderRadius: 4,
-                          cursor: "pointer",
-                          fontSize: 12,
-                          fontWeight: 600,
-                        }}
-                      >
-                        🗺️ Get Directions
-                      </button>
-                    )}
-                  </div>
-
-                  {routeData && routingTo?.id === station.id && (
-                    <div
-                      style={{
-                        marginTop: 8,
-                        padding: "8px",
-                        background: "#e8f5e8",
-                        borderRadius: 4,
-                        fontSize: 12,
-                      }}
-                    >
-                      <div>
-                        <strong>Distance:</strong>{" "}
-                        {(routeData.distance / 1000).toFixed(1)} km
-                      </div>
-                      <div>
-                        <strong>Duration:</strong>{" "}
-                        {Math.round(routeData.duration / 60)} min
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Community Price Reporting Widget */}
-                  <PriceReportWidget
-                    stationId={station.id}
-                    stationName={station.name}
-                    availableFuelTypes={
-                      station.fuel_prices && station.fuel_prices.length > 0
-                        ? Array.from(
-                            new Set(
-                              station.fuel_prices.map((fp) => fp.fuel_type),
-                            ),
-                          )
-                        : ["Regular", "Premium", "Diesel"]
-                    }
-                  />
-
-                  {/* Reviews Widget */}
-                  <ReviewWidget
-                    targetType="station"
-                    targetId={station.id}
-                    targetName={station.name}
-                  />
-                </div>
-              </Popup>
-            </Marker>
+                  </Popup>
+                )}
+              </Marker>
+            </React.Fragment>
           );
         })}
 
         {/* POI markers */}
-        {pois.map((poi) => (
-          <Marker
-            key={`poi-${poi.id}`}
-            position={[poi.location.lat, poi.location.lng]}
-            icon={createPOIIcon(poi.type)}
-          >
-            <Popup autoPan={false}>
-              <div>
-                <b>{poi.name}</b>
-                <div style={{ marginTop: 4, color: "#666" }}>
-                  Type: {poi.type.replace("_", " ")}
-                </div>
-                {poi.address && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
-                    📍 {poi.address}
-                  </div>
-                )}
-                {poi.phone && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
-                    📞 {poi.phone}
-                  </div>
-                )}
-                {poi.operating_hours && (
-                  <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
-                    🕐 {poi.operating_hours.open} - {poi.operating_hours.close}
-                  </div>
-                )}
-
-                {/* POI Images */}
-                {poi.images && poi.images.length > 0 && (
-                  <ImageSlideshow
-                    images={poi.images}
-                    entityId={`poi-${poi.id}`}
-                  />
-                )}
-
-                <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
-                  Distance:{" "}
-                  {calculateDistance(
-                    position[0],
-                    position[1],
-                    poi.location.lat,
-                    poi.location.lng,
-                  ).toFixed(2)}{" "}
-                  km
-                </div>
-
-                {/* Reviews Widget */}
-                <ReviewWidget
-                  targetType="poi"
-                  targetId={poi.id}
-                  targetName={poi.name}
+        {pois.map((poi) => {
+          const isSelected = selectedItem?.type === 'poi' && selectedItem?.data.id === poi.id;
+          
+          return (
+            <React.Fragment key={`poi-${poi.id}`}>
+              {/* Highlight circle for selected marker */}
+              {isSelected && (
+                <Circle
+                  center={[poi.location.lat, poi.location.lng]}
+                  radius={50}
+                  pathOptions={{
+                    color: '#2196F3',
+                    fillColor: '#2196F3',
+                    fillOpacity: 0.15,
+                    weight: 3,
+                    opacity: 0.8,
+                  }}
+                  className="selected-marker-highlight"
                 />
-
-                <div style={{ marginTop: 8 }}>
-                  {routingTo?.id === poi.id ? (
-                    <button
-                      onClick={clearRoute}
-                      style={{
-                        background: "#f44336",
-                        color: "white",
-                        border: "none",
-                        padding: "6px 12px",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      ❌ Clear Route
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => getRoute(poi)}
-                      style={{
-                        background: "#4CAF50",
-                        color: "white",
-                        border: "none",
-                        padding: "6px 12px",
-                        borderRadius: 4,
-                        cursor: "pointer",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      🗺️ Get Directions
-                    </button>
-                  )}
-                </div>
-
-                {routeData && routingTo?.id === poi.id && (
-                  <div
-                    style={{
-                      marginTop: 8,
-                      padding: "8px",
-                      background: "#e8f5e8",
-                      borderRadius: 4,
-                      fontSize: 12,
-                    }}
-                  >
-                    <div>
-                      <strong>Distance:</strong>{" "}
-                      {(routeData.distance / 1000).toFixed(1)} km
-                    </div>
-                    <div>
-                      <strong>Duration:</strong>{" "}
-                      {Math.round(routeData.duration / 60)} min
-                    </div>
-                  </div>
+              )}
+              <Marker
+                position={[poi.location.lat, poi.location.lng]}
+                icon={createPOIIcon(poi.type)}
+                eventHandlers={isMobile ? {
+                  click: () => {
+                    setSelectedItem({ type: 'poi', data: poi });
+                    setSheetMode('collapsed');
+                  },
+                } : undefined}
+              >
+                {!isMobile && (
+                  <Popup autoPan={false}>
+                    <PoiDetail
+                      poi={poi}
+                      distance={calculateDistance(
+                        position[0],
+                        position[1],
+                        poi.location.lat,
+                        poi.location.lng,
+                      )}
+                      isRoutingTo={routingTo?.id === poi.id}
+                      routeData={routeData}
+                      onGetDirections={() => getRoute(poi)}
+                      onClearRoute={clearRoute}
+                    />
+                  </Popup>
                 )}
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+              </Marker>
+            </React.Fragment>
+          );
+        })}
 
         {/* Trip Replay Visualizer - MUST be inside MapContainer - Commented out */}
         {/*
@@ -2157,6 +1566,51 @@ const MainApp: React.FC = () => {
         <DonationWidget onClose={() => setShowDonations(false)} />
       )}
       */}
+
+      {/* Mobile Bottom Sheet for Marker Details */}
+      {isMobile && selectedItem && (
+        <MapBottomSheet
+          open={true}
+          mode={sheetMode}
+          onClose={() => {
+            setSelectedItem(null);
+            setSheetMode('collapsed');
+          }}
+          onExpand={() => setSheetMode('expanded')}
+          onCollapse={() => setSheetMode('collapsed')}
+        >
+          {selectedItem.type === 'station' ? (
+            <StationDetail
+              station={selectedItem.data as Station}
+              distance={calculateDistance(
+                position![0],
+                position![1],
+                selectedItem.data.location.lat,
+                selectedItem.data.location.lng,
+              )}
+              isOpen={isLocationOpen((selectedItem.data as Station).operating_hours)}
+              isRoutingTo={routingTo?.id === selectedItem.data.id}
+              routeData={routeData}
+              onGetDirections={() => getRoute(selectedItem.data)}
+              onClearRoute={clearRoute}
+            />
+          ) : (
+            <PoiDetail
+              poi={selectedItem.data as POI}
+              distance={calculateDistance(
+                position![0],
+                position![1],
+                selectedItem.data.location.lat,
+                selectedItem.data.location.lng,
+              )}
+              isRoutingTo={routingTo?.id === selectedItem.data.id}
+              routeData={routeData}
+              onGetDirections={() => getRoute(selectedItem.data)}
+              onClearRoute={clearRoute}
+            />
+          )}
+        </MapBottomSheet>
+      )}
     </div>
   );
 };

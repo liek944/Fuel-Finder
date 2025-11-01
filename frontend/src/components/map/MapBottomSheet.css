@@ -1,0 +1,232 @@
+/* Backdrop */
+.map-bottom-sheet-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  z-index: 1199;
+  animation: backdrop-fade-in 0.3s ease-out;
+}
+
+@keyframes backdrop-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Bottom Sheet Container */
+.map-bottom-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #FFFFFF;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.12);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  transition: height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+  overflow: hidden;
+  max-height: 90vh;
+}
+
+/* Collapsed State */
+.map-bottom-sheet--collapsed {
+  height: 96px;
+  animation: sheet-slide-up 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Expanded State */
+.map-bottom-sheet--expanded {
+  height: 70vh;
+  animation: sheet-expand 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-expand {
+  from {
+    height: 96px;
+  }
+  to {
+    height: 70vh;
+  }
+}
+
+/* Drag Handle Container */
+.map-bottom-sheet__handle-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px 0;
+  cursor: grab;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.map-bottom-sheet__handle-container:active {
+  cursor: grabbing;
+}
+
+/* Drag Handle */
+.map-bottom-sheet__handle {
+  width: 36px;
+  height: 4px;
+  background-color: #BDBDBD;
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+
+.map-bottom-sheet__handle-container:hover .map-bottom-sheet__handle {
+  background-color: #9E9E9E;
+}
+
+/* Header */
+.map-bottom-sheet__header {
+  flex-shrink: 0;
+  padding: 0 16px 12px 16px;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+/* Content */
+.map-bottom-sheet__content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Custom scrollbar for webkit browsers */
+.map-bottom-sheet__content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.map-bottom-sheet__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.map-bottom-sheet__content::-webkit-scrollbar-thumb {
+  background: #BDBDBD;
+  border-radius: 3px;
+}
+
+.map-bottom-sheet__content::-webkit-scrollbar-thumb:hover {
+  background: #9E9E9E;
+}
+
+/* Footer */
+.map-bottom-sheet__footer {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 1px solid #E0E0E0;
+  background-color: #FAFAFA;
+}
+
+/* Close Button */
+.map-bottom-sheet__close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 1;
+  color: #757575;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.map-bottom-sheet__close:hover {
+  background-color: #FFFFFF;
+  color: #424242;
+  transform: scale(1.1);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.map-bottom-sheet__close:active {
+  transform: scale(0.95);
+}
+
+.map-bottom-sheet__close:focus {
+  outline: 2px solid #2196F3;
+  outline-offset: 2px;
+}
+
+/* Focus indicators for buttons and links inside sheet */
+.map-bottom-sheet button:focus-visible,
+.map-bottom-sheet a:focus-visible {
+  outline: 2px solid #2196F3;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Collapsed State - Hide scrollable content */
+.map-bottom-sheet--collapsed .map-bottom-sheet__content {
+  overflow: hidden;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .map-bottom-sheet--expanded {
+    height: 75vh;
+  }
+
+  .map-bottom-sheet__content {
+    padding: 12px;
+  }
+}
+
+@media (max-height: 600px) {
+  .map-bottom-sheet--expanded {
+    height: 80vh;
+  }
+}
+
+/* Landscape mode on mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .map-bottom-sheet--collapsed {
+    height: 80px;
+  }
+
+  .map-bottom-sheet--expanded {
+    height: 85vh;
+  }
+
+  .map-bottom-sheet__content {
+    padding: 8px 12px;
+  }
+}
+
+/* Prevent body scroll when sheet is open */
+body.sheet-open {
+  overflow: hidden;
+}
+
+/* Animation for touch feedback */
+.map-bottom-sheet__handle-container:active .map-bottom-sheet__handle {
+  transform: scaleX(1.2);
+  transition: transform 0.15s;
+}
