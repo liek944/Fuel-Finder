@@ -23,11 +23,13 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({ images }) => {
 
   const currentImage = images[currentIndex];
 
-  const nextImage = () => {
+  const nextImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation(); // Prevent event from bubbling to parent components
     setCurrentIndex((currentIndex + 1) % images.length);
   };
 
-  const prevImage = () => {
+  const prevImage = (e?: React.MouseEvent) => {
+    e?.stopPropagation(); // Prevent event from bubbling to parent components
     setCurrentIndex((currentIndex - 1 + images.length) % images.length);
   };
 
@@ -44,7 +46,7 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({ images }) => {
             borderRadius: 8,
             cursor: images.length > 1 ? "pointer" : "default",
           }}
-          onClick={images.length > 1 ? nextImage : undefined}
+          onClick={images.length > 1 ? (e) => nextImage(e) : undefined}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.onerror = null;
@@ -54,7 +56,7 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({ images }) => {
         {images.length > 1 && (
           <>
             <button
-              onClick={prevImage}
+              onClick={(e) => prevImage(e)}
               style={{
                 position: "absolute",
                 left: 4,
@@ -76,7 +78,7 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({ images }) => {
               ‹
             </button>
             <button
-              onClick={nextImage}
+              onClick={(e) => nextImage(e)}
               style={{
                 position: "absolute",
                 right: 4,
@@ -126,7 +128,10 @@ const ImageSlideshow: React.FC<ImageSlideshowProps> = ({ images }) => {
           {images.map((_, index) => (
             <button
               key={index}
-              onClick={() => setCurrentIndex(index)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentIndex(index);
+              }}
               style={{
                 width: 8,
                 height: 8,

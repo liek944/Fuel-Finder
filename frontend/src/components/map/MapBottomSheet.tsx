@@ -100,17 +100,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     };
   }, [open, onClose]);
 
-  // Drag handlers
-  const handleDragStart = useCallback((clientY: number) => {
-    isDraggingRef.current = true;
-    dragStartRef.current = clientY;
-    dragCurrentRef.current = clientY;
-    
-    if (sheetRef.current) {
-      sheetRef.current.style.transition = 'none';
-    }
-  }, []);
-
+  // Drag move handler
   const handleDragMove = useCallback((clientY: number) => {
     if (!isDraggingRef.current || !sheetRef.current) return;
 
@@ -129,6 +119,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   }, [mode]);
 
+  // Drag end handler (defined first so it can be used in handleDragStart)
   const handleDragEnd = useCallback(() => {
     if (!isDraggingRef.current || !sheetRef.current) return;
 
@@ -155,26 +146,17 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     }
   }, [mode, onExpand, onCollapse, onClose]);
 
-  // Mouse events
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    handleDragStart(e.clientY);
-  };
-
+  // Mouse/Touch event callbacks (defined before handleDragStart uses them)
   const handleMouseMove = useCallback((e: MouseEvent) => {
     handleDragMove(e.clientY);
   }, [handleDragMove]);
 
   const handleMouseUp = useCallback(() => {
     handleDragEnd();
+    // Remove listeners after drag ends
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
   }, [handleDragEnd]);
-
-  // Touch events
-  const handleTouchStart = (e: React.TouchEvent) => {
-    // Don't preventDefault - would block click events on passive listeners
-    // Use CSS touch-action instead to control gesture behavior
-    handleDragStart(e.touches[0].clientY);
-  };
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     // Don't preventDefault - handled via CSS touch-action on the handle
@@ -183,31 +165,59 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
   const handleTouchEnd = useCallback(() => {
     handleDragEnd();
+    // Remove listeners after drag ends
+    document.removeEventListener('touchmove', handleTouchMove);
+    document.removeEventListener('touchend', handleTouchEnd);
   }, [handleDragEnd]);
 
-  // Attach global listeners for drag
-  useEffect(() => {
-    if (!isDraggingRef.current) return;
+  // Drag start handler (now has access to all the callbacks)
+  const handleDragStart = useCallback((clientY: number, isTouch: boolean) => {
+    isDraggingRef.current = true;
+    dragStartRef.current = clientY;
+    dragCurrentRef.current = clientY;
+    
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = 'none';
+    }
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchmove', handleTouchMove, { passive: true });
-    document.addEventListener('touchend', handleTouchEnd);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
+    // Attach global listeners immediately when drag starts
+    if (isTouch) {
+      document.addEventListener('touchmove', handleTouchMove, { passive: true });
+      document.addEventListener('touchend', handleTouchEnd);
+    } else {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
   }, [handleMouseMove, handleMouseUp, handleTouchMove, handleTouchEnd]);
 
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent event from reaching content below
+    handleDragStart(e.clientY, false);
+  };
+
+  // Touch events
+  const handleTouchStart = (e: React.TouchEvent) => {
+    // Don't preventDefault - would block click events on passive listeners
+    // Use CSS touch-action instead to control gesture behavior
+    e.stopPropagation(); // Prevent event from reaching content below
+    handleDragStart(e.touches[0].clientY, true);
+  };
+
   // Handle drag handle click (toggle expand/collapse)
-  const handleHandleClick = () => {
-    if (mode === 'collapsed') {
-      onExpand();
-    } else {
-      onCollapse();
+  const handleHandleClick = (e: React.MouseEvent) => {
+    // Prevent click from propagating to content below (e.g., ImageSlideshow buttons)
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Only toggle if this wasn't a drag operation
+    if (!isDraggingRef.current) {
+      if (mode === 'collapsed') {
+        onExpand();
+      } else {
+        onCollapse();
+      }
     }
   };
 
