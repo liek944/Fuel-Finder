@@ -34,7 +34,8 @@
   flex-direction: column;
   transition: height 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
   overflow: hidden;
-  max-height: 90vh;
+  max-height: 95vh;
+  min-height: 96px;
 }
 
 /* Collapsed State */
@@ -45,7 +46,7 @@
 
 /* Expanded State */
 .map-bottom-sheet--expanded {
-  height: 70vh;
+  height: 80vh;
   animation: sheet-expand 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
@@ -63,7 +64,7 @@
     height: 96px;
   }
   to {
-    height: 70vh;
+    height: 80vh;
   }
 }
 
@@ -195,7 +196,7 @@
 /* Responsive adjustments */
 @media (max-width: 480px) {
   .map-bottom-sheet--expanded {
-    height: 75vh;
+    height: 85vh;
   }
 
   .map-bottom-sheet__content {
@@ -205,7 +206,7 @@
 
 @media (max-height: 600px) {
   .map-bottom-sheet--expanded {
-    height: 80vh;
+    height: 85vh;
   }
 }
 
@@ -216,7 +217,7 @@
   }
 
   .map-bottom-sheet--expanded {
-    height: 85vh;
+    height: 90vh;
   }
 
   .map-bottom-sheet__content {
