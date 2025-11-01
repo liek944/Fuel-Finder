@@ -100,3 +100,19 @@ Scope: Implement mobile-only bottom sheet for marker details while keeping deskt
 
 ## Timeline (estimate)
 - Refactor + BottomSheet + wiring: 1–2 days including QA.
+
+## Bug Fixes
+### Mobile Bottom Sheet Not Expandable (Fixed: 2025-01-01)
+**Problem**: Bottom sheet would appear in collapsed state but couldn't be dragged upward to expand. Users were stuck with only the collapsed view showing minimal information.
+
+**Root Cause**: The `handleDragMove` function in `MapBottomSheet.tsx` only allowed downward dragging (positive delta), but the expand gesture required upward dragging (negative delta). This meant the condition `delta < -threshold` in `handleDragEnd` could never be triggered.
+
+**Solution**:
+1. Modified `handleDragMove` to allow both upward and downward dragging:
+   - Upward drag (negative delta) when collapsed: applies transform with 0.5x resistance for expansion gesture
+   - Downward drag (positive delta): always allowed for collapse/close gestures
+2. Added separate `expandThreshold` (30px) which is lower than the close threshold (50px) to make expansion more sensitive and easier to trigger
+3. Updated dependency array to include `mode` to properly track sheet state during drag
+
+**Files Modified**:
+- `/home/keil/fuel_finder/frontend/src/components/map/MapBottomSheet.tsx`

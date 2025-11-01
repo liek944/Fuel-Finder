@@ -115,13 +115,19 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     if (!isDraggingRef.current || !sheetRef.current) return;
 
     const delta = clientY - dragStartRef.current;
+    dragCurrentRef.current = clientY;
     
-    // Only allow downward drag
-    if (delta > 0) {
-      dragCurrentRef.current = clientY;
+    // Allow both upward (negative delta) and downward (positive delta) dragging
+    // Upward drag when collapsed = expand gesture
+    // Downward drag = collapse or close gesture
+    if (mode === 'collapsed' && delta < 0) {
+      // Upward drag in collapsed mode - allow with slight resistance
+      sheetRef.current.style.transform = `translateY(${delta * 0.5}px)`;
+    } else if (delta > 0) {
+      // Downward drag - always allowed
       sheetRef.current.style.transform = `translateY(${delta}px)`;
     }
-  }, []);
+  }, [mode]);
 
   const handleDragEnd = useCallback(() => {
     if (!isDraggingRef.current || !sheetRef.current) return;
@@ -136,6 +142,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
 
     // Determine action based on drag distance
     const threshold = 50; // pixels
+    const expandThreshold = 30; // Lower threshold for upward drag to expand (more sensitive)
 
     if (delta > threshold) {
       if (mode === 'expanded') {
@@ -143,7 +150,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
       } else {
         onClose();
       }
-    } else if (delta < -threshold && mode === 'collapsed') {
+    } else if (delta < -expandThreshold && mode === 'collapsed') {
       onExpand();
     }
   }, [mode, onExpand, onCollapse, onClose]);
