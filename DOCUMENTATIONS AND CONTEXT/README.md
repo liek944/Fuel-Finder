@@ -122,6 +122,7 @@ This directory contains all documentation for the Fuel Finder project, organized
 - **Feature Implementations:**
   - `FUEL_TYPES_FEATURE.md` - Multi fuel type system
   - `MARKER_EDIT_FEATURE.md` - Marker editing functionality
+  - `MOBILE_BOTTOM_SHEET_FEATURE.md` - Mobile bottom sheet UI (Google Maps style)
   - `PRICE_REPORTING_FEATURE.md` - Price reporting system
   - `USER_ANALYTICS_FEATURE.md` - User analytics implementation
   - `USER_ANALYTICS_IMPROVEMENTS.md` - Analytics enhancements
@@ -282,6 +283,7 @@ All documentation in this directory follows these standards:
 - Station locator with real-time navigation
 - Multi fuel type price tracking (Diesel, Premium, Regular)
 - Community-driven fuel price reporting
+- Mobile-optimized bottom sheet UI (Google Maps style)
 - Trip recording and replay system
 - User analytics and admin dashboard
 - PWA support for mobile installation
