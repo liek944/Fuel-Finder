@@ -2,7 +2,7 @@
 
 Find nearby fuel stations, compare prices, and navigate with OpenStreetMap + OSRM. Fuel Finder is a modern, mobile‑first web app with community price reporting, a multi‑tenant owner portal, admin analytics, trip recording, and PWA support.
 
-![Mobile View](app%20mobile%20view/image.png)
+![Fuel Finder Logo](frontend/public/logo.jpeg)
 
 ---
 

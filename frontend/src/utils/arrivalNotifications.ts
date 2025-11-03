@@ -26,6 +26,19 @@ class ArrivalNotificationManager {
   private permissionGranted: boolean = false;
   private voiceEnabled: boolean = true;
   private notificationsEnabled: boolean = false; // Disabled - using voice only
+  private keepScreenOn: boolean = false;
+  private wakeLock: any | null = null;
+  private handleWakeLockVisibilityChange = async (): Promise<void> => {
+    if (!this.keepScreenOn) return;
+    if (document.hidden) {
+      await this.releaseWakeLock();
+    } else {
+      await this.requestWakeLock();
+    }
+  };
+  private handlePageHide = async (): Promise<void> => {
+    await this.releaseWakeLock();
+  };
 
   constructor() {
     // Check if Speech Synthesis is available
@@ -97,16 +110,27 @@ class ArrivalNotificationManager {
 
     try {
       console.log('📢 Showing notification:', title);
-      const notification = new Notification(title, {
+      const options: NotificationOptions = {
         body,
         icon: icon || '/logo192.png',
         badge: '/logo192.png',
         tag: 'fuel-finder-arrival',
         requireInteraction: false,
-      });
+      };
 
-      // Auto-close after 5 seconds
-      setTimeout(() => notification.close(), 5000);
+      if ('serviceWorker' in navigator && (navigator as any).serviceWorker?.ready) {
+        (navigator as any).serviceWorker.ready
+          .then((registration: ServiceWorkerRegistration) => {
+            registration.showNotification(title, options);
+          })
+          .catch(() => {
+            const notification = new Notification(title, options);
+            setTimeout(() => notification.close(), 5000);
+          });
+      } else {
+        const notification = new Notification(title, options);
+        setTimeout(() => notification.close(), 5000);
+      }
       console.log('✅ Notification displayed successfully');
     } catch (error) {
       console.error('❌ Failed to show notification:', error);
@@ -154,6 +178,9 @@ class ArrivalNotificationManager {
     };
 
     console.log('🎯 Destination set:', destination.name);
+    if (this.keepScreenOn) {
+      this.requestWakeLock();
+    }
   }
 
   /**
@@ -166,6 +193,9 @@ class ArrivalNotificationManager {
     // Cancel any ongoing speech
     if (this.speechSynthesis) {
       this.speechSynthesis.cancel();
+    }
+    if (this.keepScreenOn) {
+      this.releaseWakeLock();
     }
   }
 
@@ -199,6 +229,7 @@ class ArrivalNotificationManager {
         '/logo192.png'
       );
       this.speak(`You have arrived at ${destName}`);
+      (navigator as any).vibrate && (navigator as any).vibrate(200);
       console.log('🎉 Arrival notification triggered');
     }
     // 100m notification
@@ -214,6 +245,7 @@ class ArrivalNotificationManager {
         '/logo192.png'
       );
       this.speak(`${destName} is 100 meters ahead`);
+      (navigator as any).vibrate && (navigator as any).vibrate(200);
       console.log('📍 100m notification triggered');
     }
     // 200m notification
@@ -229,6 +261,7 @@ class ArrivalNotificationManager {
         '/logo192.png'
       );
       this.speak(`Approaching ${destName}, 200 meters ahead`);
+      (navigator as any).vibrate && (navigator as any).vibrate(200);
       console.log('🚗 200m notification triggered');
     }
     // 500m notification
@@ -244,7 +277,47 @@ class ArrivalNotificationManager {
         '/logo192.png'
       );
       this.speak(`${destName} is 500 meters ahead`);
+      (navigator as any).vibrate && (navigator as any).vibrate(200);
       console.log('🎯 500m notification triggered');
+    }
+  }
+
+  setKeepScreenOn(enabled: boolean): void {
+    this.keepScreenOn = enabled;
+    if (enabled) {
+      document.addEventListener('visibilitychange', this.handleWakeLockVisibilityChange);
+      window.addEventListener('pagehide', this.handlePageHide);
+      this.requestWakeLock();
+    } else {
+      document.removeEventListener('visibilitychange', this.handleWakeLockVisibilityChange);
+      window.removeEventListener('pagehide', this.handlePageHide);
+      this.releaseWakeLock();
+    }
+  }
+
+  private async requestWakeLock(): Promise<void> {
+    try {
+      const nav: any = navigator as any;
+      if (!nav.wakeLock) return;
+      if (this.wakeLock) return;
+      const sentinel = await nav.wakeLock.request('screen');
+      this.wakeLock = sentinel;
+      if (this.wakeLock && this.wakeLock.addEventListener) {
+        this.wakeLock.addEventListener('release', () => {
+          this.wakeLock = null;
+        });
+      }
+    } catch (e) {}
+  }
+
+  private async releaseWakeLock(): Promise<void> {
+    try {
+      if (this.wakeLock && this.wakeLock.release) {
+        await this.wakeLock.release();
+      }
+    } catch (e) {
+    } finally {
+      this.wakeLock = null;
     }
   }
 
