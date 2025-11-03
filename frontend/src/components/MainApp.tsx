@@ -17,6 +17,7 @@ import { getApiUrl } from "../utils/api";
 // import TripHistoryPanel from './TripHistoryPanel';
 // import TripReplayVisualizer from './TripReplayVisualizer';
 import PWAInstallButton from "./PWAInstallButton";
+import SettingsButton from "./SettingsButton";
 // import DonationWidget from "./DonationWidget"; // COMMENTED OUT: PayMongo payment integration disabled
 import Toast from "./Toast";
 import { useToast } from "../hooks/useToast";
@@ -557,6 +558,8 @@ const MainApp: React.FC = () => {
 
   // Arrival notification state (voice only)
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
+  const [keepScreenOn, setKeepScreenOn] = useState<boolean>(false);
 
   // Convert position to L.LatLng for follow camera
   const userLatLng = position ? L.latLng(position[0], position[1]) : null;
@@ -767,10 +770,54 @@ const MainApp: React.FC = () => {
     };
   }, []);
 
+  // Load saved settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ff_settings');
+      if (saved) {
+        const s = JSON.parse(saved);
+        if (typeof s.voiceEnabled === 'boolean') setVoiceEnabled(s.voiceEnabled);
+        if (typeof s.notificationsEnabled === 'boolean') setNotificationsEnabled(s.notificationsEnabled);
+        if (typeof s.keepScreenOn === 'boolean') setKeepScreenOn(s.keepScreenOn);
+      }
+    } catch {}
+  }, []);
+
   // Sync voice settings when changed
   useEffect(() => {
     arrivalNotifications.setVoiceEnabled(voiceEnabled);
   }, [voiceEnabled]);
+
+  // Apply visual notifications setting and request permission when enabling
+  useEffect(() => {
+    arrivalNotifications.setNotificationsEnabled(notificationsEnabled);
+    if (notificationsEnabled) {
+      arrivalNotifications.requestNotificationPermission().then((granted) => {
+        if (!granted) {
+          setNotificationsEnabled(false);
+          warning("Notifications are blocked. Allow them in your browser settings.");
+        } else {
+          info("Visual notifications enabled");
+        }
+      });
+    }
+  }, [notificationsEnabled]);
+
+  // Apply keep screen on setting
+  useEffect(() => {
+    arrivalNotifications.setKeepScreenOn(keepScreenOn);
+  }, [keepScreenOn]);
+
+  // Persist settings
+  useEffect(() => {
+    try {
+      localStorage.setItem('ff_settings', JSON.stringify({
+        voiceEnabled,
+        notificationsEnabled,
+        keepScreenOn,
+      }));
+    } catch {}
+  }, [voiceEnabled, notificationsEnabled, keepScreenOn]);
 
   // Debug routeData changes
   useEffect(() => {
@@ -1503,49 +1550,63 @@ const MainApp: React.FC = () => {
           zIndex: 1000,
         }}
       >
-
-        {/* Voice Announcement Toggle Button */}
-        <button
-          onClick={() => {
-            const newState = !voiceEnabled;
-            setVoiceEnabled(newState);
-            
-            if (newState) {
-              // Test voice when enabling
-              console.log('🔊 Enabling voice announcements...');
+        <SettingsButton
+          voiceEnabled={voiceEnabled}
+          onToggleVoice={(enabled) => {
+            setVoiceEnabled(enabled);
+            if (enabled) {
               arrivalNotifications.testVoice("Voice announcements enabled");
-            } else {
-              console.log('🔇 Voice: OFF');
             }
           }}
-          style={{
-            width: window.innerWidth <= 768 ? "48px" : "50px",
-            height: window.innerWidth <= 768 ? "48px" : "50px",
-            borderRadius: "50%",
-            background: voiceEnabled ? "#FF9800" : "#757575",
-            color: "white",
-            border: window.innerWidth <= 768 ? "2px solid white" : "3px solid white",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-            cursor: "pointer",
-            fontSize: window.innerWidth <= 768 ? "18px" : "20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "all 0.2s ease",
-          }}
-          title={voiceEnabled ? "Voice Announcements: ON" : "Voice Announcements: OFF"}
-          aria-label={voiceEnabled ? "Disable voice announcements" : "Enable voice announcements"}
-          role="switch"
-          aria-checked={voiceEnabled}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.1)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
-        >
-          {voiceEnabled ? "🔊" : "🔇"}
-        </button>
+          notificationsEnabled={notificationsEnabled}
+          onToggleNotifications={(enabled) => setNotificationsEnabled(enabled)}
+          keepScreenOn={keepScreenOn}
+          onToggleKeepScreenOn={(enabled) => setKeepScreenOn(enabled)}
+        />
+
+        {/* Voice Announcement Toggle Button */}
+        {false && (
+          <button
+            onClick={() => {
+              const newState = !voiceEnabled;
+              setVoiceEnabled(newState);
+              
+              if (newState) {
+                console.log('🔊 Enabling voice announcements...');
+                arrivalNotifications.testVoice("Voice announcements enabled");
+              } else {
+                console.log('🔇 Voice: OFF');
+              }
+            }}
+            style={{
+              width: window.innerWidth <= 768 ? "48px" : "50px",
+              height: window.innerWidth <= 768 ? "48px" : "50px",
+              borderRadius: "50%",
+              background: voiceEnabled ? "#FF9800" : "#757575",
+              color: "white",
+              border: window.innerWidth <= 768 ? "2px solid white" : "3px solid white",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+              cursor: "pointer",
+              fontSize: window.innerWidth <= 768 ? "18px" : "20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s ease",
+            }}
+            title={voiceEnabled ? "Voice Announcements: ON" : "Voice Announcements: OFF"}
+            aria-label={voiceEnabled ? "Disable voice announcements" : "Enable voice announcements"}
+            role="switch"
+            aria-checked={voiceEnabled}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "scale(1.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+          >
+            {voiceEnabled ? "🔊" : "🔇"}
+          </button>
+        )}
       </div>
 
       {/* PWA Install Button */}
