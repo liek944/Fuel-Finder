@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -509,6 +509,19 @@ const MainApp: React.FC = () => {
   // Bottom sheet state for mobile marker details
   const [selectedItem, setSelectedItem] = useState<{ type: 'station' | 'poi'; data: Station | POI } | null>(null);
   const [sheetMode, setSheetMode] = useState<SheetMode>('collapsed');
+  
+  const handleSheetClose = useCallback(() => {
+    setSelectedItem(null);
+    setSheetMode('collapsed');
+  }, []);
+
+  const handleSheetExpand = useCallback(() => {
+    setSheetMode('expanded');
+  }, []);
+
+  const handleSheetCollapse = useCallback(() => {
+    setSheetMode('collapsed');
+  }, []);
   
   // Convert selectedItem to LatLng for map panning
   const selectedMarkerLatLng = useMemo(() => {
@@ -1572,12 +1585,9 @@ const MainApp: React.FC = () => {
         <MapBottomSheet
           open={true}
           mode={sheetMode}
-          onClose={() => {
-            setSelectedItem(null);
-            setSheetMode('collapsed');
-          }}
-          onExpand={() => setSheetMode('expanded')}
-          onCollapse={() => setSheetMode('collapsed')}
+          onClose={handleSheetClose}
+          onExpand={handleSheetExpand}
+          onCollapse={handleSheetCollapse}
         >
           {selectedItem.type === 'station' ? (
             <StationDetail
