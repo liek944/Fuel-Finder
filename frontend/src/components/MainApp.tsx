@@ -1030,6 +1030,9 @@ const MainApp: React.FC = () => {
 
     if (targetLocation) {
       getRoute(targetLocation);
+      if (isMobile && isFilterSheetOpen) {
+        handleFilterSheetClose();
+      }
     }
   };
 
@@ -1672,6 +1675,7 @@ const MainApp: React.FC = () => {
           onClose={handleFilterSheetClose}
           onExpand={handleFilterSheetExpand}
           onCollapse={handleFilterSheetCollapse}
+          translucent={true}
           header={<div style={{ fontWeight: 700 }}>🔍 Filter</div>}
         >
           <div className="search-bar">

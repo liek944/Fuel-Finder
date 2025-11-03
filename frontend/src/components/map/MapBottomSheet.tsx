@@ -13,6 +13,7 @@ interface MapBottomSheetProps {
   children?: React.ReactNode;
   header?: React.ReactNode;
   footer?: React.ReactNode;
+  translucent?: boolean;
 }
 
 export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
@@ -24,6 +25,7 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   children,
   header,
   footer,
+  translucent = false,
 }) => {
   const sheetRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -254,14 +256,14 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     <>
       {/* Backdrop - No click to close, users must use X button or drag down */}
       <div 
-        className="map-bottom-sheet-backdrop"
+        className={translucent ? "map-bottom-sheet-backdrop map-bottom-sheet-backdrop--light" : "map-bottom-sheet-backdrop"}
         aria-hidden="true"
       />
 
       {/* Sheet */}
       <div
         ref={sheetRef}
-        className={`map-bottom-sheet map-bottom-sheet--${mode}`}
+        className={`map-bottom-sheet map-bottom-sheet--${mode}${translucent ? ' map-bottom-sheet--translucent' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label="Location details"
