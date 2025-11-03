@@ -5,13 +5,17 @@ import { useState, useEffect } from 'react';
  * Updates on window resize
  */
 export function useIsMobile(breakpoint: number = 768): boolean {
-  const [isMobile, setIsMobile] = useState<boolean>(
-    () => typeof window !== 'undefined' && window.innerWidth <= breakpoint
-  );
+  const getIsMobile = () =>
+    typeof window !== 'undefined' && (
+      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+      Math.min(window.innerWidth, window.innerHeight) <= breakpoint
+    );
+
+  const [isMobile, setIsMobile] = useState<boolean>(getIsMobile);
 
   useEffect(() => {
     const checkIsMobile = () => {
-      setIsMobile(window.innerWidth <= breakpoint);
+      setIsMobile(getIsMobile());
     };
 
     // Debounce resize events for performance
@@ -22,12 +26,14 @@ export function useIsMobile(breakpoint: number = 768): boolean {
     };
 
     window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
     
     // Initial check
     checkIsMobile();
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
       clearTimeout(timeoutId);
     };
   }, [breakpoint]);
