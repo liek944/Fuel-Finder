@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  Link,
 } from "react-router-dom";
 import MainApp from "./components/MainApp";
 import AdminPortal from "./components/AdminPortal";
@@ -129,6 +130,11 @@ function App() {
           {/* Redirect any unknown routes to main app */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <footer style={{ textAlign: "center", padding: "8px 0", fontSize: 12 }}>
+          <Link to="/about" style={{ color: "#1976D2", textDecoration: "none", fontWeight: 600 }}>
+            About
+          </Link>
+        </footer>
       </div>
     </Router>
   );
