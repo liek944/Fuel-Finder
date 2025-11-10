@@ -9,6 +9,7 @@ import MainApp from "./components/MainApp";
 import AdminPortal from "./components/AdminPortal";
 import OwnerLogin from "./components/owner/OwnerLogin";
 import OwnerDashboard from "./components/owner/OwnerDashboard";
+import About from "./components/About";
 import { OwnerThemeProvider } from "./contexts/OwnerThemeContext";
 import "./App.css";
 
@@ -120,6 +121,7 @@ function App() {
         <Routes>
           {/* Main user-facing app */}
           <Route path="/" element={<MainApp />} />
+          <Route path="/about" element={<About />} />
 
           {/* Admin portal */}
           <Route path="/admin" element={<AdminPortal />} />

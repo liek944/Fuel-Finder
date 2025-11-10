@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import {
   MapContainer,
   TileLayer,
@@ -1650,6 +1651,24 @@ const MainApp: React.FC = () => {
             {voiceEnabled ? "🔊" : "🔇"}
           </button>
         )}
+      </div>
+
+      <div
+        style={{
+          position: "fixed",
+          bottom: window.innerWidth <= 768 ? "12px" : "16px",
+          left: window.innerWidth <= 768 ? "12px" : "20px",
+          zIndex: 1000,
+          background: "rgba(255,255,255,0.92)",
+          padding: "6px 10px",
+          borderRadius: 8,
+          fontSize: 12,
+          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+        }}
+      >
+        <Link to="/about" style={{ textDecoration: "none", color: "#1976D2", fontWeight: 600 }}>
+          About
+        </Link>
       </div>
 
       {/* PWA Install Button */}
