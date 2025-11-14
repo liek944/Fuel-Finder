@@ -62,6 +62,45 @@ interface Review {
   updated_at: string;
 }
 
+interface InsightsStation {
+  id: number;
+  name: string;
+  brand: string | null;
+  is_owner_station: boolean;
+  municipality: string | null;
+  fuel_prices: { fuel_type: string; price: number | string }[];
+  avg_rating: number;
+  reviews_count: number;
+}
+
+interface PriceInsight {
+  fuel_type: string;
+  owner_avg_price: string | null;
+  market_avg_price: string;
+  owner_rank_by_price: number | null;
+  total_stations: number;
+  cheapest_station: {
+    id: number;
+    name: string;
+    brand: string | null;
+    price: string;
+  };
+  most_expensive_station: {
+    id: number;
+    name: string;
+    brand: string | null;
+    price: string;
+  };
+}
+
+interface MarketInsights {
+  municipality: string | null;
+  days: number;
+  fuelTypes: string[];
+  priceInsights: PriceInsight[];
+  stations: InsightsStation[];
+}
+
 const OwnerDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
@@ -69,7 +108,7 @@ const OwnerDashboard: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports' | 'reviews'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports' | 'reviews' | 'insights'>('overview');
   
   // Reviews filtering and pagination
   const [reviewsFilter, setReviewsFilter] = useState<string>('all'); // all, published, rejected
@@ -84,6 +123,10 @@ const OwnerDashboard: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [savingStation, setSavingStation] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [insightsTimeRange, setInsightsTimeRange] = useState<7 | 15 | 30>(7);
+  const [marketInsights, setMarketInsights] = useState<MarketInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const getApiKey = () => localStorage.getItem('owner_api_key');
@@ -106,6 +149,13 @@ const OwnerDashboard: React.FC = () => {
       fetchData(apiKey);
     }
   }, [reviewsFilter, reviewsStationFilter, reviewsPage]);
+
+  useEffect(() => {
+    const apiKey = getApiKey();
+    if (apiKey && activeTab === 'insights') {
+      fetchMarketInsights(apiKey, insightsTimeRange);
+    }
+  }, [activeTab, insightsTimeRange]);
 
   const fetchData = async (apiKey: string) => {
     const subdomain = getSubdomain();
@@ -190,6 +240,39 @@ const OwnerDashboard: React.FC = () => {
       setError(error.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMarketInsights = async (apiKey: string, days: 7 | 15 | 30) => {
+    const subdomain = getSubdomain();
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+
+    try {
+      setInsightsError(null);
+      setInsightsLoading(true);
+
+      const params = new URLSearchParams();
+      params.set('days', days.toString());
+
+      const res = await fetch(`${apiUrl}/api/owner/market-insights?${params.toString()}`, {
+        headers: {
+          'x-api-key': apiKey,
+          'x-owner-domain': subdomain || ''
+        }
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to fetch market insights');
+      }
+
+      const data: MarketInsights = await res.json();
+      setMarketInsights(data);
+    } catch (err: any) {
+      console.error('Market insights error:', err);
+      setInsightsError(err.message || 'Failed to load market insights');
+    } finally {
+      setInsightsLoading(false);
     }
   };
 
@@ -400,6 +483,52 @@ const OwnerDashboard: React.FC = () => {
     );
   }
 
+  let insightsSelectedFuelType: string | null = null;
+  let insightsSelectedPriceInsight: PriceInsight | null = null;
+  let insightsOwnerAvgRating = 0;
+  let insightsMunicipalAvgRating = 0;
+  let insightsTotalStationsForSelectedFuel = 0;
+  let insightsOwnerRankForSelectedFuel: number | null = null;
+  let fuelTypesForColumns: string[] = [];
+
+  if (marketInsights) {
+    if (marketInsights.priceInsights && marketInsights.priceInsights.length > 0) {
+      const dieselInsight = marketInsights.priceInsights.find((pi) => pi.fuel_type === 'Diesel');
+      const chosen = dieselInsight || marketInsights.priceInsights[0];
+      insightsSelectedFuelType = chosen.fuel_type;
+      insightsSelectedPriceInsight = chosen;
+      insightsTotalStationsForSelectedFuel = chosen.total_stations;
+      insightsOwnerRankForSelectedFuel = chosen.owner_rank_by_price;
+    }
+
+    if (marketInsights.stations && marketInsights.stations.length > 0) {
+      const ownerStations = marketInsights.stations.filter((s) => s.is_owner_station);
+      const allStations = marketInsights.stations;
+
+      if (ownerStations.length > 0) {
+        const sumOwner = ownerStations.reduce((sum, s) => sum + (s.avg_rating || 0), 0);
+        insightsOwnerAvgRating = sumOwner / ownerStations.length;
+      }
+
+      if (allStations.length > 0) {
+        const sumAll = allStations.reduce((sum, s) => sum + (s.avg_rating || 0), 0);
+        insightsMunicipalAvgRating = sumAll / allStations.length;
+      }
+    }
+
+    if (marketInsights.fuelTypes && marketInsights.fuelTypes.length > 0) {
+      fuelTypesForColumns = marketInsights.fuelTypes;
+    } else {
+      const fuelTypeSet = new Set<string>();
+      marketInsights.stations.forEach((station) => {
+        station.fuel_prices.forEach((fp) => {
+          fuelTypeSet.add(fp.fuel_type);
+        });
+      });
+      fuelTypesForColumns = Array.from(fuelTypeSet);
+    }
+  }
+
   return (
     <div className="owner-dashboard">
       {/* Header */}
@@ -449,6 +578,12 @@ const OwnerDashboard: React.FC = () => {
           onClick={() => setActiveTab('reviews')}
         >
           ⭐ Reviews ({reviews.length})
+        </button>
+        <button
+          className={activeTab === 'insights' ? 'tab active' : 'tab'}
+          onClick={() => setActiveTab('insights')}
+        >
+          📈 Market Insights
         </button>
       </div>
 
@@ -823,6 +958,138 @@ const OwnerDashboard: React.FC = () => {
                     </button>
                   </div>
                 )}
+              </>
+            )}
+          </div>
+        )}
+        {activeTab === 'insights' && (
+          <div className="insights-tab">
+            <div className="insights-header-section">
+              <h2>📈 Market Insights</h2>
+              <div className="filter-group">
+                <label htmlFor="insights-range">Time range:</label>
+                <select
+                  id="insights-range"
+                  value={insightsTimeRange}
+                  onChange={(e) => setInsightsTimeRange(Number(e.target.value) as 7 | 15 | 30)}
+                  className="filter-select"
+                >
+                  <option value={7}>Last 7 days</option>
+                  <option value={15}>Last 15 days</option>
+                  <option value={30}>Last 30 days</option>
+                </select>
+              </div>
+            </div>
+
+            {insightsLoading && (
+              <div className="loading-state">
+                <div className="spinner"></div>
+                <p>Loading market insights...</p>
+              </div>
+            )}
+
+            {!insightsLoading && insightsError && (
+              <div className="error-state">
+                <p>{insightsError}</p>
+              </div>
+            )}
+
+            {!insightsLoading && !insightsError && (!marketInsights || marketInsights.stations.length === 0) && (
+              <div className="empty-state">
+                <p>No market insights available for this time range.</p>
+              </div>
+            )}
+
+            {!insightsLoading && !insightsError && marketInsights && marketInsights.stations.length > 0 && (
+              <>
+                <div className="stats-grid">
+                  <StatCard
+                    title={
+                      insightsSelectedFuelType
+                        ? `Stations (${insightsSelectedFuelType})`
+                        : 'Stations in area'
+                    }
+                    value={insightsTotalStationsForSelectedFuel}
+                    icon="⛽"
+                    color="blue"
+                  />
+                  <StatCard
+                    title={
+                      insightsSelectedFuelType
+                        ? `Your rank (${insightsSelectedFuelType})`
+                        : 'Your rank'
+                    }
+                    value={insightsOwnerRankForSelectedFuel || 0}
+                    icon="🏆"
+                    color="orange"
+                  />
+                  <StatCard
+                    title="Your avg rating"
+                    value={Number(insightsOwnerAvgRating.toFixed(2))}
+                    icon="⭐"
+                    color="green"
+                  />
+                </div>
+
+                {insightsSelectedPriceInsight && (
+                  <div className="insights-summary">
+                    <p>
+                      Your average {insightsSelectedPriceInsight.fuel_type} price:{' '}
+                      {insightsSelectedPriceInsight.owner_avg_price
+                        ? `₱${insightsSelectedPriceInsight.owner_avg_price}`
+                        : 'N/A'}
+                    </p>
+                    <p>
+                      Municipal average {insightsSelectedPriceInsight.fuel_type} price: ₱
+                      {insightsSelectedPriceInsight.market_avg_price}
+                    </p>
+                    <p>
+                      Your average rating: {insightsOwnerAvgRating.toFixed(2)} / 5, municipal average:{' '}
+                      {insightsMunicipalAvgRating.toFixed(2)} / 5
+                    </p>
+                  </div>
+                )}
+
+                <div className="insights-table-wrapper">
+                  <table className="insights-table">
+                    <thead>
+                      <tr>
+                        <th>Station</th>
+                        <th>Brand</th>
+                        {fuelTypesForColumns.map((ft) => (
+                          <th key={ft}>{ft} price</th>
+                        ))}
+                        <th>Avg rating</th>
+                        <th>Reviews</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {marketInsights.stations.map((station) => (
+                        <tr key={station.id}>
+                          <td>
+                            {station.name}{' '}
+                            {station.is_owner_station && (
+                              <span className="owner-badge">Your station</span>
+                            )}
+                          </td>
+                          <td>{station.brand || '-'}</td>
+                          {fuelTypesForColumns.map((ft) => {
+                            const priceEntry = station.fuel_prices.find((p) => p.fuel_type === ft);
+                            return (
+                              <td key={ft}>
+                                {priceEntry
+                                  ? `₱${Number(priceEntry.price).toFixed(2)}`
+                                  : '—'}
+                              </td>
+                            );
+                          })}
+                          <td>{station.avg_rating.toFixed(2)}</td>
+                          <td>{station.reviews_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </>
             )}
           </div>
