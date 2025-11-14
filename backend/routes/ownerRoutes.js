@@ -143,6 +143,15 @@ router.get(
 );
 
 /**
+ * GET /api/owner/market-insights
+ * Get market insights for owner's stations by municipality and time range
+ */
+router.get(
+  "/market-insights",
+  asyncHandler(ownerController.getMarketInsights)
+);
+
+/**
  * GET /api/owner/reviews
  * Get reviews for owner's stations
  */
