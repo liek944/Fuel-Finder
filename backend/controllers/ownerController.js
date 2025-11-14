@@ -7,6 +7,26 @@ const { pool } = require("../config/database");
 const { transformStationData } = require("../utils/transformers");
 const { checkStationOwnership, logOwnerActivity } = require("../middleware/ownerAuth");
 
+function inferMunicipalityFromAddress(address) {
+  if (!address || typeof address !== "string") {
+    return null;
+  }
+  const parts = address
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  if (parts.length === 0) {
+    return null;
+  }
+  if (parts.length === 1) {
+    return parts[0];
+  }
+  if (parts.length === 2) {
+    return parts[0];
+  }
+  return parts[1];
+}
+
 /**
  * Get basic owner information (public, no API key required)
  */
@@ -727,6 +747,178 @@ async function getAnalytics(req, res) {
   });
 }
 
+async function getMarketInsights(req, res) {
+  const ownerId = req.ownerData.id;
+  let days = parseInt(req.query.days, 10);
+  if (![7, 15, 30].includes(days)) {
+    days = 7;
+  }
+
+  let municipality = (req.query.municipality || "").trim();
+
+  if (!municipality) {
+    const stationResult = await pool.query(
+      `SELECT address FROM stations WHERE owner_id = $1 AND address IS NOT NULL ORDER BY id LIMIT 1`,
+      [ownerId]
+    );
+    if (stationResult.rows.length > 0) {
+      const inferred = inferMunicipalityFromAddress(stationResult.rows[0].address);
+      if (inferred) {
+        municipality = inferred;
+      }
+    }
+  }
+
+  const stationsQuery = `
+    SELECT
+      s.id,
+      s.name,
+      s.brand,
+      s.address,
+      s.owner_id,
+      COALESCE(
+        JSON_AGG(
+          JSONB_BUILD_OBJECT(
+            'fuel_type', fp.fuel_type,
+            'price', fp.price
+          )
+        ) FILTER (WHERE fp.id IS NOT NULL),
+        '[]'::JSON
+      ) AS fuel_prices,
+      COALESCE(r.avg_rating, 0) AS avg_rating,
+      COALESCE(r.reviews_count, 0) AS reviews_count
+    FROM stations s
+    LEFT JOIN fuel_prices fp ON fp.station_id = s.id
+    LEFT JOIN LATERAL (
+      SELECT
+        AVG(rv.rating)::numeric(10,2) AS avg_rating,
+        COUNT(*) AS reviews_count
+      FROM reviews rv
+      WHERE rv.target_type = 'station'
+        AND rv.target_id = s.id
+        AND rv.status = 'published'
+        AND rv.created_at >= NOW() - INTERVAL '${days} days'
+    ) r ON TRUE
+    WHERE ($1 IS NULL OR s.address ILIKE '%' || $1 || '%')
+    GROUP BY s.id, s.name, s.brand, s.address, s.owner_id, r.avg_rating, r.reviews_count
+    ORDER BY s.name
+  `;
+
+  const stationsResult = await pool.query(stationsQuery, [municipality || null]);
+
+  const priceReportsQuery = `
+    SELECT
+      s.id AS station_id,
+      s.name,
+      s.brand,
+      s.owner_id,
+      pr.fuel_type,
+      AVG(pr.price) AS avg_price
+    FROM fuel_price_reports pr
+    JOIN stations s ON s.id = pr.station_id
+    WHERE pr.is_verified = TRUE
+      AND pr.created_at >= NOW() - INTERVAL '${days} days'
+      AND ($1 IS NULL OR s.address ILIKE '%' || $1 || '%')
+    GROUP BY s.id, s.name, s.brand, s.owner_id, pr.fuel_type
+    ORDER BY pr.fuel_type, AVG(pr.price)
+  `;
+
+  const priceReportsResult = await pool.query(priceReportsQuery, [municipality || null]);
+
+  const stations = stationsResult.rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    brand: row.brand,
+    is_owner_station: row.owner_id === ownerId,
+    municipality: municipality || null,
+    fuel_prices: row.fuel_prices || [],
+    avg_rating: row.avg_rating !== null ? Number(row.avg_rating) : 0,
+    reviews_count: Number(row.reviews_count || 0),
+  }));
+
+  const priceInsightsMap = {};
+  for (const row of priceReportsResult.rows) {
+    const fuelType = row.fuel_type;
+    if (!priceInsightsMap[fuelType]) {
+      priceInsightsMap[fuelType] = [];
+    }
+    priceInsightsMap[fuelType].push({
+      station_id: row.station_id,
+      name: row.name,
+      brand: row.brand,
+      isOwner: row.owner_id === ownerId,
+      avg_price: Number(row.avg_price),
+    });
+  }
+
+  const priceInsights = Object.entries(priceInsightsMap).map(([fuelType, items]) => {
+    const typedItems = items;
+    const totalStations = typedItems.length;
+    typedItems.sort((a, b) => a.avg_price - b.avg_price);
+    const cheapest = typedItems[0];
+    const mostExpensive = typedItems[typedItems.length - 1];
+    const ownerStations = typedItems.filter((i) => i.isOwner);
+    let ownerAvgPrice = null;
+    let ownerRankByPrice = null;
+    if (ownerStations.length > 0) {
+      const sumOwner = ownerStations.reduce((sum, i) => sum + i.avg_price, 0);
+      ownerAvgPrice = sumOwner / ownerStations.length;
+      ownerRankByPrice = ownerStations.reduce((bestRank, i) => {
+        const idx = typedItems.findIndex((s) => s.station_id === i.station_id);
+        if (idx === -1) {
+          return bestRank;
+        }
+        const rank = idx + 1;
+        if (bestRank === null || rank < bestRank) {
+          return rank;
+        }
+        return bestRank;
+      }, null);
+    }
+    const sumMarket = typedItems.reduce((sum, i) => sum + i.avg_price, 0);
+    const marketAvgPrice = sumMarket / totalStations;
+
+    return {
+      fuel_type: fuelType,
+      owner_avg_price: ownerAvgPrice !== null ? ownerAvgPrice.toFixed(2) : null,
+      market_avg_price: marketAvgPrice.toFixed(2),
+      owner_rank_by_price: ownerRankByPrice,
+      total_stations: totalStations,
+      cheapest_station: {
+        id: cheapest.station_id,
+        name: cheapest.name,
+        brand: cheapest.brand,
+        price: cheapest.avg_price.toFixed(2),
+      },
+      most_expensive_station: {
+        id: mostExpensive.station_id,
+        name: mostExpensive.name,
+        brand: mostExpensive.brand,
+        price: mostExpensive.avg_price.toFixed(2),
+      },
+    };
+  });
+
+  const fuelTypes = Object.keys(priceInsightsMap);
+
+  await logOwnerActivity(
+    ownerId,
+    "view_market_insights",
+    null,
+    req.ip,
+    req.get("user-agent"),
+    { municipality: municipality || null, days }
+  );
+
+  res.json({
+    municipality: municipality || null,
+    days,
+    fuelTypes,
+    priceInsights,
+    stations,
+  });
+}
+
 module.exports = {
   getOwnerInfo,
   getDashboard,
@@ -740,4 +932,5 @@ module.exports = {
   rejectPriceReport,
   getActivityLogs,
   getAnalytics,
+  getMarketInsights,
 };
