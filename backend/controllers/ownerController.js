@@ -799,7 +799,7 @@ async function getMarketInsights(req, res) {
         AND rv.status = 'published'
         AND rv.created_at >= NOW() - INTERVAL '${days} days'
     ) r ON TRUE
-    WHERE ($1 IS NULL OR s.address ILIKE '%' || $1 || '%')
+    WHERE (COALESCE($1::text, '') = '' OR s.address ILIKE '%' || $1::text || '%')
     GROUP BY s.id, s.name, s.brand, s.address, s.owner_id, r.avg_rating, r.reviews_count
     ORDER BY s.name
   `;
@@ -836,7 +836,7 @@ async function getMarketInsights(req, res) {
           ) AS fuel_prices
         FROM stations s
         LEFT JOIN fuel_prices fp ON fp.station_id = s.id
-        WHERE ($1 IS NULL OR s.address ILIKE '%' || $1 || '%')
+        WHERE (COALESCE($1::text, '') = '' OR s.address ILIKE '%' || $1::text || '%')
         GROUP BY s.id, s.name, s.brand, s.address, s.owner_id
         ORDER BY s.name
       `;
@@ -859,7 +859,7 @@ async function getMarketInsights(req, res) {
     JOIN stations s ON s.id = pr.station_id
     WHERE pr.is_verified = TRUE
       AND pr.created_at >= NOW() - INTERVAL '${days} days'
-      AND ($1 IS NULL OR s.address ILIKE '%' || $1 || '%')
+      AND (COALESCE($1::text, '') = '' OR s.address ILIKE '%' || $1::text || '%')
     GROUP BY s.id, s.name, s.brand, s.owner_id, pr.fuel_type
     ORDER BY pr.fuel_type, AVG(pr.price)
   `;
