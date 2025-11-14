@@ -804,7 +804,48 @@ async function getMarketInsights(req, res) {
     ORDER BY s.name
   `;
 
-  const stationsResult = await pool.query(stationsQuery, [municipality || null]);
+  let stationsRows;
+  let ratingsAvailable = true;
+  try {
+    const res = await pool.query(stationsQuery, [municipality || null]);
+    stationsRows = res.rows;
+  } catch (e) {
+    if (
+      e && (
+        e.code === '42P01' ||
+        ((e.message || '').toLowerCase().includes('relation') && (e.message || '').toLowerCase().includes('reviews'))
+      )
+    ) {
+      console.warn('⚠️ Reviews table missing; proceeding without ratings in market insights');
+      ratingsAvailable = false;
+      const stationsNoReviewsQuery = `
+        SELECT
+          s.id,
+          s.name,
+          s.brand,
+          s.address,
+          s.owner_id,
+          COALESCE(
+            JSON_AGG(
+              JSONB_BUILD_OBJECT(
+                'fuel_type', fp.fuel_type,
+                'price', fp.price
+              )
+            ) FILTER (WHERE fp.id IS NOT NULL),
+            '[]'::JSON
+          ) AS fuel_prices
+        FROM stations s
+        LEFT JOIN fuel_prices fp ON fp.station_id = s.id
+        WHERE ($1 IS NULL OR s.address ILIKE '%' || $1 || '%')
+        GROUP BY s.id, s.name, s.brand, s.address, s.owner_id
+        ORDER BY s.name
+      `;
+      const res2 = await pool.query(stationsNoReviewsQuery, [municipality || null]);
+      stationsRows = res2.rows;
+    } else {
+      throw e;
+    }
+  }
 
   const priceReportsQuery = `
     SELECT
@@ -825,15 +866,15 @@ async function getMarketInsights(req, res) {
 
   const priceReportsResult = await pool.query(priceReportsQuery, [municipality || null]);
 
-  const stations = stationsResult.rows.map((row) => ({
+  const stations = stationsRows.map((row) => ({
     id: row.id,
     name: row.name,
     brand: row.brand,
     is_owner_station: row.owner_id === ownerId,
     municipality: municipality || null,
     fuel_prices: row.fuel_prices || [],
-    avg_rating: row.avg_rating !== null ? Number(row.avg_rating) : 0,
-    reviews_count: Number(row.reviews_count || 0),
+    avg_rating: ratingsAvailable && row.avg_rating !== null ? Number(row.avg_rating) : 0,
+    reviews_count: ratingsAvailable ? Number(row.reviews_count || 0) : 0,
   }));
 
   const priceInsightsMap = {};
