@@ -578,7 +578,11 @@ const MainApp: React.FC = () => {
   );
   const [, setIsLocationUpdating] = useState<boolean>(false);
   const lastUpdateRef = useRef<number>(0);
+  const lastAcceptedPositionRef = useRef<[number, number] | null>(null);
+  const lastAccuracyRef = useRef<number | null>(null);
   const UPDATE_THROTTLE = 3000; // 3 seconds minimum between position updates
+  const STALE_POSITION_MS = 20000;
+  const MAX_ACCURACY_METERS = 50;
 
   // Arrival notification state (voice only)
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
@@ -614,15 +618,36 @@ const MainApp: React.FC = () => {
           pos.coords.latitude,
           pos.coords.longitude,
         ];
+        const newAccuracy = pos.coords.accuracy;
+
+        const previousPosition = lastAcceptedPositionRef.current;
+        const previousAccuracy = lastAccuracyRef.current;
 
         // Smart throttling: only update if enough time passed or moved significantly
         const timeSinceUpdate = now - lastUpdateRef.current;
+
+        if (
+          previousPosition &&
+          previousAccuracy !== null &&
+          newAccuracy > MAX_ACCURACY_METERS &&
+          timeSinceUpdate < STALE_POSITION_MS
+        ) {
+          console.log("📍 Ignoring low-accuracy location update:", {
+            lat: newPosition[0].toFixed(6),
+            lng: newPosition[1].toFixed(6),
+            accuracy: `±${Math.round(newAccuracy)}m`,
+          });
+
+          setLoading(false);
+          return;
+        }
+
         let shouldUpdate = timeSinceUpdate >= UPDATE_THROTTLE;
 
-        if (position && timeSinceUpdate < UPDATE_THROTTLE) {
+        if (previousPosition && timeSinceUpdate < UPDATE_THROTTLE) {
           const distanceKm = calculateDistance(
-            position[0],
-            position[1],
+            previousPosition[0],
+            previousPosition[1],
             newPosition[0],
             newPosition[1],
           );
@@ -631,17 +656,19 @@ const MainApp: React.FC = () => {
           shouldUpdate = distanceMeters > 20;
         }
 
-        if (!position || shouldUpdate) {
+        if (!previousPosition || shouldUpdate) {
           console.log("📍 Location updated:", {
             lat: newPosition[0].toFixed(6),
             lng: newPosition[1].toFixed(6),
-            accuracy: `±${Math.round(pos.coords.accuracy)}m`,
+            accuracy: `±${Math.round(newAccuracy)}m`,
           });
 
           setPosition(newPosition);
-          setLocationAccuracy(pos.coords.accuracy);
+          setLocationAccuracy(newAccuracy);
           setLastLocationUpdate(now);
           lastUpdateRef.current = now;
+          lastAcceptedPositionRef.current = newPosition;
+          lastAccuracyRef.current = newAccuracy;
 
           // Update arrival notifications with new position
           arrivalNotifications.updatePosition(newPosition[0], newPosition[1]);
@@ -657,9 +684,14 @@ const MainApp: React.FC = () => {
         console.warn("Geolocation error:", err.message);
 
         // Only set default location if we don't have a position yet
-        if (!position) {
+        if (!lastAcceptedPositionRef.current) {
           console.log("📍 Using default location (Oriental Mindoro)");
-          setPosition([12.5966, 121.5258]);
+          const defaultPosition: [number, number] = [12.5966, 121.5258];
+          setPosition(defaultPosition);
+          lastAcceptedPositionRef.current = defaultPosition;
+          lastAccuracyRef.current = null;
+          lastUpdateRef.current = Date.now();
+          setLastLocationUpdate(Date.now());
         }
 
         setLoading(false);
