@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { getApiUrl } from '../utils/api';
+import { reviewsApi } from '../api/reviewsApi';
 import './ReviewWidget.css';
 
 interface ReviewWidgetProps {
@@ -59,13 +59,8 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
   // Fetch review summary
   const fetchSummary = async () => {
     try {
-      const response = await fetch(
-        `${getApiUrl('/api')}/reviews/summary?targetType=${targetType}&targetId=${targetId}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setSummary(data.summary);
-      }
+      const data = await reviewsApi.summary(targetType, targetId);
+      setSummary(data.summary);
     } catch (err) {
       console.error('Failed to fetch review summary:', err);
     }
@@ -74,13 +69,8 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
   // Fetch reviews
   const fetchReviews = async () => {
     try {
-      const response = await fetch(
-        `${getApiUrl('/api')}/reviews?targetType=${targetType}&targetId=${targetId}&pageSize=10&sortBy=created_at&sortOrder=DESC`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data.reviews || []);
-      }
+      const data = await reviewsApi.list(targetType, targetId, 10);
+      setReviews(data.reviews || []);
     } catch (err) {
       console.error('Failed to fetch reviews:', err);
     }
@@ -112,39 +102,31 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
     setSuccess(null);
 
     try {
-      const response = await fetch(`${getApiUrl('/api')}/reviews`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Session-Id': getSessionId(),
-        },
-        body: JSON.stringify({
+      await reviewsApi.create(
+        {
           targetType,
           targetId,
           rating,
           comment: comment.trim() || null,
           displayName: displayName.trim() || null,
-        }),
-      });
+        },
+        getSessionId(),
+      );
 
-      if (response.ok) {
-        setSuccess('Review submitted successfully!');
-        setRating(0);
-        setComment('');
-        setDisplayName('');
-        setShowForm(false);
-        
-        // Refresh summary and reviews
-        await fetchSummary();
-        if (showReviews) {
-          await fetchReviews();
-        }
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to submit review');
+      setSuccess('Review submitted successfully!');
+      setRating(0);
+      setComment('');
+      setDisplayName('');
+      setShowForm(false);
+      
+      // Refresh summary and reviews
+      await fetchSummary();
+      if (showReviews) {
+        await fetchReviews();
       }
-    } catch (err) {
-      setError('Failed to submit review. Please try again.');
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to submit review. Please try again.';
+      setError(msg);
       console.error('Review submission error:', err);
     } finally {
       setSubmitting(false);

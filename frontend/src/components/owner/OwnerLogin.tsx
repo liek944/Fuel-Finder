@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOwnerTheme, ThemeConfig } from '../../contexts/OwnerThemeContext';
 import './OwnerLogin.css';
+import { ownerApi } from '../../api/ownerApi';
 
 interface OwnerLoginProps {
   subdomain: string;
@@ -31,22 +32,11 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
 
   const fetchOwnerInfo = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiUrl}/api/owner/info`, {
-        headers: {
-          'x-owner-domain': subdomain
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setOwnerInfo(data);
-        
-        // Apply owner's theme if available
-        if (data.theme_config && Object.keys(data.theme_config).length > 0) {
-          console.log('🎨 Applying owner theme:', data.name);
-          applyTheme(data.theme_config);
-        }
+      const data = await ownerApi.getOwnerInfo(subdomain);
+      setOwnerInfo(data);
+      if (data.theme_config && Object.keys(data.theme_config).length > 0) {
+        console.log('🎨 Applying owner theme:', data.name);
+        applyTheme(data.theme_config);
       }
     } catch (err) {
       console.error('Failed to fetch owner info:', err);
@@ -59,23 +49,11 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
     setError(null);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      
       // Trim API key to remove accidental whitespace
       const trimmedApiKey = apiKey.trim();
-      
-      // Verify API key by fetching dashboard
-      const response = await fetch(`${apiUrl}/api/owner/dashboard`, {
-        headers: {
-          'x-api-key': trimmedApiKey,
-          'x-owner-domain': subdomain
-        }
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Invalid API key');
-      }
+      // Verify API key by fetching dashboard via ownerApi
+      await ownerApi.getDashboard(trimmedApiKey, subdomain);
 
       // Store trimmed API key securely
       localStorage.setItem('owner_api_key', trimmedApiKey);

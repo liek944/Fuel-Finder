@@ -12,7 +12,7 @@
  * - Automatically cleans up on page unload
  */
 
-import { getApiUrl } from './api';
+import { userApi } from '../api/userApi';
 
 class UserActivityTracker {
   private sessionId: string;
@@ -59,28 +59,14 @@ class UserActivityTracker {
       // Get approximate location (city-level)
       const location = await this.getApproximateLocation();
       
-      const url = getApiUrl('/api/user/heartbeat');
-      console.log('📡 Sending heartbeat to:', url);
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId: this.sessionId,
-          location,
-          page: page || this.currentPage,
-          feature
-        })
+      console.log('📡 Sending heartbeat');
+      const data = await userApi.heartbeat({
+        sessionId: this.sessionId,
+        location,
+        page: page || this.currentPage,
+        feature,
       });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('✅ Heartbeat successful - Active users:', data.activeUsers);
-      } else {
-        console.warn('❌ Heartbeat failed:', response.status, response.statusText);
-      }
+      console.log('✅ Heartbeat successful - Active users:', data.activeUsers);
     } catch (error) {
       // Log errors visibly for debugging
       console.error('❌ Heartbeat error:', error);

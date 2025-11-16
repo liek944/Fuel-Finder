@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './OwnerDashboard.css';
+import { ownerApi } from '../../api/ownerApi';
 
 interface DashboardStats {
   owner_name: string;
@@ -158,81 +159,47 @@ const OwnerDashboard: React.FC = () => {
   }, [activeTab, insightsTimeRange]);
 
   const fetchData = async (apiKey: string) => {
-    const subdomain = getSubdomain();
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-    
+    const subdomain = getSubdomain() || '';
     try {
       setError(null);
       setLoading(true);
 
-      // Fetch dashboard stats
-      const statsRes = await fetch(`${apiUrl}/api/owner/dashboard`, {
-        headers: {
-          'x-api-key': apiKey,
-          'x-owner-domain': subdomain || ''
-        }
-      });
-
-      if (!statsRes.ok) {
-        const errorData = await statsRes.json();
-        throw new Error(errorData.message || 'Failed to fetch dashboard');
-      }
-      const statsData = await statsRes.json();
+      const statsData = await ownerApi.getDashboard(apiKey, subdomain);
       setStats(statsData);
 
-      // Fetch stations
-      const stationsRes = await fetch(`${apiUrl}/api/owner/stations`, {
-        headers: {
-          'x-api-key': apiKey,
-          'x-owner-domain': subdomain || ''
-        }
-      });
-
-      if (stationsRes.ok) {
-        const stationsData = await stationsRes.json();
-        setStations(stationsData);
-      } else {
-        console.warn('Failed to fetch stations:', stationsRes.status);
+      try {
+        const stationsData = await ownerApi.getStations(apiKey, subdomain);
+        setStations(stationsData || []);
+      } catch (e) {
+        console.warn('Failed to fetch stations');
       }
 
-      // Fetch pending reports
-      const reportsRes = await fetch(`${apiUrl}/api/owner/price-reports/pending`, {
-        headers: {
-          'x-api-key': apiKey,
-          'x-owner-domain': subdomain || ''
-        }
-      });
-
-      if (reportsRes.ok) {
-        const reportsData = await reportsRes.json();
-        // Backend returns { count, reports } format
-        setPendingReports(reportsData.reports || []);
-      } else {
-        console.warn('Failed to fetch pending reports:', reportsRes.status);
+      try {
+        const reportsData = await ownerApi.getPendingReports(apiKey, subdomain);
+        setPendingReports((reportsData && reportsData.reports) || []);
+      } catch (e) {
+        console.warn('Failed to fetch pending reports');
       }
 
-      // Fetch reviews with filters
-      const reviewsParams = new URLSearchParams();
-      if (reviewsFilter !== 'all') reviewsParams.append('status', reviewsFilter);
-      if (reviewsStationFilter !== 'all') reviewsParams.append('stationId', reviewsStationFilter.toString());
-      reviewsParams.append('page', reviewsPage.toString());
-      reviewsParams.append('pageSize', reviewsPageSize.toString());
+      const params = new URLSearchParams();
+      if (reviewsFilter !== 'all') params.set('status', reviewsFilter);
+      if (reviewsStationFilter !== 'all') params.set('stationId', reviewsStationFilter.toString());
+      params.set('page', reviewsPage.toString());
+      params.set('pageSize', reviewsPageSize.toString());
 
-      const reviewsRes = await fetch(`${apiUrl}/api/owner/reviews?${reviewsParams.toString()}`, {
-        headers: {
-          'x-api-key': apiKey,
-          'x-owner-domain': subdomain || ''
+      try {
+        const reviewsData = await ownerApi.getReviews(apiKey, subdomain, {
+          status: reviewsFilter !== 'all' ? reviewsFilter : undefined,
+          stationId: reviewsStationFilter !== 'all' ? reviewsStationFilter : undefined,
+          page: reviewsPage,
+          pageSize: reviewsPageSize,
+        });
+        setReviews((reviewsData && reviewsData.reviews) || []);
+        if (reviewsData && (reviewsData as any).pagination) {
+          setReviewsTotalPages((reviewsData as any).pagination.totalPages || 1);
         }
-      });
-
-      if (reviewsRes.ok) {
-        const reviewsData = await reviewsRes.json();
-        setReviews(reviewsData.reviews || []);
-        if (reviewsData.pagination) {
-          setReviewsTotalPages(reviewsData.pagination.totalPages || 1);
-        }
-      } else {
-        console.warn('Failed to fetch reviews:', reviewsRes.status);
+      } catch (e) {
+        console.warn('Failed to fetch reviews');
       }
 
     } catch (error: any) {
@@ -244,29 +211,11 @@ const OwnerDashboard: React.FC = () => {
   };
 
   const fetchMarketInsights = async (apiKey: string, days: 7 | 15 | 30) => {
-    const subdomain = getSubdomain();
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-
+    const subdomain = getSubdomain() || '';
     try {
       setInsightsError(null);
       setInsightsLoading(true);
-
-      const params = new URLSearchParams();
-      params.set('days', days.toString());
-
-      const res = await fetch(`${apiUrl}/api/owner/market-insights?${params.toString()}`, {
-        headers: {
-          'x-api-key': apiKey,
-          'x-owner-domain': subdomain || ''
-        }
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to fetch market insights');
-      }
-
-      const data: MarketInsights = await res.json();
+      const data: MarketInsights = await ownerApi.getMarketInsights(apiKey, subdomain, days);
       setMarketInsights(data);
     } catch (err: any) {
       console.error('Market insights error:', err);
@@ -311,8 +260,7 @@ const OwnerDashboard: React.FC = () => {
 
   const handleUpdateStation = async (updatedData: Partial<Station>) => {
     const apiKey = getApiKey();
-    const subdomain = getSubdomain();
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+    const subdomain = getSubdomain() || '';
 
     if (!apiKey || !editingStation) {
       showToast('API key or station data not found', 'error');
@@ -322,47 +270,24 @@ const OwnerDashboard: React.FC = () => {
     setSavingStation(true);
 
     try {
-      // Show saving notification
       showToast('Saving changes...', 'info');
+      await ownerApi.updateStation(editingStation.id, updatedData, apiKey, subdomain);
 
-      const response = await fetch(`${apiUrl}/api/owner/stations/${editingStation.id}`, {
-        method: 'PUT',
-        headers: {
-          'x-api-key': apiKey,
-          'x-owner-domain': subdomain || '',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(updatedData)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update station');
-      }
-
-      // Update fuel prices if provided
       if (updatedData.fuel_prices) {
         for (const fuelPrice of updatedData.fuel_prices) {
-          await fetch(`${apiUrl}/api/owner/stations/${editingStation.id}/fuel-price`, {
-            method: 'PUT',
-            headers: {
-              'x-api-key': apiKey,
-              'x-owner-domain': subdomain || '',
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              fuel_type: fuelPrice.fuel_type,
-              price: fuelPrice.price
-            })
-          });
+          await ownerApi.updateFuelPrice(
+            editingStation.id,
+            fuelPrice.fuel_type,
+            fuelPrice.price,
+            apiKey,
+            subdomain,
+          );
         }
       }
 
       showToast('✓ Station updated successfully!', 'success');
       setShowEditModal(false);
       setEditingStation(null);
-      
-      // Refresh data
       await fetchData(apiKey);
     } catch (error: any) {
       console.error('Error updating station:', error);
@@ -375,7 +300,6 @@ const OwnerDashboard: React.FC = () => {
   const handleVerifyReport = async (reportId: number, action: 'verify' | 'reject') => {
     const apiKey = getApiKey();
     const subdomain = getSubdomain();
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
     if (!apiKey) {
       alert('API key not found. Please login again.');
@@ -392,26 +316,10 @@ const OwnerDashboard: React.FC = () => {
     setProcessingReportId(reportId);
 
     try {
-      const response = await fetch(`${apiUrl}/api/owner/price-reports/${reportId}/${action}`, {
-        method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-          'x-owner-domain': subdomain || '',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          notes: action === 'verify' ? 'Verified by owner' : 'Rejected by owner',
-          reason: action === 'reject' ? 'Incorrect price information' : undefined
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log(`✅ ${action} response:`, result);
+      const result =
+        action === 'verify'
+          ? await ownerApi.verifyReport(reportId, apiKey, subdomain || '')
+          : await ownerApi.rejectReport(reportId, apiKey, subdomain || '');
 
       // Show success message immediately
       alert(result.message || `Price report ${action === 'verify' ? 'approved' : 'rejected'} successfully!`);
@@ -868,18 +776,9 @@ const OwnerDashboard: React.FC = () => {
                                   if (!confirm('Hide this review from public display?')) return;
                                   const apiKey = getApiKey();
                                   const subdomain = getSubdomain();
-                                  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
                                   try {
-                                    const res = await fetch(`${apiUrl}/api/owner/reviews/${review.id}`, {
-                                      method: 'PATCH',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                        'x-api-key': apiKey || '',
-                                        'x-owner-domain': subdomain || ''
-                                      },
-                                      body: JSON.stringify({ status: 'rejected' })
-                                    });
-                                    if (res.ok) {
+                                    const res = await ownerApi.updateReview(review.id, apiKey || '', subdomain || '', { status: 'rejected' });
+                                    if (res) {
                                       showToast('✓ Review hidden successfully', 'success');
                                       handleRefresh();
                                     } else {
@@ -901,18 +800,9 @@ const OwnerDashboard: React.FC = () => {
                                   if (!confirm('Show this review publicly?')) return;
                                   const apiKey = getApiKey();
                                   const subdomain = getSubdomain();
-                                  const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
                                   try {
-                                    const res = await fetch(`${apiUrl}/api/owner/reviews/${review.id}`, {
-                                      method: 'PATCH',
-                                      headers: {
-                                        'Content-Type': 'application/json',
-                                        'x-api-key': apiKey || '',
-                                        'x-owner-domain': subdomain || ''
-                                      },
-                                      body: JSON.stringify({ status: 'published' })
-                                    });
-                                    if (res.ok) {
+                                    const res = await ownerApi.updateReview(review.id, apiKey || '', subdomain || '', { status: 'published' });
+                                    if (res) {
                                       showToast('✓ Review published successfully', 'success');
                                       handleRefresh();
                                     } else {
@@ -1244,25 +1134,13 @@ const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, o
 
     const apiKey = localStorage.getItem('owner_api_key');
     const subdomain = localStorage.getItem('owner_subdomain');
-    const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
 
     try {
       // Only call the API if the fuel type exists in the database (station has existing fuel_prices)
       const existingFuelPrice = station.fuel_prices?.find(fp => fp.fuel_type === fuelType);
       
       if (existingFuelPrice) {
-        const response = await fetch(`${apiUrl}/api/owner/stations/${station.id}/fuel-price/${encodeURIComponent(fuelType)}`, {
-          method: 'DELETE',
-          headers: {
-            'x-api-key': apiKey || '',
-            'x-owner-domain': subdomain || '',
-          }
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to delete fuel price');
-        }
+        await ownerApi.deleteFuelPrice(station.id, fuelType, apiKey || '', subdomain || '');
 
         console.log(`✅ ${fuelType} deleted from database`);
       }

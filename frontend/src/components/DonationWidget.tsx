@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './DonationWidget.css';
-import { apiGet, apiPost } from '../utils/api';
+import { donationsApi } from '../api/donationsApi';
 
 interface DonationStats {
   total_donations: number;
@@ -53,9 +53,8 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
 
   const fetchDonationStats = async () => {
     try {
-      const response = await apiGet('/api/donations/stats');
-      const data = await response.json();
-      setStats(data);
+      const data = await donationsApi.stats();
+      setStats(data || null);
     } catch (error) {
       console.error('Failed to fetch donation stats:', error);
     }
@@ -63,9 +62,8 @@ const DonationWidget: React.FC<DonationWidgetProps> = ({ onClose }) => {
 
   const fetchRecentDonations = async () => {
     try {
-      const response = await apiGet('/api/donations/recent?limit=5');
-      const data = await response.json();
-      setRecentDonations(data);
+      const data = await donationsApi.recent(5);
+      setRecentDonations(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch recent donations:', error);
     }

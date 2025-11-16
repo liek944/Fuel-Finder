@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { getApiUrl } from "../../utils/api";
+import { stationsApi } from "../../api/stationsApi";
+import type { PriceReport } from "../../types/price.types";
 import "../../styles/PriceReportWidget.css";
-
-interface PriceReport {
-  id: number;
-  station_id: number;
-  fuel_type: string;
-  price: number | string;
-  notes?: string;
-  reporter_name: string;
-  reporter_ip: string;
-  is_verified: boolean;
-  created_at: string;
-}
 
 interface PriceReportWidgetProps {
   stationId: number;
@@ -54,13 +43,8 @@ const PriceReportWidget: React.FC<PriceReportWidgetProps> = ({
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const response = await fetch(
-          getApiUrl(`/api/stations/${stationId}/price-reports?limit=5`),
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setRecentReports(data.reports || []);
-        }
+        const data = await stationsApi.getPriceReports(stationId, 5);
+        setRecentReports(data.reports || []);
       } catch (err) {
         console.error("Error fetching reports:", err);
         setMessage({ type: "error", text: "Failed to fetch recent reports" });
@@ -90,22 +74,13 @@ const PriceReportWidget: React.FC<PriceReportWidgetProps> = ({
     setMessage(null);
 
     try {
-      const response = await fetch(
-        getApiUrl(`/api/stations/${stationId}/report-price`),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            fuel_type: fuelType,
-            price: priceNum,
-            notes: notes.trim() || null,
-          }),
-        },
-      );
+      await stationsApi.reportPrice(stationId, {
+        fuel_type: fuelType,
+        price: priceNum,
+        notes: notes.trim() || null,
+      });
 
-      if (response.ok) {
+      {
         setMessage({
           type: "success",
           text: "Price reported successfully! Thank you for contributing.",
@@ -117,15 +92,10 @@ const PriceReportWidget: React.FC<PriceReportWidgetProps> = ({
           setShowForm(false);
           setMessage(null);
         }, 2000);
-      } else {
-        const errorData = await response.json();
-        setMessage({
-          type: "error",
-          text: errorData.message || "Failed to submit report",
-        });
       }
-    } catch (err) {
-      setMessage({ type: "error", text: "Network error. Please try again." });
+    } catch (err: any) {
+      const msg = err?.message || "Network error. Please try again.";
+      setMessage({ type: "error", text: msg });
     } finally {
       setSubmitting(false);
     }

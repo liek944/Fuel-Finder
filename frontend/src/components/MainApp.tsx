@@ -12,7 +12,9 @@ import {
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import FollowCameraController from "./FollowCameraController";
-import { getApiUrl } from "../utils/api";
+import { routingApi } from "../api/routingApi";
+import { stationsApi } from "../api/stationsApi";
+import { poisApi } from "../api/poisApi";
 // import TripRecorder from './TripRecorder';
 // import TripHistoryPanel from './TripHistoryPanel';
 // import TripReplayVisualizer from './TripReplayVisualizer';
@@ -721,22 +723,17 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     if (!position) return;
 
-    const abortController = new AbortController();
+    let cancelled = false;
 
     const fetchStations = async () => {
       // No loading indicator for automatic background updates
       try {
-        const url = getApiUrl(
-          `/api/stations/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
-        );
-        const response = await fetch(url, { signal: abortController.signal });
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await stationsApi.nearby(position[0], position[1], radiusMeters);
+        if (!cancelled) {
+          setStations(Array.isArray(data) ? data : []);
         }
-        const data = await response.json();
-        setStations(Array.isArray(data) ? data : []);
       } catch (error: any) {
-        if (error.name !== 'AbortError') {
+        if (!cancelled && error.name !== 'AbortError') {
           console.error("Failed to fetch stations:", error);
         }
       }
@@ -745,7 +742,7 @@ const MainApp: React.FC = () => {
     fetchStations();
     
     return () => {
-      abortController.abort();
+      cancelled = true;
     };
   }, [position, radiusMeters]);
 
@@ -753,21 +750,16 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     if (!position) return;
 
-    const abortController = new AbortController();
+    let cancelled = false;
 
     const fetchPOIs = async () => {
       try {
-        const url = getApiUrl(
-          `/api/pois/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
-        );
-        const response = await fetch(url, { signal: abortController.signal });
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        const data = await poisApi.nearby(position[0], position[1], radiusMeters);
+        if (!cancelled) {
+          setPois(Array.isArray(data) ? data : []);
         }
-        const data = await response.json();
-        setPois(Array.isArray(data) ? data : []);
       } catch (error: any) {
-        if (error.name !== 'AbortError') {
+        if (!cancelled && error.name !== 'AbortError') {
           console.warn("Failed to fetch POIs:", error);
         }
       }
@@ -776,7 +768,7 @@ const MainApp: React.FC = () => {
     fetchPOIs();
     
     return () => {
-      abortController.abort();
+      cancelled = true;
     };
   }, [position, radiusMeters]);
 
@@ -786,20 +778,10 @@ const MainApp: React.FC = () => {
 
     const refreshData = async () => {
       try {
-        // Fetch stations
-        const stationsUrl = getApiUrl(
-          `/api/stations/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
-        );
-        const stationsResponse = await fetch(stationsUrl);
-        const stationsData = await stationsResponse.json();
+        const stationsData = await stationsApi.nearby(position[0], position[1], radiusMeters);
         setStations(Array.isArray(stationsData) ? stationsData : []);
 
-        // Fetch POIs
-        const poisUrl = getApiUrl(
-          `/api/pois/nearby?lat=${position[0]}&lng=${position[1]}&radiusMeters=${radiusMeters}`,
-        );
-        const poisResponse = await fetch(poisUrl);
-        const poisData = await poisResponse.json();
+        const poisData = await poisApi.nearby(position[0], position[1], radiusMeters);
         setPois(Array.isArray(poisData) ? poisData : []);
 
         // Update last refresh timestamp
@@ -970,15 +952,13 @@ const MainApp: React.FC = () => {
     setRouteStartPosition(position); // Store the starting position
 
     try {
-      const url = getApiUrl(
-        `/api/route?start=${position[0]},${position[1]}&end=${location.location.lat},${location.location.lng}`,
+      console.log("🗺️ Fetching route...");
+      const data = await routingApi.route(
+        position[0],
+        position[1],
+        location.location.lat,
+        location.location.lng,
       );
-      console.log("🗺️ Fetching route from:", url);
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Route API error: ${response.status}`);
-      }
-      const data = await response.json();
       console.log("📍 Route data received:", data);
       console.log("📍 Coordinates count:", data?.coordinates?.length || 0);
       console.log("📍 Sample coordinates:", data?.coordinates?.slice(0, 3));
