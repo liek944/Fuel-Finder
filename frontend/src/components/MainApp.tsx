@@ -507,6 +507,7 @@ const MainApp: React.FC = () => {
   const [routingTo, setRoutingTo] = useState<Station | POI | null>(null);
   const [routeStartPosition, setRouteStartPosition] = useState<[number, number] | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   
   // Bottom sheet state for mobile marker details
   const [selectedItem, setSelectedItem] = useState<{ type: 'station' | 'poi'; data: Station | POI } | null>(null);
@@ -1098,6 +1099,21 @@ const MainApp: React.FC = () => {
     }
   };
 
+  const handleToggleVoice = (enabled: boolean) => {
+    setVoiceEnabled(enabled);
+    if (enabled) {
+      arrivalNotifications.testVoice("Voice announcements enabled");
+    }
+  };
+
+  const handleToggleNotifications = (enabled: boolean) => {
+    setNotificationsEnabled(enabled);
+  };
+
+  const handleToggleKeepScreenOn = (enabled: boolean) => {
+    setKeepScreenOn(enabled);
+  };
+
   // Get unique brands for filter (memoized for performance)
   const uniqueBrands = useMemo(() => 
     Array.from(new Set(stations.map((station) => station.brand))).sort(),
@@ -1151,20 +1167,32 @@ const MainApp: React.FC = () => {
         </button>
       )}
 
+      {isMobile && (
+        <button
+          className="mobile-menu-button"
+          onClick={() => setIsMenuOpen(true)}
+          title="Menu"
+          aria-label="Open menu"
+          type="button"
+        >
+          ☰
+        </button>
+      )}
+
       {/* Location Accuracy Indicator */}
       {locationAccuracy !== null && (
         <div className="location-accuracy-indicator">
-          <div className="location-accuracy-header">
-            <span className="location-accuracy-dot" />
-            GPS Accuracy
-          </div>
-          <div className="location-accuracy-value">
-            ±{Math.round(locationAccuracy)}m
-          </div>
-          <div className="location-accuracy-timestamp">
-            Updated {getTimeAgo(lastLocationUpdate)}
-          </div>
+        <div className="location-accuracy-header">
+          <span className="location-accuracy-dot" />
+          GPS Accuracy
         </div>
+        <div className="location-accuracy-value">
+          ±{Math.round(locationAccuracy)}m
+        </div>
+        <div className="location-accuracy-timestamp">
+          Updated {getTimeAgo(lastLocationUpdate)}
+        </div>
+      </div>
       )}
 
       {/* Map */}
@@ -1655,20 +1683,17 @@ const MainApp: React.FC = () => {
           zIndex: 1000,
         }}
       >
-        <SettingsButton
-          voiceEnabled={voiceEnabled}
-          onToggleVoice={(enabled) => {
-            setVoiceEnabled(enabled);
-            if (enabled) {
-              arrivalNotifications.testVoice("Voice announcements enabled");
-            }
-          }}
-          notificationsEnabled={notificationsEnabled}
-          onToggleNotifications={(enabled) => setNotificationsEnabled(enabled)}
-          keepScreenOn={keepScreenOn}
-          onToggleKeepScreenOn={(enabled) => setKeepScreenOn(enabled)}
-        />
-
+        {!isMobile && (
+          <SettingsButton
+            voiceEnabled={voiceEnabled}
+            onToggleVoice={handleToggleVoice}
+            notificationsEnabled={notificationsEnabled}
+            onToggleNotifications={handleToggleNotifications}
+            keepScreenOn={keepScreenOn}
+            onToggleKeepScreenOn={handleToggleKeepScreenOn}
+          />
+        )}
+        
         {/* Voice Announcement Toggle Button */}
         {false && (
           <button
@@ -1713,6 +1738,94 @@ const MainApp: React.FC = () => {
           </button>
         )}
       </div>
+
+      {isMobile && isMenuOpen && (
+        <div className="mobile-menu-overlay">
+          <div className="mobile-menu-panel">
+            <div className="mobile-menu-header">
+              <div className="mobile-menu-title">Fuel Finder</div>
+              <button
+                className="mobile-menu-close"
+                onClick={() => setIsMenuOpen(false)}
+                aria-label="Close menu"
+                type="button"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mobile-menu-links">
+              <button
+                className="mobile-menu-link"
+                type="button"
+                onClick={() => {
+                  info("About page coming soon.");
+                  setIsMenuOpen(false);
+                }}
+              >
+                ℹ️ About
+              </button>
+              <button
+                className="mobile-menu-link"
+                type="button"
+                onClick={() => {
+                  info("Contact page coming soon.");
+                  setIsMenuOpen(false);
+                }}
+              >
+                📞 Contact
+              </button>
+            </div>
+            <div className="mobile-menu-section-title">Settings</div>
+            <div className="mobile-menu-settings">
+              <div className="mobile-menu-setting-row">
+                <div className="mobile-menu-setting-label">
+                  🔊 Voice announcements
+                </div>
+                <button
+                  type="button"
+                  className="mobile-menu-toggle-button"
+                  aria-label="Toggle voice announcements"
+                  role="switch"
+                  aria-checked={voiceEnabled}
+                  onClick={() => handleToggleVoice(!voiceEnabled)}
+                >
+                  {voiceEnabled ? "ON" : "OFF"}
+                </button>
+              </div>
+              <div className="mobile-menu-setting-row">
+                <div className="mobile-menu-setting-label">
+                  🔔 Visual alerts
+                </div>
+                <button
+                  type="button"
+                  className="mobile-menu-toggle-button"
+                  aria-label="Toggle visual alerts"
+                  role="switch"
+                  aria-checked={notificationsEnabled}
+                  onClick={() => handleToggleNotifications(!notificationsEnabled)}
+                >
+                  {notificationsEnabled ? "ON" : "OFF"}
+                </button>
+              </div>
+              <div className="mobile-menu-setting-row">
+                <div className="mobile-menu-setting-label">
+                  📱 Keep screen on
+                </div>
+                <button
+                  type="button"
+                  className="mobile-menu-toggle-button"
+                  aria-label="Toggle keep screen on"
+                  role="switch"
+                  aria-checked={keepScreenOn}
+                  onClick={() => handleToggleKeepScreenOn(!keepScreenOn)}
+                >
+                  {keepScreenOn ? "ON" : "OFF"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PWA Install Button */}
       <PWAInstallButton />
