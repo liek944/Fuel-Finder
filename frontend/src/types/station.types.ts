@@ -5,7 +5,7 @@
 
 export interface FuelPrice {
   fuel_type: string;
-  price: number;
+  price: number | string;
   price_updated_at?: string;
   price_updated_by?: string;
 }
@@ -52,6 +52,9 @@ export interface POI {
   id: number;
   name: string;
   type: string;
+  address?: string;
+  phone?: string;
+  operating_hours?: any;
   location: Location;
   distance_meters?: number;
   images?: Image[];

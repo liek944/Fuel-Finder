@@ -537,4 +537,9 @@
     font-weight: 600;
     color: #ffffff;
     background: #9e9e9e;
+    transition: background 0.2s ease;
+}
+
+.mobile-menu-toggle-button[aria-checked="true"] {
+    background: #4caf50;
 }

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { apiGet, apiDelete } from '../utils/api';
+import { adminApi } from '../api/adminApi';
 import './ReviewsManagement.css';
 
 interface Review {
@@ -41,23 +41,16 @@ export const ReviewsManagement: React.FC<ReviewsManagementProps> = ({ adminApiKe
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filterStatus !== 'all') params.append('status', filterStatus);
-      if (filterTargetType !== 'all') params.append('targetType', filterTargetType);
-      if (searchTerm) params.append('searchTerm', searchTerm);
-      params.append('page', currentPage.toString());
-      params.append('pageSize', pageSize.toString());
-
-      const response = await apiGet(`/api/admin/reviews?${params.toString()}`, adminApiKey);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setReviews(data.reviews || []);
-        setTotalPages(data.pagination.totalPages);
-        setTotalReviews(data.pagination.total);
-      } else {
-        console.error('Failed to fetch reviews');
-      }
+      const data = await adminApi.listReviews(adminApiKey, {
+        status: filterStatus,
+        targetType: filterTargetType,
+        searchTerm,
+        page: currentPage,
+        pageSize,
+      });
+      setReviews(data.reviews || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setTotalReviews(data.pagination?.total || data.total || 0);
     } catch (error) {
       console.error('Error fetching reviews:', error);
     } finally {
@@ -71,20 +64,8 @@ export const ReviewsManagement: React.FC<ReviewsManagementProps> = ({ adminApiKe
 
   const handleUpdateStatus = async (reviewId: number, newStatus: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/admin/reviews/${reviewId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': adminApiKey,
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-
-      if (response.ok) {
-        fetchReviews(); // Refresh list
-      } else {
-        alert('Failed to update review status');
-      }
+      await adminApi.updateReviewStatus(reviewId, newStatus as any, adminApiKey);
+      fetchReviews();
     } catch (error) {
       console.error('Error updating review:', error);
       alert('Error updating review');
@@ -97,13 +78,8 @@ export const ReviewsManagement: React.FC<ReviewsManagementProps> = ({ adminApiKe
     }
 
     try {
-      const response = await apiDelete(`/api/admin/reviews/${reviewId}`, adminApiKey);
-      
-      if (response.ok) {
-        fetchReviews(); // Refresh list
-      } else {
-        alert('Failed to delete review');
-      }
+      await adminApi.deleteReview(reviewId, adminApiKey);
+      fetchReviews();
     } catch (error) {
       console.error('Error deleting review:', error);
       alert('Error deleting review');
