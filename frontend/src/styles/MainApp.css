@@ -414,3 +414,127 @@
         display: none; /* desktop does not use chip */
     }
 }
+
+.mobile-menu-button {
+    position: absolute;
+    top: 1rem;
+    right: 0.75rem;
+    z-index: 1200;
+    width: 40px;
+    height: 40px;
+    border-radius: 9999px;
+    border: 1px solid #e0e0e0;
+    background: rgba(255, 255, 255, 0.96);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.mobile-menu-button:active {
+    transform: scale(0.96);
+}
+
+.mobile-menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1400;
+    display: flex;
+    justify-content: flex-start;
+}
+
+.mobile-menu-panel {
+    width: 80%;
+    max-width: 320px;
+    height: 100%;
+    background: #ffffff;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.35);
+    padding: 16px 16px 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.mobile-menu-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #111827;
+}
+
+.mobile-menu-close {
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+
+.mobile-menu-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0 16px;
+}
+
+.mobile-menu-link {
+    text-align: left;
+    border: none;
+    background: transparent;
+    padding: 8px 0;
+    font-size: 0.9rem;
+    color: #111827;
+    cursor: pointer;
+}
+
+.mobile-menu-link:hover {
+    color: #1D4ED8;
+}
+
+.mobile-menu-section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+    margin-bottom: 6px;
+}
+
+.mobile-menu-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.mobile-menu-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.mobile-menu-setting-label {
+    font-size: 0.85rem;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mobile-menu-toggle-button {
+    min-width: 56px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: #9e9e9e;
+}
