@@ -21,6 +21,7 @@ import SettingsButton from "./SettingsButton";
 // import DonationWidget from "./DonationWidget"; // COMMENTED OUT: PayMongo payment integration disabled
 import Toast from "./Toast";
 import { useToast } from "../hooks/useToast";
+import VisualAlert, { VisualAlertData } from "./VisualAlert";
 // import { Trip } from '../utils/indexedDB';
 import StationDetail from "./details/StationDetail";
 import PoiDetail from "./details/PoiDetail";
@@ -584,10 +585,13 @@ const MainApp: React.FC = () => {
   const STALE_POSITION_MS = 20000;
   const MAX_ACCURACY_METERS = 50;
 
-  // Arrival notification state (voice only)
+  // Arrival notification state
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
   const [keepScreenOn, setKeepScreenOn] = useState<boolean>(false);
+  
+  // Visual alerts state
+  const [visualAlerts, setVisualAlerts] = useState<VisualAlertData[]>([]);
 
   // Convert position to L.LatLng for follow camera
   const userLatLng = position ? L.latLng(position[0], position[1]) : null;
@@ -838,24 +842,50 @@ const MainApp: React.FC = () => {
       }
     } catch {}
   }, []);
+  
+  // Register visual alert callback
+  useEffect(() => {
+    const handleVisualAlert = (title: string, message: string, icon: string) => {
+      const alert: VisualAlertData = {
+        id: Date.now().toString(),
+        title,
+        message,
+        icon,
+        duration: 5000,
+      };
+      setVisualAlerts((prev) => [...prev, alert]);
+    };
+    
+    arrivalNotifications.setVisualAlertCallback(handleVisualAlert);
+    
+    return () => {
+      arrivalNotifications.setVisualAlertCallback(null);
+    };
+  }, []);
+  
+  // Dismiss visual alert
+  const dismissVisualAlert = useCallback((id: string) => {
+    setVisualAlerts((prev) => prev.filter((alert) => alert.id !== id));
+  }, []);
 
   // Sync voice settings when changed
   useEffect(() => {
     arrivalNotifications.setVoiceEnabled(voiceEnabled);
   }, [voiceEnabled]);
 
-  // Apply visual notifications setting and request permission when enabling
+  // Apply visual notifications setting
   useEffect(() => {
     arrivalNotifications.setNotificationsEnabled(notificationsEnabled);
     if (notificationsEnabled) {
-      arrivalNotifications.requestNotificationPermission().then((granted) => {
-        if (!granted) {
-          setNotificationsEnabled(false);
-          warning("Notifications are blocked. Allow them in your browser settings.");
-        } else {
-          info("Visual notifications enabled");
-        }
-      });
+      // Show confirmation alert
+      const alert: VisualAlertData = {
+        id: 'visual-enabled-' + Date.now(),
+        title: '✅ Visual notifications enabled',
+        message: 'You will see alerts when approaching destinations',
+        icon: '🔔',
+        duration: 3000,
+      };
+      setVisualAlerts((prev) => [...prev, alert]);
     }
   }, [notificationsEnabled]);
 
@@ -1687,6 +1717,9 @@ const MainApp: React.FC = () => {
       {/* PWA Install Button */}
       <PWAInstallButton />
 
+      {/* Visual Alerts - In-app arrival notifications */}
+      <VisualAlert alerts={visualAlerts} onDismiss={dismissVisualAlert} />
+      
       {/* Toast Notifications */}
       <div className="toast-container">
         {toasts.map((toast) => (

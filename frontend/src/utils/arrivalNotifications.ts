@@ -19,15 +19,19 @@ interface NotificationState {
   lastDistance: number;
 }
 
+interface VisualAlertCallback {
+  (title: string, message: string, icon: string): void;
+}
+
 class ArrivalNotificationManager {
   private notificationState: NotificationState | null = null;
   private currentDestination: Destination | null = null;
   private speechSynthesis: SpeechSynthesis | null = null;
-  private permissionGranted: boolean = false;
   private voiceEnabled: boolean = true;
-  private notificationsEnabled: boolean = false; // Disabled - using voice only
+  private notificationsEnabled: boolean = false; // Visual notifications (in-app alerts)
   private keepScreenOn: boolean = false;
   private wakeLock: any | null = null;
+  private visualAlertCallback: VisualAlertCallback | null = null;
   private handleWakeLockVisibilityChange = async (): Promise<void> => {
     if (!this.keepScreenOn) return;
     if (document.hidden) {
@@ -45,29 +49,6 @@ class ArrivalNotificationManager {
     if ('speechSynthesis' in window) {
       this.speechSynthesis = window.speechSynthesis;
     }
-  }
-
-  /**
-   * Request notification permission from user
-   */
-  async requestNotificationPermission(): Promise<boolean> {
-    if (!('Notification' in window)) {
-      console.warn('This browser does not support notifications');
-      return false;
-    }
-
-    if (Notification.permission === 'granted') {
-      this.permissionGranted = true;
-      return true;
-    }
-
-    if (Notification.permission !== 'denied') {
-      const permission = await Notification.requestPermission();
-      this.permissionGranted = permission === 'granted';
-      return this.permissionGranted;
-    }
-
-    return false;
   }
 
   /**
@@ -94,47 +75,33 @@ class ArrivalNotificationManager {
   }
 
   /**
-   * Show browser notification
+   * Show visual alert (in-app notification)
    */
-  private showNotification(title: string, body: string, icon?: string): void {
+  private showVisualAlert(title: string, message: string, icon: string): void {
     if (!this.notificationsEnabled) {
-      console.log('🔕 Notifications disabled by user');
+      console.log('🔕 Visual alerts disabled by user');
       return;
     }
 
-    if (!this.permissionGranted) {
-      console.warn('❌ Notification BLOCKED - Permission not granted');
-      console.warn('💡 Fix: Click the lock icon in address bar → Notifications → Allow');
+    if (!this.visualAlertCallback) {
+      console.warn('⚠️ Visual alert callback not registered');
       return;
     }
 
     try {
-      console.log('📢 Showing notification:', title);
-      const options: NotificationOptions = {
-        body,
-        icon: icon || '/logo192.png',
-        badge: '/logo192.png',
-        tag: 'fuel-finder-arrival',
-        requireInteraction: false,
-      };
-
-      if ('serviceWorker' in navigator && (navigator as any).serviceWorker?.ready) {
-        (navigator as any).serviceWorker.ready
-          .then((registration: ServiceWorkerRegistration) => {
-            registration.showNotification(title, options);
-          })
-          .catch(() => {
-            const notification = new Notification(title, options);
-            setTimeout(() => notification.close(), 5000);
-          });
-      } else {
-        const notification = new Notification(title, options);
-        setTimeout(() => notification.close(), 5000);
-      }
-      console.log('✅ Notification displayed successfully');
+      console.log('📢 Showing visual alert:', title);
+      this.visualAlertCallback(title, message, icon);
+      console.log('✅ Visual alert displayed successfully');
     } catch (error) {
-      console.error('❌ Failed to show notification:', error);
+      console.error('❌ Failed to show visual alert:', error);
     }
+  }
+
+  /**
+   * Register callback for visual alerts
+   */
+  setVisualAlertCallback(callback: VisualAlertCallback | null): void {
+    this.visualAlertCallback = callback;
   }
 
   /**
@@ -223,10 +190,10 @@ class ArrivalNotificationManager {
     // Arrival notification (within 20 meters)
     if (distance <= 20 && !this.notificationState.notifiedArrival) {
       this.notificationState.notifiedArrival = true;
-      this.showNotification(
+      this.showVisualAlert(
         '🎉 You have arrived!',
         `You've reached ${destName}`,
-        '/logo192.png'
+        '🎉'
       );
       this.speak(`You have arrived at ${destName}`);
       (navigator as any).vibrate && (navigator as any).vibrate(200);
@@ -239,10 +206,10 @@ class ArrivalNotificationManager {
       !this.notificationState.notified100m
     ) {
       this.notificationState.notified100m = true;
-      this.showNotification(
+      this.showVisualAlert(
         '📍 Almost there!',
         `${destName} is 100 meters ahead`,
-        '/logo192.png'
+        '📍'
       );
       this.speak(`${destName} is 100 meters ahead`);
       (navigator as any).vibrate && (navigator as any).vibrate(200);
@@ -255,10 +222,10 @@ class ArrivalNotificationManager {
       !this.notificationState.notified200m
     ) {
       this.notificationState.notified200m = true;
-      this.showNotification(
+      this.showVisualAlert(
         '🚗 Approaching destination',
         `${destName} is 200 meters ahead`,
-        '/logo192.png'
+        '🚗'
       );
       this.speak(`Approaching ${destName}, 200 meters ahead`);
       (navigator as any).vibrate && (navigator as any).vibrate(200);
@@ -271,10 +238,10 @@ class ArrivalNotificationManager {
       !this.notificationState.notified500m
     ) {
       this.notificationState.notified500m = true;
-      this.showNotification(
+      this.showVisualAlert(
         '🎯 Destination nearby',
         `${destName} is 500 meters ahead`,
-        '/logo192.png'
+        '🎯'
       );
       this.speak(`${destName} is 500 meters ahead`);
       (navigator as any).vibrate && (navigator as any).vibrate(200);
@@ -356,24 +323,23 @@ class ArrivalNotificationManager {
   /**
    * Get current settings
    */
-  getSettings(): { voice: boolean; notifications: boolean; permission: boolean } {
+  getSettings(): { voice: boolean; notifications: boolean } {
     return {
       voice: this.voiceEnabled,
       notifications: this.notificationsEnabled,
-      permission: this.permissionGranted,
     };
   }
 
   /**
-   * Test notification (for user to verify it works)
+   * Test visual alert (for user to verify it works)
    */
   testNotification(): void {
-    this.showNotification(
-      '🔔 Test Notification',
-      'Arrival notifications are working!',
-      '/logo192.png'
+    this.showVisualAlert(
+      '🔔 Test Alert',
+      'Visual alerts are working!',
+      '🔔'
     );
-    this.speak('Test notification. Arrival alerts are working.');
+    this.speak('Test alert. Visual notifications are working.');
   }
 
   /**
