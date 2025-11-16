@@ -132,8 +132,8 @@ const SettingsButton: React.FC<SettingsButtonProps> = ({
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>🔔 Visual notifications</div>
-              <Toggle on={notificationsEnabled} onClick={() => onToggleNotifications(!notificationsEnabled)} label="Toggle visual notifications" />
+              <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>🔔 Visual alerts</div>
+              <Toggle on={notificationsEnabled} onClick={() => onToggleNotifications(!notificationsEnabled)} label="Toggle visual alerts" />
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
