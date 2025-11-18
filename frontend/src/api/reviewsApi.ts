@@ -1,4 +1,4 @@
-import { apiGet, apiCall } from '../utils/api';
+import { apiGet, apiCall, getApiUrl } from '../utils/api';
 import { apiEndpoints } from '../constants/apiEndpoints';
 
 export const reviewsApi = {
@@ -22,7 +22,7 @@ export const reviewsApi = {
   ): Promise<any> => {
     const path = apiEndpoints.reviews.create();
     const res = await apiCall(
-      path.startsWith('/') ? path : `/${path}`,
+      getApiUrl(path),
       {
         method: 'POST',
         headers: { 'X-Session-Id': sessionId, 'Content-Type': 'application/json' },
