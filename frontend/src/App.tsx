@@ -7,7 +7,7 @@ import {
   Link,
 } from "react-router-dom";
 import MainApp from "./components/MainApp";
-import AdminPortal from "./components/AdminPortal";
+import AdminPortalContainer from "./components/admin/AdminPortalContainer";
 import OwnerLogin from "./components/owner/OwnerLogin";
 import OwnerDashboard from "./components/owner/OwnerDashboard";
 import About from "./components/About";
@@ -125,7 +125,7 @@ function App() {
           <Route path="/about" element={<About />} />
 
           {/* Admin portal */}
-          <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/admin" element={<AdminPortalContainer />} />
 
           {/* Redirect any unknown routes to main app */}
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -68,7 +68,7 @@
 
 ### 4.1 Structure
 
-- [ ] **Define target folder structure**
+- [x] **Define target folder structure**
   - **Task:** Use/extend something like:
     - `src/components/admin/dashboard/…`
     - `src/components/admin/stations/…`
@@ -82,15 +82,15 @@
 
 - [ ] **Stations management**
   - **Task:** Extract from `AdminPortal.tsx`:
-    - `AdminStationList`
-    - `AdminStationForm`
-    - `AdminStationMap`
+    - [x] `AdminStationList`
+    - [x] `AdminStationForm`
+    - [x] `AdminStationMap`
   - **Impact:** Smaller, focused files; easier testing.
 
 - [ ] **POIs management**
   - **Task:** Extract:
-    - `AdminPoiList`
-    - `AdminPoiForm`
+    - [x] `AdminPoiList`
+    - [x] `AdminPoiForm`
   - **Impact:** POI UI can evolve independently.
 
 - [ ] **Images & price reports**
