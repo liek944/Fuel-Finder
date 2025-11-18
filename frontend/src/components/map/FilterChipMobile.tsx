@@ -1,22 +1,18 @@
 import React from "react";
+import { useFilterContext } from "../../contexts/FilterContext";
 
 interface FilterChipMobileProps {
   filteredStationsCount: number;
   poisCount: number;
-  radiusMeters: number;
-  selectedBrand: string;
-  maxPrice: number;
   onClick: () => void;
 }
 
 const FilterChipMobile: React.FC<FilterChipMobileProps> = ({
   filteredStationsCount,
   poisCount,
-  radiusMeters,
-  selectedBrand,
-  maxPrice,
   onClick,
 }) => {
+  const { radiusMeters, selectedBrand, maxPrice } = useFilterContext();
   return (
     <button
       className="filter-chip"
@@ -30,9 +26,7 @@ const FilterChipMobile: React.FC<FilterChipMobileProps> = ({
 🔍 Filter
       </div>
       <div className="filter-chip-summary">
-        ⛽ {filteredStationsCount} • 📍 {poisCount} •
-        {" "}
-        {(radiusMeters / 1000).toFixed(1)}km • {selectedBrand} • ₱{maxPrice}/L
+        ⛽ {filteredStationsCount} • 📍 {poisCount} • {(radiusMeters / 1000).toFixed(1)}km • {selectedBrand} • ₱{maxPrice}/L
       </div>
     </button>
   );

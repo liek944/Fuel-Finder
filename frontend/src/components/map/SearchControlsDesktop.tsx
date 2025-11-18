@@ -1,54 +1,41 @@
 import React from "react";
+import { useFilterContext } from "../../contexts/FilterContext";
 
 interface SearchControlsDesktopProps {
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
-  radiusMeters: number;
-  onRadiusChange: (value: number) => void;
-  selectedBrand: string;
-  onSelectedBrandChange: (value: string) => void;
-  maxPrice: number;
-  onMaxPriceChange: (value: number) => void;
   filteredStationsCount: number;
   poisCount: number;
-  autoRefreshEnabled: boolean;
-  onToggleAutoRefresh: () => void;
-  autoRefreshIntervalMs: number;
-  lastDataRefresh: number;
   getTimeAgo: (timestamp: number) => string;
-  selectedRouteType: string;
-  onSelectedRouteTypeChange: (value: string) => void;
   onRouteToNearest: () => void;
   loading: boolean;
-  isCollapsed: boolean;
-  onToggleCollapsed: () => void;
   uniqueBrands: string[];
 }
 
 const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
-  searchQuery,
-  onSearchQueryChange,
-  radiusMeters,
-  onRadiusChange,
-  selectedBrand,
-  onSelectedBrandChange,
-  maxPrice,
-  onMaxPriceChange,
   filteredStationsCount,
   poisCount,
-  autoRefreshEnabled,
-  onToggleAutoRefresh,
-  autoRefreshIntervalMs,
-  lastDataRefresh,
   getTimeAgo,
-  selectedRouteType,
-  onSelectedRouteTypeChange,
   onRouteToNearest,
   loading,
-  isCollapsed,
-  onToggleCollapsed,
   uniqueBrands,
 }) => {
+  const {
+    searchQuery,
+    setSearchQuery,
+    radiusMeters,
+    setRadiusMeters,
+    selectedBrand,
+    setSelectedBrand,
+    maxPrice,
+    setMaxPrice,
+    autoRefreshEnabled,
+    toggleAutoRefresh,
+    autoRefreshIntervalMs,
+    lastDataRefresh,
+    selectedRouteType,
+    setSelectedRouteType,
+    isSearchPanelCollapsed,
+    toggleSearchPanelCollapsed,
+  } = useFilterContext();
   return (
     <div className="search-controls">
       <div className="search-controls-header">
@@ -57,14 +44,14 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
 🔍 Filter
         </h3>
         <button
-          onClick={onToggleCollapsed}
-          title={isCollapsed ? "Expand panel" : "Collapse panel"}
+          onClick={toggleSearchPanelCollapsed}
+          title={isSearchPanelCollapsed ? "Expand panel" : "Collapse panel"}
         >
-          {isCollapsed ? "⬇️" : "⬆️"}
+          {isSearchPanelCollapsed ? "⬇️" : "⬆️"}
         </button>
       </div>
 
-      {!isCollapsed && (
+      {!isSearchPanelCollapsed && (
         <>
           {/* Search bar */}
           <div className="search-bar">
@@ -72,7 +59,7 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
               type="text"
               placeholder="Search..."
               value={searchQuery}
-              onChange={(e) => onSearchQueryChange(e.target.value)}
+              onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
@@ -85,7 +72,7 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
               max={15000}
               step={500}
               value={radiusMeters}
-              onChange={(e) => onRadiusChange(Number(e.target.value))}
+              onChange={(e) => setRadiusMeters(Number(e.target.value))}
             />
           </div>
 
@@ -94,7 +81,7 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
             <label>Brand</label>
             <select
               value={selectedBrand}
-              onChange={(e) => onSelectedBrandChange(e.target.value)}
+              onChange={(e) => setSelectedBrand(e.target.value)}
             >
               <option value="All">All Brands</option>
               {uniqueBrands.map((brand) => (
@@ -114,7 +101,7 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
               max={100}
               step={1}
               value={maxPrice}
-              onChange={(e) => onMaxPriceChange(Number(e.target.value))}
+              onChange={(e) => setMaxPrice(Number(e.target.value))}
             />
           </div>
 
@@ -162,7 +149,7 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
 🔄 Auto-refresh
               </label>
               <button
-                onClick={onToggleAutoRefresh}
+                onClick={toggleAutoRefresh}
                 style={{
                   background: autoRefreshEnabled ? "#4CAF50" : "#9e9e9e",
                   color: "white",
@@ -198,7 +185,7 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
             </label>
             <select
               value={selectedRouteType}
-              onChange={(e) => onSelectedRouteTypeChange(e.target.value)}
+              onChange={(e) => setSelectedRouteType(e.target.value)}
             >
               <option value="gas">⛽ Gas Station</option>
               <option value="convenience">🏪 Convenience Store</option>
@@ -214,7 +201,7 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
       )}
 
       {/* Collapsed view summary */}
-      {isCollapsed && (
+      {isSearchPanelCollapsed && (
         <div className="collapsed-summary">
           <div>
             ⛽ {filteredStationsCount} stations

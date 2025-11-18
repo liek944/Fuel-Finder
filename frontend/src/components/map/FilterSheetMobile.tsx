@@ -1,5 +1,6 @@
 import React from "react";
 import { MapBottomSheet, SheetMode } from "./MapBottomSheet";
+import { useFilterContext } from "../../contexts/FilterContext";
 
 interface FilterSheetMobileProps {
   open: boolean;
@@ -7,26 +8,12 @@ interface FilterSheetMobileProps {
   onClose: () => void;
   onExpand: () => void;
   onCollapse: () => void;
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
-  radiusMeters: number;
-  onRadiusChange: (value: number) => void;
-  selectedBrand: string;
-  onSelectedBrandChange: (value: string) => void;
-  maxPrice: number;
-  onMaxPriceChange: (value: number) => void;
   filteredStationsCount: number;
   poisCount: number;
-  autoRefreshEnabled: boolean;
-  onToggleAutoRefresh: () => void;
-  autoRefreshIntervalMs: number;
-  lastDataRefresh: number;
-  getTimeAgo: (timestamp: number) => string;
-  selectedRouteType: string;
-  onSelectedRouteTypeChange: (value: string) => void;
   onRouteToNearest: () => void;
   loading: boolean;
   uniqueBrands: string[];
+  getTimeAgo: (timestamp: number) => string;
 }
 
 const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
@@ -35,27 +22,29 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
   onClose,
   onExpand,
   onCollapse,
-  searchQuery,
-  onSearchQueryChange,
-  radiusMeters,
-  onRadiusChange,
-  selectedBrand,
-  onSelectedBrandChange,
-  maxPrice,
-  onMaxPriceChange,
   filteredStationsCount,
   poisCount,
-  autoRefreshEnabled,
-  onToggleAutoRefresh,
-  autoRefreshIntervalMs,
-  lastDataRefresh,
-  getTimeAgo,
-  selectedRouteType,
-  onSelectedRouteTypeChange,
   onRouteToNearest,
   loading,
   uniqueBrands,
+  getTimeAgo,
 }) => {
+  const {
+    searchQuery,
+    setSearchQuery,
+    radiusMeters,
+    setRadiusMeters,
+    selectedBrand,
+    setSelectedBrand,
+    maxPrice,
+    setMaxPrice,
+    autoRefreshEnabled,
+    toggleAutoRefresh,
+    autoRefreshIntervalMs,
+    lastDataRefresh,
+    selectedRouteType,
+    setSelectedRouteType,
+  } = useFilterContext();
   if (!open) return null;
 
   return (
@@ -76,7 +65,7 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
           type="text"
           placeholder="Search..."
           value={searchQuery}
-          onChange={(e) => onSearchQueryChange(e.target.value)}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
@@ -88,7 +77,7 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
           max={15000}
           step={500}
           value={radiusMeters}
-          onChange={(e) => onRadiusChange(Number(e.target.value))}
+          onChange={(e) => setRadiusMeters(Number(e.target.value))}
         />
       </div>
 
@@ -96,7 +85,7 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
         <label>Brand</label>
         <select
           value={selectedBrand}
-          onChange={(e) => onSelectedBrandChange(e.target.value)}
+          onChange={(e) => setSelectedBrand(e.target.value)}
         >
           <option value="All">All Brands</option>
           {uniqueBrands.map((brand) => (
@@ -115,7 +104,7 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
           max={100}
           step={1}
           value={maxPrice}
-          onChange={(e) => onMaxPriceChange(Number(e.target.value))}
+          onChange={(e) => setMaxPrice(Number(e.target.value))}
         />
       </div>
 
@@ -161,7 +150,7 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
 🔄 Auto-refresh
           </label>
           <button
-            onClick={onToggleAutoRefresh}
+            onClick={toggleAutoRefresh}
             style={{
               background: autoRefreshEnabled ? "#4CAF50" : "#9e9e9e",
               color: "white",
@@ -196,7 +185,7 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
         </label>
         <select
           value={selectedRouteType}
-          onChange={(e) => onSelectedRouteTypeChange(e.target.value)}
+          onChange={(e) => setSelectedRouteType(e.target.value)}
         >
           <option value="gas">⛽ Gas Station</option>
           <option value="convenience">🏪 Convenience Store</option>

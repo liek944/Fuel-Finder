@@ -25,77 +25,27 @@ import SettingsButton from "./SettingsButton";
 // import DonationWidget from "./DonationWidget"; // COMMENTED OUT: PayMongo payment integration disabled
 import Toast from "./Toast";
 import { useToast } from "../hooks/useToast";
-import VisualAlert, { VisualAlertData } from "./VisualAlert";
+import VisualAlert from "./VisualAlert";
 // import { Trip } from '../utils/indexedDB';
 import StationDetail from "./details/StationDetail";
 import PoiDetail from "./details/PoiDetail";
 import { MapBottomSheet, SheetMode } from "./map/MapBottomSheet";
 import MapPanController from "./map/MapPanController";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { useFilters } from "../hooks/useFilters";
 import { useRoute } from "../hooks/useRoute";
 import RouteDisplay from "./map/RouteDisplay";
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
 import userTracking from "../utils/userTracking";
 import { arrivalNotifications } from "../utils/arrivalNotifications";
+import { useSettings } from "../contexts/SettingsContext";
+import { useArrivalNotificationsUI } from "../hooks/useArrivalNotificationsUI";
+import { useFilterContext } from "../contexts/FilterContext";
+import { useFilterDerived } from "../hooks/useFilterDerived";
+import { Station, POI } from "../types/station.types";
+import { useMapSelection } from "../contexts/MapSelectionContext";
 
 // Canvas-based markers are created dynamically - no static image imports needed
-
-// Types
-interface FuelPrice {
-  fuel_type: string;
-  price: number | string; // PostgreSQL NUMERIC returns strings to preserve precision
-  price_updated_at?: string;
-  price_updated_by?: string;
-}
-
-interface Station {
-  id: number;
-  name: string;
-  brand: string;
-  fuel_price: number; // Legacy field - kept for backward compatibility
-  fuel_prices?: FuelPrice[]; // New field for multiple fuel types
-  services: string[];
-  address: string;
-  phone?: string;
-  operating_hours?: any;
-  location: {
-    lat: number;
-    lng: number;
-  };
-  distance_meters?: number;
-  images?: Array<{
-    id: number;
-    filename: string;
-    original_filename: string;
-    url: string;
-    thumbnailUrl: string;
-    alt_text?: string;
-  }>;
-}
-
-interface POI {
-  id: number;
-  name: string;
-  type: string;
-  address?: string;
-  phone?: string;
-  operating_hours?: any;
-  location: {
-    lat: number;
-    lng: number;
-  };
-  distance_meters?: number;
-  images?: Array<{
-    id: number;
-    filename: string;
-    original_filename: string;
-    url: string;
-    thumbnailUrl: string;
-    alt_text?: string;
-  }>;
-}
 
 // RouteData is now provided by routingApi and consumed via useRoute
 
@@ -504,46 +454,34 @@ const MainApp: React.FC = () => {
   const [pois, setPois] = useState<POI[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const {
-    searchQuery,
-    setSearchQuery,
     radiusMeters,
     setRadiusMeters,
-    selectedBrand,
-    setSelectedBrand,
-    maxPrice,
-    setMaxPrice,
     selectedRouteType,
-    setSelectedRouteType,
     autoRefreshEnabled,
     toggleAutoRefresh,
     lastDataRefresh,
     setLastDataRefresh,
     autoRefreshIntervalMs,
-    isSearchPanelCollapsed,
     setIsSearchPanelCollapsed,
-    toggleSearchPanelCollapsed,
-    filteredStations,
-    uniqueBrands,
-  } = useFilters<Station>(stations);
+  } = useFilterContext();
+  const { filteredStations, uniqueBrands } = useFilterDerived<Station>(stations);
   const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive } = useRoute(position);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   
-  // Bottom sheet state for mobile marker details
-  const [selectedItem, setSelectedItem] = useState<{ type: 'station' | 'poi'; data: Station | POI } | null>(null);
-  const [sheetMode, setSheetMode] = useState<SheetMode>('collapsed');
+  // Bottom sheet selection (shared via context)
+  const { selectedItem, setSelectedItem, sheetMode, setSheetMode, closeSheet, expandSheet, collapseSheet } = useMapSelection();
   
   const handleSheetClose = useCallback(() => {
-    setSelectedItem(null);
-    setSheetMode('collapsed');
-  }, []);
+    closeSheet();
+  }, [closeSheet]);
 
   const handleSheetExpand = useCallback(() => {
-    setSheetMode('expanded');
-  }, []);
+    expandSheet();
+  }, [expandSheet]);
 
   const handleSheetCollapse = useCallback(() => {
-    setSheetMode('collapsed');
-  }, []);
+    collapseSheet();
+  }, [collapseSheet]);
   
   // Filter bottom sheet for mobile (collapsed by default; opens on chip tap)
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState<boolean>(false);
@@ -591,12 +529,10 @@ const MainApp: React.FC = () => {
   const MAX_ACCURACY_METERS = 50;
 
   // Arrival notification state
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
-  const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
-  const [keepScreenOn, setKeepScreenOn] = useState<boolean>(false);
+  const { voiceEnabled, notificationsEnabled, keepScreenOn, toggleVoice, toggleNotifications, toggleKeepScreenOn } = useSettings();
   
   // Visual alerts state
-  const [visualAlerts, setVisualAlerts] = useState<VisualAlertData[]>([]);
+  const { alerts: visualAlerts, dismiss: dismissAlert } = useArrivalNotificationsUI();
 
   // Convert position to L.LatLng for follow camera
   const userLatLng = position ? L.latLng(position[0], position[1]) : null;
@@ -815,80 +751,16 @@ const MainApp: React.FC = () => {
     };
   }, []);
 
-  // Load saved settings from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('ff_settings');
-      if (saved) {
-        const s = JSON.parse(saved);
-        if (typeof s.voiceEnabled === 'boolean') setVoiceEnabled(s.voiceEnabled);
-        if (typeof s.notificationsEnabled === 'boolean') setNotificationsEnabled(s.notificationsEnabled);
-        if (typeof s.keepScreenOn === 'boolean') setKeepScreenOn(s.keepScreenOn);
-      }
-    } catch {}
-  }, []);
-  
-  // Register visual alert callback
-  useEffect(() => {
-    const handleVisualAlert = (title: string, message: string, icon: string) => {
-      const alert: VisualAlertData = {
-        id: Date.now().toString(),
-        title,
-        message,
-        icon,
-        duration: 5000,
-      };
-      setVisualAlerts((prev) => [...prev, alert]);
-    };
-    
-    arrivalNotifications.setVisualAlertCallback(handleVisualAlert);
-    
-    return () => {
-      arrivalNotifications.setVisualAlertCallback(null);
-    };
-  }, []);
+  // Settings and visual alert registration handled via context/hooks
   
   // Dismiss visual alert
   const dismissVisualAlert = useCallback((id: string) => {
-    setVisualAlerts((prev) => prev.filter((alert) => alert.id !== id));
-  }, []);
+    dismissAlert(id);
+  }, [dismissAlert]);
 
-  // Sync voice settings when changed
-  useEffect(() => {
-    arrivalNotifications.setVoiceEnabled(voiceEnabled);
-  }, [voiceEnabled]);
+  // Settings side-effects are handled in SettingsContext
 
-  // Apply visual notifications setting
-  useEffect(() => {
-    arrivalNotifications.setNotificationsEnabled(notificationsEnabled);
-    if (notificationsEnabled) {
-      // Show confirmation alert
-      const alert: VisualAlertData = {
-        id: 'visual-enabled-' + Date.now(),
-        title: '✅ Visual notifications enabled',
-        message: 'You will see alerts when approaching destinations',
-        icon: '🔔',
-        duration: 3000,
-      };
-      setVisualAlerts((prev) => [...prev, alert]);
-    }
-  }, [notificationsEnabled]);
-
-  // Apply keep screen on setting
-  useEffect(() => {
-    arrivalNotifications.setKeepScreenOn(keepScreenOn);
-  }, [keepScreenOn]);
-
-  // Persist settings
-  useEffect(() => {
-    try {
-      localStorage.setItem('ff_settings', JSON.stringify({
-        voiceEnabled,
-        notificationsEnabled,
-        keepScreenOn,
-      }));
-    } catch {}
-  }, [voiceEnabled, notificationsEnabled, keepScreenOn]);
+  // Settings persistence handled in SettingsContext
 
   // Debug routeData changes
   useEffect(() => {
@@ -995,19 +867,16 @@ const MainApp: React.FC = () => {
     }
   };
 
-  const handleToggleVoice = (enabled: boolean) => {
-    setVoiceEnabled(enabled);
-    if (enabled) {
-      arrivalNotifications.testVoice("Voice announcements enabled");
-    }
+  const handleToggleVoice = (_enabled: boolean) => {
+    toggleVoice();
   };
 
-  const handleToggleNotifications = (enabled: boolean) => {
-    setNotificationsEnabled(enabled);
+  const handleToggleNotifications = (_enabled: boolean) => {
+    toggleNotifications();
   };
 
-  const handleToggleKeepScreenOn = (enabled: boolean) => {
-    setKeepScreenOn(enabled);
+  const handleToggleKeepScreenOn = (_enabled: boolean) => {
+    toggleKeepScreenOn();
   };
 
   // Get unique brands for filter (memoized for performance)
@@ -1049,9 +918,6 @@ const MainApp: React.FC = () => {
         <FilterChipMobile
           filteredStationsCount={filteredStations.length}
           poisCount={pois.length}
-          radiusMeters={radiusMeters}
-          selectedBrand={selectedBrand}
-          maxPrice={maxPrice}
           onClick={openFilterSheet}
         />
       )}
@@ -1284,24 +1150,16 @@ const MainApp: React.FC = () => {
         {/* Map Control Buttons - Right Side */}
         <MapOverlays>
           {!isMobile && (
-            <SettingsButton
-              voiceEnabled={voiceEnabled}
-              onToggleVoice={handleToggleVoice}
-              notificationsEnabled={notificationsEnabled}
-              onToggleNotifications={handleToggleNotifications}
-              keepScreenOn={keepScreenOn}
-              onToggleKeepScreenOn={handleToggleKeepScreenOn}
-            />
+            <SettingsButton />
           )}
           
           {/* Voice Announcement Toggle Button */}
           {false && (
             <button
               onClick={() => {
-                const newState = !voiceEnabled;
-                setVoiceEnabled(newState);
-                
-                if (newState) {
+                // Toggle voice announcements (demo button)
+                toggleVoice();
+                if (!voiceEnabled) {
                   console.log('🔊 Enabling voice announcements...');
                   arrivalNotifications.testVoice("Voice announcements enabled");
                 } else {
@@ -1489,25 +1347,11 @@ const MainApp: React.FC = () => {
           onClose={handleFilterSheetClose}
           onExpand={handleFilterSheetExpand}
           onCollapse={handleFilterSheetCollapse}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          radiusMeters={radiusMeters}
-          onRadiusChange={setRadiusMeters}
-          selectedBrand={selectedBrand}
-          onSelectedBrandChange={setSelectedBrand}
-          maxPrice={maxPrice}
-          onMaxPriceChange={setMaxPrice}
           filteredStationsCount={filteredStations.length}
           poisCount={pois.length}
-          autoRefreshEnabled={autoRefreshEnabled}
-          onToggleAutoRefresh={toggleAutoRefresh}
-          autoRefreshIntervalMs={autoRefreshIntervalMs}
-          lastDataRefresh={lastDataRefresh}
-          getTimeAgo={getTimeAgo}
-          selectedRouteType={selectedRouteType}
-          onSelectedRouteTypeChange={setSelectedRouteType}
           onRouteToNearest={routeToNearestPOI}
           loading={loading || loadingRoute}
+          getTimeAgo={getTimeAgo}
           uniqueBrands={uniqueBrands}
         />
       )}

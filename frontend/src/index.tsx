@@ -4,6 +4,9 @@ import "./index.css";
 import "./styles/responsive.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
+import { SettingsProvider } from "./contexts/SettingsContext";
+import { MapSelectionProvider } from "./contexts/MapSelectionContext";
+import { FilterProvider } from "./contexts/FilterContext";
 
 // Capture beforeinstallprompt event BEFORE React mounts
 // This ensures we don't miss the event if it fires early
@@ -19,7 +22,13 @@ const root = ReactDOM.createRoot(
 );
 root.render(
   <React.StrictMode>
-    <App />
+    <SettingsProvider>
+      <FilterProvider>
+        <MapSelectionProvider>
+          <App />
+        </MapSelectionProvider>
+      </FilterProvider>
+    </SettingsProvider>
   </React.StrictMode>,
 );
 
