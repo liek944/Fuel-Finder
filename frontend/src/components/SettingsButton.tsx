@@ -1,22 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useSettings } from "../contexts/SettingsContext";
 
-interface SettingsButtonProps {
-  voiceEnabled: boolean;
-  onToggleVoice: (enabled: boolean) => void;
-  notificationsEnabled: boolean;
-  onToggleNotifications: (enabled: boolean) => void;
-  keepScreenOn: boolean;
-  onToggleKeepScreenOn: (enabled: boolean) => void;
-}
-
-const SettingsButton: React.FC<SettingsButtonProps> = ({
-  voiceEnabled,
-  onToggleVoice,
-  notificationsEnabled,
-  onToggleNotifications,
-  keepScreenOn,
-  onToggleKeepScreenOn,
-}) => {
+const SettingsButton: React.FC = () => {
+  const {
+    voiceEnabled,
+    notificationsEnabled,
+    keepScreenOn,
+    toggleVoice,
+    toggleNotifications,
+    toggleKeepScreenOn,
+  } = useSettings();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
@@ -128,17 +121,17 @@ const SettingsButton: React.FC<SettingsButtonProps> = ({
           <div style={{ display: "grid", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>🔊 Voice announcements</div>
-              <Toggle on={voiceEnabled} onClick={() => onToggleVoice(!voiceEnabled)} label="Toggle voice announcements" />
+              <Toggle on={voiceEnabled} onClick={toggleVoice} label="Toggle voice announcements" />
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>🔔 Visual alerts</div>
-              <Toggle on={notificationsEnabled} onClick={() => onToggleNotifications(!notificationsEnabled)} label="Toggle visual alerts" />
+              <Toggle on={notificationsEnabled} onClick={toggleNotifications} label="Toggle visual alerts" />
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>📱 Keep screen on</div>
-              <Toggle on={keepScreenOn} onClick={() => onToggleKeepScreenOn(!keepScreenOn)} label="Toggle keep screen on" />
+              <Toggle on={keepScreenOn} onClick={toggleKeepScreenOn} label="Toggle keep screen on" />
             </div>
           </div>
         </div>
