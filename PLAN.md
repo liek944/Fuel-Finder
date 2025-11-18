@@ -80,34 +80,34 @@
 
 ### 4.2 Extract Presentational Components
 
-- [ ] **Stations management**
+- [x] **Stations management**
   - **Task:** Extract from `AdminPortal.tsx`:
     - [x] `AdminStationList`
     - [x] `AdminStationForm`
     - [x] `AdminStationMap`
   - **Impact:** Smaller, focused files; easier testing.
 
-- [ ] **POIs management**
+- [x] **POIs management**
   - **Task:** Extract:
     - [x] `AdminPoiList`
     - [x] `AdminPoiForm`
   - **Impact:** POI UI can evolve independently.
 
-- [ ] **Images & price reports**
+- [x] **Images & price reports**
   - **Task:** Extract:
-    - `AdminImageGallery` (or reuse `ImageSlideshow`)
+    - `AdminImageGallery` (reused `ImageSlideshow`)
     - `AdminPriceReportsPanel`
   - **Impact:** Shared UI for images/prices across admin and other views.
 
 ### 4.3 Container + Hook Pattern
 
-- [ ] **Create admin containers**
+- [x] **Create admin containers**
   - **Task:** Replace monolithic `AdminPortal` logic with containers like:
     - `AdminPortalContainer` (tabs, routing, state orchestration)
     - Feature-level containers (e.g. `StationsTabContainer`)
   - **Impact:** Clear separation between data-fetching/logic vs pure UI.
 
-- [ ] **Introduce admin hooks**
+- [x] **Introduce admin hooks**
   - **Task:** Create hooks:
     - `useAdminStations()`, `useAdminPois()`
     - `useAdminPrices()`, `useAdminAnalytics()`
