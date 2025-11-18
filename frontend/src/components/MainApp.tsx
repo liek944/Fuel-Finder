@@ -1281,8 +1281,69 @@ const MainApp: React.FC = () => {
           );
         })}
         
-        {/* Center to My Location Button - simple one-click recenter */}
-        <CenterToLocationButton position={position} />
+        {/* Map Control Buttons - Right Side */}
+        <MapOverlays>
+          {!isMobile && (
+            <SettingsButton
+              voiceEnabled={voiceEnabled}
+              onToggleVoice={handleToggleVoice}
+              notificationsEnabled={notificationsEnabled}
+              onToggleNotifications={handleToggleNotifications}
+              keepScreenOn={keepScreenOn}
+              onToggleKeepScreenOn={handleToggleKeepScreenOn}
+            />
+          )}
+          
+          {/* Voice Announcement Toggle Button */}
+          {false && (
+            <button
+              onClick={() => {
+                const newState = !voiceEnabled;
+                setVoiceEnabled(newState);
+                
+                if (newState) {
+                  console.log('🔊 Enabling voice announcements...');
+                  arrivalNotifications.testVoice("Voice announcements enabled");
+                } else {
+                  console.log('🔇 Voice: OFF');
+                }
+              }}
+              style={{
+                width: window.innerWidth <= 768 ? "48px" : "50px",
+                height: window.innerWidth <= 768 ? "48px" : "50px",
+                borderRadius: "50%",
+                background: voiceEnabled ? "#FF9800" : "#757575",
+                color: "white",
+                border: window.innerWidth <= 768 ? "2px solid white" : "3px solid white",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                cursor: "pointer",
+                fontSize: window.innerWidth <= 768 ? "18px" : "20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease",
+              }}
+              title={voiceEnabled ? "Voice Announcements: ON" : "Voice Announcements: OFF"}
+              aria-label={voiceEnabled ? "Disable voice announcements" : "Enable voice announcements"}
+              role="switch"
+              aria-checked={voiceEnabled}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+            >
+              {voiceEnabled ? "🔊" : "🔇"}
+            </button>
+          )}
+
+          {/* Center to My Location Button - simple one-click recenter */}
+          <CenterToLocationButton position={position} />
+
+          {/* PWA Install Button */}
+          <PWAInstallButton />
+        </MapOverlays>
       </MapShell>
 
       {/* Search Controls (desktop only) */}
@@ -1313,63 +1374,7 @@ const MainApp: React.FC = () => {
         />
       )}
 
-      {/* Map Control Buttons - Right Side */}
-      <MapOverlays>
-        {!isMobile && (
-          <SettingsButton
-            voiceEnabled={voiceEnabled}
-            onToggleVoice={handleToggleVoice}
-            notificationsEnabled={notificationsEnabled}
-            onToggleNotifications={handleToggleNotifications}
-            keepScreenOn={keepScreenOn}
-            onToggleKeepScreenOn={handleToggleKeepScreenOn}
-          />
-        )}
-        
-        {/* Voice Announcement Toggle Button */}
-        {false && (
-          <button
-            onClick={() => {
-              const newState = !voiceEnabled;
-              setVoiceEnabled(newState);
-              
-              if (newState) {
-                console.log('🔊 Enabling voice announcements...');
-                arrivalNotifications.testVoice("Voice announcements enabled");
-              } else {
-                console.log('🔇 Voice: OFF');
-              }
-            }}
-            style={{
-              width: window.innerWidth <= 768 ? "48px" : "50px",
-              height: window.innerWidth <= 768 ? "48px" : "50px",
-              borderRadius: "50%",
-              background: voiceEnabled ? "#FF9800" : "#757575",
-              color: "white",
-              border: window.innerWidth <= 768 ? "2px solid white" : "3px solid white",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-              cursor: "pointer",
-              fontSize: window.innerWidth <= 768 ? "18px" : "20px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all 0.2s ease",
-            }}
-            title={voiceEnabled ? "Voice Announcements: ON" : "Voice Announcements: OFF"}
-            aria-label={voiceEnabled ? "Disable voice announcements" : "Enable voice announcements"}
-            role="switch"
-            aria-checked={voiceEnabled}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "scale(1.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            {voiceEnabled ? "🔊" : "🔇"}
-          </button>
-        )}
-      </MapOverlays>
+      
 
       {isMobile && isMenuOpen && (
         <div className="mobile-menu-overlay">
@@ -1459,8 +1464,7 @@ const MainApp: React.FC = () => {
         </div>
       )}
 
-      {/* PWA Install Button */}
-      <PWAInstallButton />
+      
 
       {/* Visual Alerts - In-app arrival notifications */}
       <VisualAlert alerts={visualAlerts} onDismiss={dismissVisualAlert} />

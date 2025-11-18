@@ -121,13 +121,13 @@
 
 ### 5.1 High-Level Structure
 
-- [ ] **Map shell & layout**
+- [x] **Map shell & layout**
   - **Task:** Define:
     - `MapShell` (Leaflet map, base layers, user location marker)
     - `MapOverlays` (center button, PWA button, settings, trip recorder, etc.)
   - **Impact:** Map rendering and overlays become composable.
 
-- [ ] **Details & sheets**
+- [x] **Details & sheets**
   - **Task:** Extract:
     - `StationDetailPanel` / `PoiDetailPanel`
     - `MapBottomSheet` integration wrapper
@@ -135,24 +135,24 @@
 
 ### 5.2 Filters & Search
 
-- [ ] **Search/filter controls**
+- [x] **Search/filter controls**
   - **Task:** Move filter UI & logic into:
     - `SearchControlsDesktop`
     - `FilterChipMobile` + `FilterSheetMobile`
   - **Impact:** Easier to adjust UX for mobile vs desktop.
 
-- [ ] **Filter state**
+- [x] **Filter state**
   - **Task:** Introduce `useFilters()` hook (or context) shared between map, list, and sheets.
   - **Impact:** Single source-of-truth for filters.
 
 ### 5.3 Routing & Follow Camera Integration
 
-- [ ] **Routing integration**
+- [x] **Routing integration**
   - **Task:** Keep routing logic in hooks:
     - `useRoute()` (already partly existing) + dedicated `RouteDisplay` component.
   - **Impact:** OSRM concerns separated from UI.
 
-- [ ] **Follow camera / PWA / settings**
+- [x] **Follow camera / PWA / settings**
   - **Task:** Ensure:
     - `FollowCameraController`, `CenterToLocationButton`, `PWAInstallButton`, `SettingsButton` are imported and positioned via a consistent overlay mechanism.
   - **Impact:** No more scattered “floating buttons” logic inside `MainApp`.
