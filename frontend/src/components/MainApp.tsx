@@ -512,6 +512,8 @@ const MainApp: React.FC = () => {
     setSelectedBrand,
     maxPrice,
     setMaxPrice,
+    selectedRouteType,
+    setSelectedRouteType,
     autoRefreshEnabled,
     toggleAutoRefresh,
     lastDataRefresh,
@@ -567,7 +569,6 @@ const MainApp: React.FC = () => {
     return new L.LatLng(loc.lat, loc.lng);
   }, [selectedItem]);
   // followMe removed - map only centers when user clicks the center button
-  const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
 
   // Ensure filter is collapsed by default on mobile
   useEffect(() => {

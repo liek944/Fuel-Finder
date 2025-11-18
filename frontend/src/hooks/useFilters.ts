@@ -31,6 +31,8 @@ export function useFilters<TStation extends FilterableStationBase>(
   const [radiusMeters, setRadiusMeters] = useState<number>(5000);
   const [selectedBrand, setSelectedBrand] = useState<string>("All");
   const [maxPrice, setMaxPrice] = useState<number>(100);
+  // Routing target type (gas, convenience, repair, car_wash, motor_shop)
+  const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
 
   // Auto-refresh state (enabled by default, same as original behavior)
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true);
@@ -92,6 +94,8 @@ export function useFilters<TStation extends FilterableStationBase>(
     setSelectedBrand,
     maxPrice,
     setMaxPrice,
+    selectedRouteType,
+    setSelectedRouteType,
 
     // Auto-refresh controls
     autoRefreshEnabled,
