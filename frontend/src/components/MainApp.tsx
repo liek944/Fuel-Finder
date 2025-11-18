@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
-  MapContainer,
   TileLayer,
   Marker,
   Popup,
   Circle,
-  Polyline,
   LayersControl,
   useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import FollowCameraController from "./FollowCameraController";
-import { routingApi } from "../api/routingApi";
+import MapShell from "./map/MapShell";
+import MapOverlays from "./map/MapOverlays";
+import SearchControlsDesktop from "./map/SearchControlsDesktop";
+import FilterChipMobile from "./map/FilterChipMobile";
+import FilterSheetMobile from "./map/FilterSheetMobile";
 import { stationsApi } from "../api/stationsApi";
 import { poisApi } from "../api/poisApi";
 // import TripRecorder from './TripRecorder';
@@ -30,6 +32,9 @@ import PoiDetail from "./details/PoiDetail";
 import { MapBottomSheet, SheetMode } from "./map/MapBottomSheet";
 import MapPanController from "./map/MapPanController";
 import { useIsMobile } from "../hooks/useIsMobile";
+import { useFilters } from "../hooks/useFilters";
+import { useRoute } from "../hooks/useRoute";
+import RouteDisplay from "./map/RouteDisplay";
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
 import userTracking from "../utils/userTracking";
@@ -92,11 +97,7 @@ interface POI {
   }>;
 }
 
-interface RouteData {
-  coordinates: [number, number][];
-  distance: number;
-  duration: number;
-}
+// RouteData is now provided by routingApi and consumed via useRoute
 
 // Simple component to center map to user location
 const CenterToLocationButton: React.FC<{ position: [number, number] | null }> = ({ position }) => {
@@ -502,13 +503,27 @@ const MainApp: React.FC = () => {
   const [stations, setStations] = useState<Station[]>([]);
   const [pois, setPois] = useState<POI[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
-  const [radiusMeters, setRadiusMeters] = useState<number>(5000);
-  const [selectedBrand, setSelectedBrand] = useState<string>("All");
-  const [maxPrice, setMaxPrice] = useState<number>(100);
-  const [routeData, setRouteData] = useState<RouteData | null>(null);
-  const [routingTo, setRoutingTo] = useState<Station | POI | null>(null);
-  const [routeStartPosition, setRouteStartPosition] = useState<[number, number] | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
+  const {
+    searchQuery,
+    setSearchQuery,
+    radiusMeters,
+    setRadiusMeters,
+    selectedBrand,
+    setSelectedBrand,
+    maxPrice,
+    setMaxPrice,
+    autoRefreshEnabled,
+    toggleAutoRefresh,
+    lastDataRefresh,
+    setLastDataRefresh,
+    autoRefreshIntervalMs,
+    isSearchPanelCollapsed,
+    setIsSearchPanelCollapsed,
+    toggleSearchPanelCollapsed,
+    filteredStations,
+    uniqueBrands,
+  } = useFilters<Station>(stations);
+  const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive } = useRoute(position);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   
   // Bottom sheet state for mobile marker details
@@ -552,8 +567,6 @@ const MainApp: React.FC = () => {
     return new L.LatLng(loc.lat, loc.lng);
   }, [selectedItem]);
   // followMe removed - map only centers when user clicks the center button
-  const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] =
-    useState<boolean>(false);
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
 
   // Ensure filter is collapsed by default on mobile
@@ -562,18 +575,6 @@ const MainApp: React.FC = () => {
       setIsSearchPanelCollapsed(true);
     }
   }, [isMobile]);
-
-  // Trip replay states
-  // const [showTripHistory, setShowTripHistory] = useState<boolean>(false);
-  // const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
-
-  // Donation widget state
-  // const [showDonations, setShowDonations] = useState<boolean>(false); // COMMENTED OUT: PayMongo payment integration disabled
-
-  // Auto-refresh states
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true); // Auto-refresh enabled by default
-  const [lastDataRefresh, setLastDataRefresh] = useState<number>(Date.now());
-  const AUTO_REFRESH_INTERVAL = 60000; // 60 seconds
 
   // Location tracking states
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
@@ -794,13 +795,13 @@ const MainApp: React.FC = () => {
     };
 
     // Set up interval for auto-refresh
-    const intervalId = setInterval(refreshData, AUTO_REFRESH_INTERVAL);
+    const intervalId = setInterval(refreshData, autoRefreshIntervalMs);
 
     // Cleanup interval on unmount or when dependencies change
     return () => {
       clearInterval(intervalId);
     };
-  }, [autoRefreshEnabled, position, radiusMeters, AUTO_REFRESH_INTERVAL]);
+  }, [autoRefreshEnabled, position, radiusMeters, autoRefreshIntervalMs]);
 
   // Initialize user activity tracking
   useEffect(() => {
@@ -898,93 +899,7 @@ const MainApp: React.FC = () => {
     });
   }, [routeData]);
 
-  // Auto-clear route if moved significantly from original start position
-  useEffect(() => {
-    if (!routeData || !routeStartPosition || !position) return;
-
-    const distanceKm = calculateDistance(
-      position[0],
-      position[1],
-      routeStartPosition[0],
-      routeStartPosition[1],
-    );
-    const distanceMeters = distanceKm * 1000;
-
-    // Clear route if moved more than 100 meters from where route started
-    if (distanceMeters > 100) {
-      console.log(
-        `🧭 Auto-clearing route - moved ${Math.round(distanceMeters)}m from original start position`,
-      );
-      clearRoute();
-    }
-  }, [position, routeData, routeStartPosition]);
-
   // Filter stations based on search criteria (with useMemo for performance)
-  const filteredStations = useMemo(() => stations.filter((station) => {
-    const matchesBrand =
-      selectedBrand === "All" || station.brand === selectedBrand;
-
-    // Check if any fuel type matches the price filter
-    // NOTE: PostgreSQL NUMERIC returns strings - coerce to number for comparison
-    const matchesPrice =
-      station.fuel_prices && station.fuel_prices.length > 0
-        ? station.fuel_prices.some((fp) => Number(fp.price) <= maxPrice)
-        : Number(station.fuel_price) <= maxPrice; // Fallback to legacy price
-
-    const matchesSearch =
-      searchQuery === "" ||
-      (station.name &&
-        station.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (station.brand &&
-        station.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (station.address &&
-        station.address.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    return matchesBrand && matchesPrice && matchesSearch;
-  }), [stations, selectedBrand, maxPrice, searchQuery]);
-
-  // Get route to station or POI
-  const getRoute = async (location: Station | POI) => {
-    if (!position) return;
-
-    setRoutingTo(location);
-    setLoading(true);
-    setRouteStartPosition(position); // Store the starting position
-
-    try {
-      console.log("🗺️ Fetching route...");
-      const data = await routingApi.route(
-        position[0],
-        position[1],
-        location.location.lat,
-        location.location.lng,
-      );
-      console.log("📍 Route data received:", data);
-      console.log("📍 Coordinates count:", data?.coordinates?.length || 0);
-      console.log("📍 Sample coordinates:", data?.coordinates?.slice(0, 3));
-      setRouteData(data || null);
-
-      // Set destination for arrival notifications
-      arrivalNotifications.setDestination({
-        name: location.name,
-        location: location.location,
-      });
-    } catch (error) {
-      console.error("Failed to get route:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Clear route
-  const clearRoute = () => {
-    setRouteData(null);
-    setRoutingTo(null);
-    setRouteStartPosition(null);
-    
-    // Clear destination from arrival notifications
-    arrivalNotifications.clearDestination();
-  };
 
   // Check if a location is currently open based on operating hours
   const isLocationOpen = (operatingHours: any): boolean => {
@@ -1072,7 +987,7 @@ const MainApp: React.FC = () => {
     }
 
     if (targetLocation) {
-      getRoute(targetLocation);
+      routeTo(targetLocation);
       if (isMobile && isFilterSheetOpen) {
         handleFilterSheetClose();
       }
@@ -1095,10 +1010,6 @@ const MainApp: React.FC = () => {
   };
 
   // Get unique brands for filter (memoized for performance)
-  const uniqueBrands = useMemo(() => 
-    Array.from(new Set(stations.map((station) => station.brand))).sort(),
-    [stations]
-  );
 
   if (!position) {
     return (
@@ -1134,17 +1045,14 @@ const MainApp: React.FC = () => {
           </div>
         </div>
       ) : (
-        <button
-          className="filter-chip"
+        <FilterChipMobile
+          filteredStationsCount={filteredStations.length}
+          poisCount={pois.length}
+          radiusMeters={radiusMeters}
+          selectedBrand={selectedBrand}
+          maxPrice={maxPrice}
           onClick={openFilterSheet}
-          title="Filter"
-          aria-label="Open filter"
-        >
-          <div className="filter-chip-title">🔍 Filter</div>
-          <div className="filter-chip-summary">
-            ⛽ {filteredStations.length} • 📍 {pois.length} • {(radiusMeters / 1000).toFixed(1)}km • {selectedBrand} • ₱{maxPrice}/L
-          </div>
-        </button>
+        />
       )}
 
       {isMobile && (
@@ -1176,7 +1084,7 @@ const MainApp: React.FC = () => {
       )}
 
       {/* Map */}
-      <MapContainer
+      <MapShell
         center={position}
         zoom={12}
         style={{ height: "100%", width: "100%" }}
@@ -1205,8 +1113,8 @@ const MainApp: React.FC = () => {
         <FollowCameraController
           userLatLng={userLatLng}
           accuracy={locationAccuracy}
-          navigationActive={!!routeData}
-          onControlsChange={() => {}} // No UI controls needed
+          navigationActive={navigationActive}
+          onControlsChange={() => {}}
         />
         
         {/* Map Pan Controller - pans map when bottom sheet opens/expands */}
@@ -1259,47 +1167,7 @@ const MainApp: React.FC = () => {
         </Marker>
 
         {/* Route polyline with layered styling */}
-        {routeData &&
-          routeData.coordinates &&
-          routeData.coordinates.length > 0 && (
-            <>
-              {/* Background shadow line */}
-              <Polyline
-                positions={routeData.coordinates}
-                pathOptions={{
-                  color: "#000000",
-                  weight: 9,
-                  opacity: 0.3,
-                  lineCap: "round",
-                  lineJoin: "round",
-                }}
-              />
-              {/* Main route line */}
-              <Polyline
-                positions={routeData.coordinates}
-                pathOptions={{
-                  color: "#1976D2",
-                  weight: 6,
-                  opacity: 0.9,
-                  lineCap: "round",
-                  lineJoin: "round",
-                }}
-              />
-              {/* Animated dashed overlay */}
-              <Polyline
-                positions={routeData.coordinates}
-                pathOptions={{
-                  color: "#42A5F5",
-                  weight: 4,
-                  opacity: 0.8,
-                  dashArray: "10, 15",
-                  lineCap: "round",
-                  lineJoin: "round",
-                }}
-                className="animated-route"
-              />
-            </>
-          )}
+        <RouteDisplay routeData={routeData} />
 
         {/* Station markers */}
         {filteredStations.map((station) => {
@@ -1349,7 +1217,7 @@ const MainApp: React.FC = () => {
                       isOpen={isOpen}
                       isRoutingTo={routingTo?.id === station.id}
                       routeData={routeData}
-                      onGetDirections={() => getRoute(station)}
+                      onGetDirections={() => routeTo(station)}
                       onClearRoute={clearRoute}
                     />
                   </Popup>
@@ -1402,7 +1270,7 @@ const MainApp: React.FC = () => {
                       )}
                       isRoutingTo={routingTo?.id === poi.id}
                       routeData={routeData}
-                      onGetDirections={() => getRoute(poi)}
+                      onGetDirections={() => routeTo(poi)}
                       onClearRoute={clearRoute}
                     />
                   </Popup>
@@ -1411,258 +1279,41 @@ const MainApp: React.FC = () => {
             </React.Fragment>
           );
         })}
-
-        {/* Trip Replay Visualizer - MUST be inside MapContainer - Commented out */}
-        {/*
-        {selectedTrip && (
-          <TripReplayVisualizer
-            trip={selectedTrip}
-            animationConfig={{
-              speed: 2,
-              interpolate: true,
-              interpolationSteps: 10,
-            }}
-            autoFollow={true}
-            showControls={true}
-            showRoute={true}
-            showTraveledPath={true}
-            onStateChange={(state) => {
-              console.log('Replay state:', state);
-              if (state === 'completed') {
-                console.log('Replay completed!');
-              }
-            }}
-          />
-        )}
-        */}
         
         {/* Center to My Location Button - simple one-click recenter */}
         <CenterToLocationButton position={position} />
-      </MapContainer>
+      </MapShell>
 
       {/* Search Controls (desktop only) */}
       {!isMobile && (
-      <div className="search-controls">
-        <div className="search-controls-header">
-          <h3>🔍 Filter</h3>
-          <button
-            onClick={() => setIsSearchPanelCollapsed(!isSearchPanelCollapsed)}
-            title={isSearchPanelCollapsed ? "Expand panel" : "Collapse panel"}
-          >
-            {isSearchPanelCollapsed ? "⬇️" : "⬆️"}
-          </button>
-        </div>
-
-        {!isSearchPanelCollapsed && (
-          <>
-            {/* Search bar */}
-            <div className="search-bar">
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            {/* Search radius */}
-            <div className="search-radius">
-              <label>Radius: {(radiusMeters / 1000).toFixed(1)} km</label>
-              <input
-                type="range"
-                min={500}
-                max={15000}
-                step={500}
-                value={radiusMeters}
-                onChange={(e) => setRadiusMeters(Number(e.target.value))}
-              />
-            </div>
-
-            {/* Brand filter */}
-            <div className="brand-filter">
-              <label>Brand</label>
-              <select
-                value={selectedBrand}
-                onChange={(e) => setSelectedBrand(e.target.value)}
-              >
-                <option value="All">All Brands</option>
-                {uniqueBrands.map((brand) => (
-                  <option key={brand} value={brand}>
-                    {brand}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Price filter */}
-            <div className="price-filter">
-              <label>Max: ₱{maxPrice}/L</label>
-              <input
-                type="range"
-                min={50}
-                max={100}
-                step={1}
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(Number(e.target.value))}
-              />
-            </div>
-
-            {/* Results summary */}
-            <div className="results-summary">
-              <div className="results-summary-header">📊 Results</div>
-              <div>⛽ {filteredStations.length} stations</div>
-              <div>📍 {pois.length} POIs</div>
-            </div>
-
-            {/* Auto-refresh toggle */}
-            <div className="auto-refresh-control" style={{
-              marginTop: 12,
-              padding: "10px",
-              background: autoRefreshEnabled ? "#e8f5e9" : "#fafafa",
-              borderRadius: 8,
-              border: `1px solid ${autoRefreshEnabled ? "#4CAF50" : "#ddd"}`,
-            }}>
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 6,
-              }}>
-                <label style={{ 
-                  fontSize: 12, 
-                  fontWeight: 600,
-                  color: autoRefreshEnabled ? "#2e7d32" : "#666",
-                }}>
-                  🔄 Auto-refresh
-                </label>
-                <button
-                  onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                  style={{
-                    background: autoRefreshEnabled ? "#4CAF50" : "#9e9e9e",
-                    color: "white",
-                    border: "none",
-                    padding: "4px 12px",
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    fontSize: 11,
-                    fontWeight: 600,
-                  }}
-                >
-                  {autoRefreshEnabled ? "ON" : "OFF"}
-                </button>
-              </div>
-              <div style={{ fontSize: 10, color: "#666" }}>
-                {autoRefreshEnabled ? (
-                  <>
-                    Updates every {AUTO_REFRESH_INTERVAL / 1000}s
-                    <br />
-                    Last: {getTimeAgo(lastDataRefresh)}
-                  </>
-                ) : (
-                  "Enable to auto-update prices"
-                )}
-              </div>
-            </div>
-
-            {/* Route to Nearest POI Section */}
-            <div className="route-to-nearest">
-              <label>🧭 Route To</label>
-              <select
-                value={selectedRouteType}
-                onChange={(e) => setSelectedRouteType(e.target.value)}
-              >
-                <option value="gas">⛽ Gas Station</option>
-                <option value="convenience">🏪 Convenience Store</option>
-                <option value="repair">🔧 Repair Shop</option>
-                <option value="car_wash">🚗 Car Wash</option>
-                <option value="motor_shop">🏍️ Motor Shop</option>
-              </select>
-              <button onClick={routeToNearestPOI} disabled={loading}>
-                🚗 Go to Nearest
-              </button>
-            </div>
-          </>
-        )}
-
-        {/* Collapsed view summary */}
-        {isSearchPanelCollapsed && (
-          <div className="collapsed-summary">
-            <div>⛽ {filteredStations.length} stations</div>
-            <div>📍 {pois.length} POIs</div>
-            <div>
-              {(radiusMeters / 1000).toFixed(1)}km • {selectedBrand} • ₱
-              {maxPrice}/L
-            </div>
-          </div>
-        )}
-      </div>
-      )}
-
-      {/* Trip Recorder Component - Commented out */}
-      {/*
-      <TripRecorder
-        onTripComplete={(trip: Trip) => {
-          console.log('Trip completed:', trip);
-          alert(`Trip "${trip.name}" saved with ${trip.coordinates.length} points!`);
-        }}
-        onRecordingStateChange={(isRecording: boolean) => {
-          console.log('Recording state changed:', isRecording);
-        }}
-      />
-      */}
-
-      {/* Trip History Panel - Commented out */}
-      {/*
-      {showTripHistory && (
-        <TripHistoryPanel
-          onSelectTrip={(trip: Trip) => {
-            setSelectedTrip(trip);
-            setShowTripHistory(false);
-          }}
-          onClose={() => setShowTripHistory(false)}
+        <SearchControlsDesktop
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          radiusMeters={radiusMeters}
+          onRadiusChange={setRadiusMeters}
+          selectedBrand={selectedBrand}
+          onSelectedBrandChange={setSelectedBrand}
+          maxPrice={maxPrice}
+          onMaxPriceChange={setMaxPrice}
+          filteredStationsCount={filteredStations.length}
+          poisCount={pois.length}
+          autoRefreshEnabled={autoRefreshEnabled}
+          onToggleAutoRefresh={toggleAutoRefresh}
+          autoRefreshIntervalMs={autoRefreshIntervalMs}
+          lastDataRefresh={lastDataRefresh}
+          getTimeAgo={getTimeAgo}
+          selectedRouteType={selectedRouteType}
+          onSelectedRouteTypeChange={setSelectedRouteType}
+          onRouteToNearest={routeToNearestPOI}
+          loading={loading || loadingRoute}
+          isCollapsed={isSearchPanelCollapsed}
+          onToggleCollapsed={toggleSearchPanelCollapsed}
+          uniqueBrands={uniqueBrands}
         />
       )}
-      */}
-
-      {/* Close Replay Button - Commented out */}
-      {/*
-      {selectedTrip && (
-        <button
-          onClick={() => setSelectedTrip(null)}
-          style={{
-            position: 'fixed',
-            top: window.innerWidth <= 480 ? 140 : 80, // Lower on mobile to avoid overlap
-            right: 20,
-            zIndex: 1300,
-            background: '#ff5252',
-            color: 'white',
-            border: 'none',
-            padding: window.innerWidth <= 480 ? '8px 16px' : '10px 20px',
-            borderRadius: 8,
-            cursor: 'pointer',
-            fontSize: window.innerWidth <= 480 ? '12px' : '14px',
-            fontWeight: 600,
-            boxShadow: '0 4px 12px rgba(255, 82, 82, 0.3)',
-          }}
-        >
-          ✕ Close Replay
-        </button>
-      )}
-      */}
 
       {/* Map Control Buttons - Right Side */}
-      <div
-        style={{
-          position: "fixed",
-          top: window.innerWidth <= 768 ? "20px" : "50%",
-          right: window.innerWidth <= 768 ? "16px" : "20px",
-          transform: window.innerWidth <= 768 ? "none" : "translateY(-50%)",
-          display: "flex",
-          flexDirection: "column",
-          gap: window.innerWidth <= 768 ? "16px" : "12px",
-          zIndex: 1000,
-        }}
-      >
+      <MapOverlays>
         {!isMobile && (
           <SettingsButton
             voiceEnabled={voiceEnabled}
@@ -1717,7 +1368,7 @@ const MainApp: React.FC = () => {
             {voiceEnabled ? "🔊" : "🔇"}
           </button>
         )}
-      </div>
+      </MapOverlays>
 
       {isMobile && isMenuOpen && (
         <div className="mobile-menu-overlay">
@@ -1826,154 +1477,36 @@ const MainApp: React.FC = () => {
       </div>
 
       {/* Mobile Filter Bottom Sheet */}
-      {isMobile && isFilterSheetOpen && (
-        <MapBottomSheet
-          open={true}
+      {isMobile && (
+        <FilterSheetMobile
+          open={isFilterSheetOpen}
           mode={filterSheetMode}
           onClose={handleFilterSheetClose}
           onExpand={handleFilterSheetExpand}
           onCollapse={handleFilterSheetCollapse}
-          translucent={true}
-          header={<div style={{ fontWeight: 700 }}>🔍 Filter</div>}
-        >
-          <div className="search-bar">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="search-radius">
-            <label>Radius: {(radiusMeters / 1000).toFixed(1)} km</label>
-            <input
-              type="range"
-              min={500}
-              max={15000}
-              step={500}
-              value={radiusMeters}
-              onChange={(e) => setRadiusMeters(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="brand-filter">
-            <label>Brand</label>
-            <select
-              value={selectedBrand}
-              onChange={(e) => setSelectedBrand(e.target.value)}
-            >
-              <option value="All">All Brands</option>
-              {uniqueBrands.map((brand) => (
-                <option key={brand} value={brand}>
-                  {brand}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="price-filter">
-            <label>Max: ₱{maxPrice}/L</label>
-            <input
-              type="range"
-              min={50}
-              max={100}
-              step={1}
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="results-summary" style={{ marginBottom: 12 }}>
-            <div className="results-summary-header">📊 Results</div>
-            <div>⛽ {filteredStations.length} stations</div>
-            <div>📍 {pois.length} POIs</div>
-          </div>
-
-          <div className="auto-refresh-control" style={{
-            marginTop: 12,
-            padding: "10px",
-            background: autoRefreshEnabled ? "#e8f5e9" : "#fafafa",
-            borderRadius: 8,
-            border: `1px solid ${autoRefreshEnabled ? "#4CAF50" : "#ddd"}`,
-          }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 6,
-            }}>
-              <label style={{ 
-                fontSize: 12, 
-                fontWeight: 600,
-                color: autoRefreshEnabled ? "#2e7d32" : "#666",
-              }}>
-                🔄 Auto-refresh
-              </label>
-              <button
-                onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                style={{
-                  background: autoRefreshEnabled ? "#4CAF50" : "#9e9e9e",
-                  color: "white",
-                  border: "none",
-                  padding: "4px 12px",
-                  borderRadius: 12,
-                  cursor: "pointer",
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-              >
-                {autoRefreshEnabled ? "ON" : "OFF"}
-              </button>
-            </div>
-            <div style={{ fontSize: 10, color: "#666" }}>
-              {autoRefreshEnabled ? (
-                <>
-                  Updates every {AUTO_REFRESH_INTERVAL / 1000}s
-                  <br />
-                  Last: {getTimeAgo(lastDataRefresh)}
-                </>
-              ) : (
-                "Enable to auto-update prices"
-              )}
-            </div>
-          </div>
-
-          <div className="route-to-nearest">
-            <label>🧭 Route To</label>
-            <select
-              value={selectedRouteType}
-              onChange={(e) => setSelectedRouteType(e.target.value)}
-            >
-              <option value="gas">⛽ Gas Station</option>
-              <option value="convenience">🏪 Convenience Store</option>
-              <option value="repair">🔧 Repair Shop</option>
-              <option value="car_wash">🚗 Car Wash</option>
-              <option value="motor_shop">🏍️ Motor Shop</option>
-            </select>
-            <button onClick={routeToNearestPOI} disabled={loading}>
-              🚗 Go to Nearest
-            </button>
-          </div>
-        </MapBottomSheet>
+          searchQuery={searchQuery}
+          onSearchQueryChange={setSearchQuery}
+          radiusMeters={radiusMeters}
+          onRadiusChange={setRadiusMeters}
+          selectedBrand={selectedBrand}
+          onSelectedBrandChange={setSelectedBrand}
+          maxPrice={maxPrice}
+          onMaxPriceChange={setMaxPrice}
+          filteredStationsCount={filteredStations.length}
+          poisCount={pois.length}
+          autoRefreshEnabled={autoRefreshEnabled}
+          onToggleAutoRefresh={toggleAutoRefresh}
+          autoRefreshIntervalMs={autoRefreshIntervalMs}
+          lastDataRefresh={lastDataRefresh}
+          getTimeAgo={getTimeAgo}
+          selectedRouteType={selectedRouteType}
+          onSelectedRouteTypeChange={setSelectedRouteType}
+          onRouteToNearest={routeToNearestPOI}
+          loading={loading || loadingRoute}
+          uniqueBrands={uniqueBrands}
+        />
       )}
 
-      {/* Floating Donation Button - COMMENTED OUT: PayMongo payment integration disabled */}
-      {/*
-      <button
-        onClick={() => setShowDonations(true)}
-        className="donation-button"
-      >
-        💝 Support Community
-      </button>
-      */}
-
-      {/* Donation Widget - COMMENTED OUT: PayMongo payment integration disabled */}
-      {/*
-      {showDonations && (
-        <DonationWidget onClose={() => setShowDonations(false)} />
-      )}
-      */}
 
       {/* Mobile Bottom Sheet for Marker Details */}
       {isMobile && selectedItem && (
@@ -1996,7 +1529,7 @@ const MainApp: React.FC = () => {
               isOpen={isLocationOpen((selectedItem.data as Station).operating_hours)}
               isRoutingTo={routingTo?.id === selectedItem.data.id}
               routeData={routeData}
-              onGetDirections={() => getRoute(selectedItem.data)}
+              onGetDirections={() => routeTo(selectedItem.data as Station)}
               onClearRoute={clearRoute}
             />
           ) : (
@@ -2010,7 +1543,7 @@ const MainApp: React.FC = () => {
               )}
               isRoutingTo={routingTo?.id === selectedItem.data.id}
               routeData={routeData}
-              onGetDirections={() => getRoute(selectedItem.data)}
+              onGetDirections={() => routeTo(selectedItem.data as POI)}
               onClearRoute={clearRoute}
             />
           )}
