@@ -51,5 +51,13 @@ export const apiEndpoints = {
   admin: {
     reviews: () => `/api/admin/reviews`,
     reviewById: (reviewId: number) => `/api/admin/reviews/${reviewId}`,
+    priceReports: () => `/api/admin/price-reports`,
+    priceReportsPending: () => `/api/admin/price-reports/pending`,
+    priceReportById: (reportId: number) => `/api/admin/price-reports/${reportId}`,
+    priceReportVerify: (reportId: number) => `/api/admin/price-reports/${reportId}/verify`,
+    priceReportsStats: () => `/api/admin/price-reports/stats`,
+    priceReportsTrends: (days: number) => `/api/admin/price-reports/trends?days=${days}`,
+    usersStats: () => `/api/admin/users/stats`,
+    usersActive: () => `/api/admin/users/active`,
   },
 };

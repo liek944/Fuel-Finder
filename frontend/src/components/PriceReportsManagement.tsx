@@ -1,36 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { apiGet, apiPost, apiDelete, apiPatch } from "../utils/api";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import FuelPriceTrendChart from "./FuelPriceTrendChart";
+import { useAdminPrices } from "../hooks/admin/useAdminPrices";
+import type { PriceReport as BasePriceReport } from "../types/price.types";
 
 // Types
-interface PriceReport {
-  id: number;
-  station_id: number;
+interface AdminPriceReport extends BasePriceReport {
   station_name: string;
   station_brand: string;
-  fuel_type: string;
-  price: number | string; // PostgreSQL NUMERIC/DECIMAL returns as string
-  reporter_ip: string;
-  notes?: string;
-  is_verified: boolean;
   verified_by?: string;
   verified_at?: string;
-  created_at: string;
-}
-
-interface PriceReportStats {
-  total_reports: number;
-  verified_reports: number;
-  pending_reports: number;
-  reports_today: number;
-  unique_stations_reported: number;
-  avg_price_all: string | null;
-  most_reported_station: string | null;
-  most_reported_station_count: number;
-  last_report_date: string | null;
-  verification_rate: string;
 }
 
 interface PriceReportsManagementProps {
@@ -45,10 +25,6 @@ export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   const [activeTab, setActiveTab] = useState<"pending" | "all" | "stats">(
     "pending",
   );
-  const [reports, setReports] = useState<PriceReport[]>([]);
-  const [stats, setStats] = useState<PriceReportStats | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<
     "all" | "verified" | "pending"
   >("all");
@@ -61,73 +37,55 @@ export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
 
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalReports, setTotalReports] = useState<number>(0);
   const reportsPerPage = 20;
+
+  const {
+    reports: rawReports,
+    total,
+    stats,
+    loading,
+    error,
+    fetchPending,
+    fetchAll,
+    fetchStats,
+    verifyReport: verifyReportApi,
+    deleteReport: deleteReportApi,
+  } = useAdminPrices(adminApiKey);
+
+  const reports = rawReports as AdminPriceReport[];
 
   // Unified data fetching function
   const refreshData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
-      let response;
       if (activeTab === "pending") {
-        const offset = (currentPage - 1) * reportsPerPage;
-        response = await apiGet(
-          `/api/admin/price-reports/pending?limit=${reportsPerPage}&offset=${offset}`,
-          adminApiKey,
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setReports(data.reports);
-          setTotalReports(data.pagination.total);
-        }
+        await fetchPending(currentPage, reportsPerPage);
       } else if (activeTab === "all") {
-        const offset = (currentPage - 1) * reportsPerPage;
-        let url = `/api/admin/price-reports?limit=${reportsPerPage}&offset=${offset}`;
-        if (selectedFilter !== "all") {
-          url += `&verified=${selectedFilter === "verified" ? "true" : "false"}`;
-        }
-        if (stationSearch) {
-          url += `&station_name=${encodeURIComponent(stationSearch)}`;
-        }
-        if (startDate) {
-          url += `&start_date=${startDate.toISOString()}`;
-        }
-        if (endDate) {
-          const adjustedEndDate = new Date(endDate);
-          adjustedEndDate.setHours(23, 59, 59, 999);
-          url += `&end_date=${adjustedEndDate.toISOString()}`;
-        }
-        response = await apiGet(url, adminApiKey);
-        if (response.ok) {
-          const data = await response.json();
-          setReports(data.reports);
-          setTotalReports(data.pagination.total);
-        }
+        const verifiedFilter =
+          selectedFilter === "all"
+            ? undefined
+            : selectedFilter === "verified";
+        await fetchAll({
+          page: currentPage,
+          pageSize: reportsPerPage,
+          verified: verifiedFilter,
+          stationName: stationSearch || undefined,
+          startDate,
+          endDate,
+        });
       } else if (activeTab === "stats") {
-        response = await apiGet("/api/admin/price-reports/stats", adminApiKey);
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data);
-        }
-      }
-
-      if (response && response.ok) {
-        setLastUpdated(new Date());
-      } else if (response) {
-        const errorData = await response.json();
-        setError(errorData.message || `Failed to fetch data for ${activeTab}`);
+        await fetchStats();
       }
     } catch (err) {
-      setError(`Network error while fetching data for ${activeTab}`);
       console.error(`Error fetching ${activeTab}:`, err);
     } finally {
-      setLoading(false);
+      setLastUpdated(new Date());
     }
   }, [
     activeTab,
-    adminApiKey,
     currentPage,
+    fetchAll,
+    fetchPending,
+    fetchStats,
     selectedFilter,
     stationSearch,
     startDate,
@@ -149,19 +107,12 @@ export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   // Verify a price report
   const verifyReport = async (reportId: number) => {
     try {
-      const response = await apiPost(
-        `/api/admin/price-reports/${reportId}/verify`,
-        { verified_by: "admin" },
-        adminApiKey,
-      );
-
-      if (response.ok) {
-        // Refresh the current view
-        refreshData();
+      const success = await verifyReportApi(reportId, "admin");
+      if (success) {
+        await refreshData();
         alert("Report verified successfully!");
       } else {
-        const errorData = await response.json();
-        alert(`Failed to verify report: ${errorData.message}`);
+        alert("Failed to verify report");
       }
     } catch (err) {
       alert("Network error while verifying report");
@@ -176,18 +127,12 @@ export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
     }
 
     try {
-      const response = await apiDelete(
-        `/api/admin/price-reports/${reportId}`,
-        adminApiKey,
-      );
-
-      if (response.ok) {
-        // Refresh the current view
-        refreshData();
+      const success = await deleteReportApi(reportId);
+      if (success) {
+        await refreshData();
         alert("Report deleted successfully!");
       } else {
-        const errorData = await response.json();
-        alert(`Failed to delete report: ${errorData.message}`);
+        alert("Failed to delete report");
       }
     } catch (err) {
       alert("Network error while deleting report");
@@ -219,20 +164,12 @@ export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
   };
 
   // Calculate pagination
-  const totalPages = Math.ceil(totalReports / reportsPerPage);
+  const totalPages = Math.ceil(total / reportsPerPage);
 
   // Effect to fetch data when tab or page changes
   useEffect(() => {
     refreshData();
-  }, [
-    activeTab,
-    currentPage,
-    selectedFilter,
-    stationSearch,
-    startDate,
-    endDate,
-    refreshData,
-  ]);
+  }, [refreshData]);
 
   // Reset page when changing tabs or filters
   useEffect(() => {
@@ -499,7 +436,7 @@ export const PriceReportsManagement: React.FC<PriceReportsManagementProps> = ({
                   </button>
 
                   <span>
-                    Page {currentPage} of {totalPages} ({totalReports} total
+                    Page {currentPage} of {totalPages} ({total} total
                     reports)
                   </span>
 

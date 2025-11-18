@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { apiGet } from "../utils/api";
+import { useAdminAnalytics } from "../hooks/admin/useAdminAnalytics";
 import "../styles/UserAnalytics.css";
 
 // Get admin API key from localStorage (set by AdminPortal)
@@ -7,143 +7,25 @@ const getAdminApiKey = (): string => {
   return localStorage.getItem("admin_api_key") || "";
 };
 
-interface UserStats {
-  activeUsers: number;
-  timestamp: number;
-  deviceBreakdown: {
-    Mobile: number;
-    Desktop: number;
-    Tablet: number;
-    Unknown: number;
-  };
-  locationBreakdown: {
-    [region: string]: number;
-  };
-  featureUsage: {
-    [feature: string]: number;
-  };
-  pageBreakdown: {
-    [page: string]: number;
-  };
-  sessionStats: {
-    averageDurationMinutes: number;
-    longestSessionMinutes: number;
-  };
-  recentSessions: Array<{
-    sessionId: string;
-    device: string;
-    location: string;
-    duration: string;
-    pageViews: number;
-    currentPage: string;
-  }>;
-}
-
-interface ActiveUser {
-  sessionId: string;
-  device: string;
-  location: {
-    lat: number;
-    lng: number;
-    display: string;
-  } | null;
-  duration: number;
-  pageViews: number;
-  currentPage: string;
-  lastActive: string;
-}
-
 const UserAnalytics: React.FC = () => {
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const adminApiKey = getAdminApiKey();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { stats, loading, error, refresh } = useAdminAnalytics(adminApiKey, {
+    autoRefreshMs: autoRefresh ? 30000 : undefined,
+  });
 
-  // Fetch statistics
-  const fetchStats = async () => {
-    try {
-      const apiKey = getAdminApiKey();
-      console.log(
-        "📊 Fetching user stats with API key:",
-        apiKey ? "Present" : "Missing",
-      );
-
-      const response = await apiGet("/api/admin/users/stats", apiKey);
-
-      console.log("📊 Stats response status:", response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("📊 Stats data:", data);
-
-        if (data.success) {
-          setStats(data.stats);
-          setLastUpdated(new Date());
-          setError(null);
-        }
-      } else {
-        const errorText = await response.text();
-        console.error("❌ Stats fetch failed:", response.status, errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (err: any) {
-      console.error("❌ Failed to fetch user stats:", err);
-      setError(err.message || "Failed to load statistics");
-    }
-  };
-
-  // Fetch active users
-  const fetchActiveUsers = async () => {
-    try {
-      const apiKey = getAdminApiKey();
-      console.log(
-        "👥 Fetching active users with API key:",
-        apiKey ? "Present" : "Missing",
-      );
-
-      const response = await apiGet("/api/admin/users/active", apiKey);
-
-      console.log("👥 Active users response status:", response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log("👥 Active users data:", data);
-
-        if (data.success) {
-          setActiveUsers(data.users);
-        }
-      } else {
-        console.error("❌ Active users fetch failed:", response.status);
-      }
-    } catch (err: any) {
-      console.error("❌ Failed to fetch active users:", err);
-    }
-  };
-
-  // Initial fetch
+  // Initial fetch via hook
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([fetchStats(), fetchActiveUsers()]);
-      setLoading(false);
-    };
+    refresh();
+  }, [refresh]);
 
-    loadData();
-  }, []);
-
-  // Auto-refresh every 30 seconds
+  // Track last updated based on stats changes
   useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(() => {
-      fetchStats();
-      fetchActiveUsers();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [autoRefresh]);
+    if (stats) {
+      setLastUpdated(new Date());
+    }
+  }, [stats]);
 
   if (loading) {
     return (
@@ -194,8 +76,7 @@ const UserAnalytics: React.FC = () => {
           </label>
           <button
             onClick={() => {
-              fetchStats();
-              fetchActiveUsers();
+              refresh();
             }}
             className="refresh-button"
           >
@@ -329,7 +210,7 @@ const UserAnalytics: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {stats.recentSessions.map((session, index) => (
+                {stats.recentSessions.map((session) => (
                   <tr key={session.sessionId}>
                     <td className="sessions-table-cell">
                       <code className="session-id-code">
