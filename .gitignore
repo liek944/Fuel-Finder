@@ -1,6 +1,6 @@
 orsm-data/
 node_modules/
-
+DOCUMENTATIONS AND CONTEXT/
 # Ignore environment variables
 /backend/.env
 /backend/.env.example
