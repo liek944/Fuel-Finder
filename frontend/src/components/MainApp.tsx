@@ -36,7 +36,7 @@ import { useRoute } from "../hooks/useRoute";
 import RouteDisplay from "./map/RouteDisplay";
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
-import userTracking from "../utils/userTracking";
+import { useUserTracking } from "../hooks/useUserTracking";
 import { arrivalNotifications } from "../utils/arrivalNotifications";
 import { useSettings } from "../contexts/SettingsContext";
 import { useArrivalNotificationsUI } from "../hooks/useArrivalNotificationsUI";
@@ -741,15 +741,9 @@ const MainApp: React.FC = () => {
   }, [autoRefreshEnabled, position, radiusMeters, autoRefreshIntervalMs]);
 
   // Initialize user activity tracking
-  useEffect(() => {
-    // Start tracking when component mounts
-    userTracking.startTracking("main");
-
-    // Stop tracking when component unmounts
-    return () => {
-      userTracking.stopTracking();
-    };
-  }, []);
+  // Start tracking when component mounts
+  // Stop tracking when component unmounts
+  useUserTracking("main");
 
   // Settings and visual alert registration handled via context/hooks
   

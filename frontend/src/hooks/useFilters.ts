@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useFilterContext } from "../contexts/FilterContext";
+import { useFilterDerived } from "./useFilterDerived";
 
 /**
  * useFilters
@@ -27,65 +28,7 @@ interface FilterableStationBase {
 export function useFilters<TStation extends FilterableStationBase>(
   stations: TStation[],
 ) {
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [radiusMeters, setRadiusMeters] = useState<number>(5000);
-  const [selectedBrand, setSelectedBrand] = useState<string>("All");
-  const [maxPrice, setMaxPrice] = useState<number>(100);
-  // Routing target type (gas, convenience, repair, car_wash, motor_shop)
-  const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
-
-  // Auto-refresh state (enabled by default, same as original behavior)
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true);
-  const [lastDataRefresh, setLastDataRefresh] = useState<number>(() => Date.now());
-  const autoRefreshIntervalMs = 60000; // 60 seconds
-
-  // Desktop search panel collapsed state
-  const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] = useState<boolean>(false);
-
-  // Filter stations based on search criteria (with useMemo for performance)
-  const filteredStations = useMemo(
-    () =>
-      stations.filter((station) => {
-        const matchesBrand =
-          selectedBrand === "All" || station.brand === selectedBrand;
-
-        // Check if any fuel type matches the price filter
-        // NOTE: PostgreSQL NUMERIC returns strings - coerce to number for comparison
-        const matchesPrice =
-          station.fuel_prices && station.fuel_prices.length > 0
-            ? station.fuel_prices.some((fp) => Number(fp.price) <= maxPrice)
-            : Number(station.fuel_price) <= maxPrice; // Fallback to legacy price
-
-        const matchesSearch =
-          searchQuery === "" ||
-          (station.name &&
-            station.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (station.brand &&
-            station.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (station.address &&
-            station.address.toLowerCase().includes(searchQuery.toLowerCase()));
-
-        return matchesBrand && matchesPrice && matchesSearch;
-      }),
-    [stations, selectedBrand, maxPrice, searchQuery],
-  );
-
-  // Unique brands for dropdowns (memoized for performance)
-  const uniqueBrands = useMemo(
-    () => Array.from(new Set(stations.map((station) => station.brand))).sort(),
-    [stations],
-  );
-
-  const toggleAutoRefresh = useCallback(() => {
-    setAutoRefreshEnabled((prev) => !prev);
-  }, []);
-
-  const toggleSearchPanelCollapsed = useCallback(() => {
-    setIsSearchPanelCollapsed((prev) => !prev);
-  }, []);
-
-  return {
-    // Core filter state
+  const {
     searchQuery,
     setSearchQuery,
     radiusMeters,
@@ -96,21 +39,39 @@ export function useFilters<TStation extends FilterableStationBase>(
     setMaxPrice,
     selectedRouteType,
     setSelectedRouteType,
-
-    // Auto-refresh controls
     autoRefreshEnabled,
     setAutoRefreshEnabled,
     toggleAutoRefresh,
     lastDataRefresh,
     setLastDataRefresh,
     autoRefreshIntervalMs,
-
-    // Desktop panel UI state
     isSearchPanelCollapsed,
     setIsSearchPanelCollapsed,
     toggleSearchPanelCollapsed,
+  } = useFilterContext();
 
-    // Derived data
+  const { filteredStations, uniqueBrands } = useFilterDerived(stations);
+
+  return {
+    searchQuery,
+    setSearchQuery,
+    radiusMeters,
+    setRadiusMeters,
+    selectedBrand,
+    setSelectedBrand,
+    maxPrice,
+    setMaxPrice,
+    selectedRouteType,
+    setSelectedRouteType,
+    autoRefreshEnabled,
+    setAutoRefreshEnabled,
+    toggleAutoRefresh,
+    lastDataRefresh,
+    setLastDataRefresh,
+    autoRefreshIntervalMs,
+    isSearchPanelCollapsed,
+    setIsSearchPanelCollapsed,
+    toggleSearchPanelCollapsed,
     filteredStations,
     uniqueBrands,
   } as const;

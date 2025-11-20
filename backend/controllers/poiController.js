@@ -3,195 +3,184 @@
  * Handles business logic for POI-related operations
  */
 
-const poiRepository = require("../repositories/poiRepository");
-const { transformPoiData } = require("../utils/transformers");
+const poiService = require("../services/poiService");
+const logger = require("../utils/logger");
 
 /**
  * Get all POIs
  */
 async function getAllPois(req, res) {
-  const pois = await poiRepository.getAllPois();
-  const data = transformPoiData(pois);
-  res.json(data);
+  try {
+    const data = await poiService.getAllPois();
+    res.json(data);
+  } catch (error) {
+    logger.error("Error in getAllPois:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
+  }
 }
 
 /**
  * Get nearby POIs
  */
 async function getNearbyPois(req, res) {
-  const lat = parseFloat(req.query.lat);
-  const lng = parseFloat(req.query.lng);
-  const radius = parseInt(req.query.radiusMeters || req.query.radius) || 3000;
+  try {
+    const lat = parseFloat(req.query.lat);
+    const lng = parseFloat(req.query.lng);
+    const radius = parseInt(req.query.radiusMeters || req.query.radius) || 3000;
 
-  if (isNaN(lat) || isNaN(lng)) {
-    return res.status(400).json({
-      error: "Invalid coordinates",
-      message: "Please provide valid latitude and longitude values",
-    });
+    if (isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({
+        error: "Invalid coordinates",
+        message: "Please provide valid latitude and longitude values",
+      });
+    }
+
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({
+        error: "Coordinates out of range",
+        message: "Latitude must be between -90 and 90, longitude between -180 and 180",
+      });
+    }
+
+    const data = await poiService.getNearbyPois(lat, lng, radius);
+    res.json(data);
+  } catch (error) {
+    logger.error("Error in getNearbyPois:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
   }
-
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    return res.status(400).json({
-      error: "Coordinates out of range",
-      message: "Latitude must be between -90 and 90, longitude between -180 and 180",
-    });
-  }
-
-  console.log(`🔍 Finding POIs near [${lat}, ${lng}] within ${radius}m...`);
-  
-  const pois = await poiRepository.getNearbyPois(lat, lng, radius);
-  const data = transformPoiData(pois);
-  
-  console.log(`✅ Found ${data.length} nearby POIs`);
-  res.json(data);
 }
 
 /**
  * Get POI by ID
  */
 async function getPoiById(req, res) {
-  const poiId = parseInt(req.params.id);
+  try {
+    const poiId = parseInt(req.params.id);
 
-  if (!poiId || isNaN(poiId)) {
-    return res.status(400).json({
-      error: "Invalid ID",
-      message: "POI ID must be a valid number",
-    });
+    if (!poiId || isNaN(poiId)) {
+      return res.status(400).json({
+        error: "Invalid ID",
+        message: "POI ID must be a valid number",
+      });
+    }
+
+    const data = await poiService.getPoiById(poiId);
+
+    if (!data) {
+      return res.status(404).json({
+        error: "POI not found",
+        message: `POI with ID ${poiId} does not exist`,
+      });
+    }
+
+    res.json(data);
+  } catch (error) {
+    logger.error("Error in getPoiById:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
   }
-
-  const poi = await poiRepository.getPoiById(poiId);
-  
-  if (!poi) {
-    return res.status(404).json({
-      error: "POI not found",
-      message: `POI with ID ${poiId} does not exist`,
-    });
-  }
-
-  const data = transformPoiData([poi])[0];
-  res.json(data);
 }
 
 /**
  * Create a new POI
  */
 async function createPoi(req, res) {
-  const { name, type, location, address, phone, operating_hours } = req.body;
+  try {
+    const { name, type, location } = req.body;
 
-  // Validation
-  if (!name || !type || !location || !location.lat || !location.lng) {
-    return res.status(400).json({
-      error: "Missing required fields",
-      message: "Name, type, and location (lat, lng) are required",
-    });
+    // Validation
+    if (!name || !type || !location || !location.lat || !location.lng) {
+      return res.status(400).json({
+        error: "Missing required fields",
+        message: "Name, type, and location (lat, lng) are required",
+      });
+    }
+
+    if (!["gas", "convenience", "repair", "car_wash", "motor_shop"].includes(type)) {
+      return res.status(400).json({
+        error: "Invalid type",
+        message: "Type must be one of: gas, convenience, repair, car_wash, motor_shop",
+      });
+    }
+
+    const data = await poiService.createPoi(req.body);
+    res.status(201).json(data);
+  } catch (error) {
+    logger.error("Error in createPoi:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
   }
-
-  if (!["gas", "convenience", "repair", "car_wash", "motor_shop"].includes(type)) {
-    return res.status(400).json({
-      error: "Invalid type",
-      message: "Type must be one of: gas, convenience, repair, car_wash, motor_shop",
-    });
-  }
-
-  console.log(`➕ Creating new POI: ${name} (${type})`);
-  
-  const newPoi = await poiRepository.addPoi({
-    name,
-    type,
-    lat: location.lat,
-    lng: location.lng,
-    address,
-    phone,
-    operating_hours,
-  });
-
-  const data = transformPoiData([newPoi])[0];
-  
-  console.log(`✅ Created POI: ${data.name} (ID: ${data.id})`);
-  res.status(201).json(data);
 }
 
 /**
  * Update a POI
  */
 async function updatePoi(req, res) {
-  const poiId = parseInt(req.params.id);
-  const { name, type, location, address, phone, operating_hours } = req.body;
+  try {
+    const poiId = parseInt(req.params.id);
+    const { type } = req.body;
 
-  if (!poiId || isNaN(poiId)) {
-    return res.status(400).json({
-      error: "Invalid ID",
-      message: "POI ID must be a valid number",
-    });
+    if (!poiId || isNaN(poiId)) {
+      return res.status(400).json({
+        error: "Invalid ID",
+        message: "POI ID must be a valid number",
+      });
+    }
+
+    // Validate type if provided
+    if (type && !["gas", "convenience", "repair", "car_wash", "motor_shop"].includes(type)) {
+      return res.status(400).json({
+        error: "Invalid type",
+        message: "Type must be one of: gas, convenience, repair, car_wash, motor_shop",
+      });
+    }
+
+    const data = await poiService.updatePoi(poiId, req.body);
+
+    if (!data) {
+      return res.status(404).json({
+        error: "POI not found",
+        message: `POI with ID ${poiId} does not exist`,
+      });
+    }
+
+    res.json(data);
+  } catch (error) {
+    logger.error("Error in updatePoi:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
   }
-
-  // Check if POI exists
-  const existing = await poiRepository.getPoiById(poiId);
-  if (!existing) {
-    return res.status(404).json({
-      error: "POI not found",
-      message: `POI with ID ${poiId} does not exist`,
-    });
-  }
-
-  // Validate type if provided
-  if (type && !["gas", "convenience", "repair", "car_wash", "motor_shop"].includes(type)) {
-    return res.status(400).json({
-      error: "Invalid type",
-      message: "Type must be one of: gas, convenience, repair, car_wash, motor_shop",
-    });
-  }
-
-  console.log(`🔄 Updating POI ${poiId}: ${name || existing.name}`);
-  
-  const updated = await poiRepository.updatePoi(poiId, {
-    name: name || existing.name,
-    type: type || existing.type,
-    lat: location?.lat || existing.lat,
-    lng: location?.lng || existing.lng,
-    address: address !== undefined ? address : existing.address,
-    phone: phone !== undefined ? phone : existing.phone,
-    operating_hours: operating_hours !== undefined ? operating_hours : existing.operating_hours,
-  });
-
-  const data = transformPoiData([updated])[0];
-  
-  console.log(`✅ Updated POI: ${data.name}`);
-  res.json(data);
 }
 
 /**
  * Delete a POI
  */
 async function deletePoi(req, res) {
-  const poiId = parseInt(req.params.id);
+  try {
+    const poiId = parseInt(req.params.id);
 
-  if (!poiId || isNaN(poiId)) {
-    return res.status(400).json({
-      error: "Invalid ID",
-      message: "POI ID must be a valid number",
+    if (!poiId || isNaN(poiId)) {
+      return res.status(400).json({
+        error: "Invalid ID",
+        message: "POI ID must be a valid number",
+      });
+    }
+
+    const deleted = await poiService.deletePoi(poiId);
+
+    if (!deleted) {
+      return res.status(404).json({
+        error: "POI not found",
+        message: `POI with ID ${poiId} does not exist`,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `POI ${deleted.name} deleted successfully`,
+      deletedId: poiId,
     });
+  } catch (error) {
+    logger.error("Error in deletePoi:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
   }
-
-  // Check if POI exists
-  const existing = await poiRepository.getPoiById(poiId);
-  if (!existing) {
-    return res.status(404).json({
-      error: "POI not found",
-      message: `POI with ID ${poiId} does not exist`,
-    });
-  }
-
-  console.log(`🗑️  Deleting POI ${poiId}: ${existing.name}`);
-  
-  await poiRepository.deletePoi(poiId);
-  
-  console.log(`✅ Deleted POI: ${existing.name}`);
-  res.json({
-    success: true,
-    message: `POI ${existing.name} deleted successfully`,
-    deletedId: poiId,
-  });
 }
 
 module.exports = {
