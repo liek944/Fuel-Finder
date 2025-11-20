@@ -165,12 +165,21 @@
 
 ### 6.1 Global State Boundaries
 
-- [ ] **Define what is global vs local**
-  - **Task:** List out state that should be global:
-    - Selected station/POI, route, filters, user settings (voice, notifications, keep-screen-on), maybe session info.
+ - [x] **Define what is global vs local**
+  - **Task:** List out state that should be global vs local:
+    - **Global state (contexts/hooks/services):**
+      - Selected station/POI and bottom sheet mode (via `MapSelectionContext`)
+      - Map filters (radius, search query, brand, maxPrice, selectedRouteType, auto-refresh, search panel collapse) (via `FilterContext`/`useFilters`)
+      - User settings (voiceEnabled, notificationsEnabled, keep-screen-on) (via `SettingsContext`)
+      - Active route and navigation state (routeData, routingTo, navigationActive) (via `useRoute`)
+      - Session/user activity metadata (sessionId, currentPage, feature usage) (via `userTracking`)
+    - **Local state (per view/component):**
+      - Transient UI toggles (e.g., mobile menu open/closed, filter sheet open/collapsed, trip recorder expanded)
+      - Map viewport details derived from Leaflet (center, zoom) that do not need to be global
+      - Form fields and temporary inputs (price-report inputs, admin form values, etc.)
   - **Impact:** Fewer prop-drilling chains and surprises.
 
-- [ ] **Create dedicated contexts**
+ - [x] **Create dedicated contexts**
   - **Task:** Implement small, focused contexts:
     - `MapSelectionContext`
     - `FilterContext`
@@ -179,10 +188,8 @@
 
 ### 6.2 Hooks for Complex Behavior
 
-- [ ] **Encapsulate complex flows**
+- [x] **Encapsulate complex flows**
   - **Task:** Ensure features like:
-    - Arrival notifications
-    - Trip recording
     - PWA install prompt
     - Follow camera
     - User tracking/analytics heartbeat
@@ -197,35 +204,35 @@
 
 ### 7.1 Service Layer Consistency
 
-- [ ] **Review services**
+- [x] **Review services**
   - **Task:** Check `services/` (e.g., `paymentService`, `userActivityTracker`, `supabaseStorage`, `cacheService`) for:
     - Clear interfaces
     - No direct `req/res` usage
   - **Impact:** Controllers remain thin and composable.
 
-- [ ] **Add domain service modules where missing**
+- [x] **Add domain service modules where missing**
   - **Task:** If some business rules live directly in controllers, consider extracting:
     - `stationService`, `poiService`, `priceService`, `ownerService`, `analyticsService`.
   - **Impact:** Easier to test logic without HTTP layer.
 
 ### 7.2 API Contracts & Docs
 
-- [ ] **Create or update API reference**
+- [x] **Create or update API reference**
   - **Task:** Create OpenAPI/Swagger definition or at least:
     - `API_REFERENCE.md` with endpoints, request/response shapes, error codes.
   - **Impact:** Easier frontend work, future integrations, and thesis documentation.
 
-- [ ] **Ensure DTOs and transformers match TS types**
+- [x] **Ensure DTOs and transformers match TS types**
   - **Task:** Double-check `utils/transformers.js` fields (addresses, phones, operating_hours, images, prices).
   - **Impact:** Eliminates subtle mismatches (e.g., missing fields in POIs).
 
 ### 7.3 Logging & Observability
 
-- [ ] **Structured logging**
+- [x] **Structured logging**
   - **Task:** Introduce a simple logger (winston/pino or custom wrapper) and standard log format.
   - **Impact:** Production issues easier to diagnose.
 
-- [ ] **Minimal metrics**
+- [x] **Minimal metrics**
   - **Task:** Log or expose:
     - Request duration
     - Endpoint usage counts
