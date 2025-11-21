@@ -11,6 +11,7 @@ import AdminPortalContainer from "./components/admin/AdminPortalContainer";
 import OwnerLogin from "./components/owner/OwnerLogin";
 import OwnerDashboard from "./components/owner/OwnerDashboard";
 import About from "./components/About";
+import Contact from "./components/Contact";
 import { OwnerThemeProvider } from "./contexts/OwnerThemeContext";
 import "./App.css";
 
@@ -26,22 +27,22 @@ import "./App.css";
 function extractSubdomain(hostname: string): string | null {
   // Remove port if present
   const host = hostname.split(':')[0];
-  
+
   // Split by dots
   const parts = host.split('.');
-  
+
   // Handle localhost or IP addresses
   if (parts.length <= 1 || host === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
     return null;
   }
-  
+
   // SPECIAL: Detect Netlify/Vercel owner portal deployments
   // Pattern: owner-name-portal.netlify.app or owner-name-portal.vercel.app
   const hostingProviders = ['netlify.app', 'vercel.app', 'herokuapp.com', 'onrender.com'];
   const domain = parts.slice(-2).join('.');
   if (hostingProviders.includes(domain)) {
     const siteName = parts[0]; // e.g., "ifuel-dangay-portal" or "fuelfinderths"
-    
+
     // Check if this is an owner portal (contains "-portal" in the name)
     if (siteName.includes('-portal')) {
       // Extract owner name: "ifuel-dangay-portal" -> "ifuel-dangay"
@@ -49,11 +50,11 @@ function extractSubdomain(hostname: string): string | null {
       console.log('🔍 Detected Netlify owner portal:', ownerName);
       return ownerName;
     }
-    
+
     // Otherwise, it's the main app deployment
     return null;
   }
-  
+
   // For DuckDNS: only detect if it matches owner pattern (owner-name.duckdns.org)
   // Main backend is fuelfinder.duckdns.org (no subdomain)
   if (host.includes('duckdns.org')) {
@@ -66,19 +67,19 @@ function extractSubdomain(hostname: string): string | null {
     }
     return null;
   }
-  
+
   // For production custom domain: subdomain.fuelfinder.com
   if (parts.length >= 3 && host.includes('fuelfinder.com')) {
     const subdomain = parts[0];
-    
+
     // Ignore common prefixes that aren't owner subdomains
     if (subdomain === 'www' || subdomain === 'api' || subdomain === 'admin') {
       return null;
     }
-    
+
     return subdomain;
   }
-  
+
   return null;
 }
 
@@ -90,10 +91,10 @@ function App() {
     // Detect subdomain from hostname
     const hostname = window.location.hostname;
     const detectedSubdomain = extractSubdomain(hostname);
-    
+
     console.log('🔍 Hostname:', hostname);
     console.log('🔍 Detected subdomain:', detectedSubdomain);
-    
+
     setSubdomain(detectedSubdomain);
     setIsOwnerPortal(!!detectedSubdomain);
   }, []);
@@ -123,6 +124,7 @@ function App() {
           {/* Main user-facing app */}
           <Route path="/" element={<MainApp />} />
           <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
 
           {/* Admin portal */}
           <Route path="/admin" element={<AdminPortalContainer />} />
