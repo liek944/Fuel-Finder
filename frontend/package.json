@@ -52,6 +52,7 @@
   "devDependencies": {
     "@types/react-datepicker": "^6.2.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^27.2.0",
     "react-datepicker": "^8.8.0",
     "sharp": "^0.34.4",
     "vite": "^6.0.5",

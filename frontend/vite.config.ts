@@ -122,5 +122,11 @@ export default defineConfig({
   define: {
     // Ensure process.env compatibility for libraries that expect it
     'process.env': {}
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/setupTests.ts',
+    css: false,
   }
 })
