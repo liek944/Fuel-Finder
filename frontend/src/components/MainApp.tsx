@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   TileLayer,
   Marker,
@@ -470,6 +471,7 @@ const MainApp: React.FC = () => {
   const { filteredStations, uniqueBrands } = useFilterDerived<Station>(stations);
   const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive } = useRoute(position);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const navigate = useNavigate();
 
   // Bottom sheet selection (shared via context)
   const { selectedItem, setSelectedItem, sheetMode, setSheetMode, closeSheet, expandSheet, collapseSheet } = useMapSelection();
@@ -1234,7 +1236,7 @@ const MainApp: React.FC = () => {
                 className="mobile-menu-link"
                 type="button"
                 onClick={() => {
-                  info("About page coming soon.");
+                  navigate("/about");
                   setIsMenuOpen(false);
                 }}
               >
@@ -1244,7 +1246,7 @@ const MainApp: React.FC = () => {
                 className="mobile-menu-link"
                 type="button"
                 onClick={() => {
-                  info("Contact page coming soon.");
+                  navigate("/contact");
                   setIsMenuOpen(false);
                 }}
               >
