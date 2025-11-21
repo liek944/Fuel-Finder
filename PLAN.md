@@ -247,13 +247,13 @@
 
 ### 8.1 Backend Tests
 
-- [ ] **Unit tests for repositories & services**
+- [x] **Unit tests for repositories & services**
   - **Task:** Use Jest:
     - Mock DB for repositories where needed.
     - Test core business logic in services (price reporting, donations, routing, analytics).
   - **Impact:** Safe refactoring of backend internals.
 
-- [ ] **Integration tests for critical endpoints**
+- [x] **Integration tests for critical endpoints**
   - **Task:** Use `supertest` to cover:
     - `/api/stations/nearby`
     - `/api/pois/nearby`
@@ -264,7 +264,7 @@
 
 ### 8.2 Frontend Tests
 
-- [ ] **Component tests for core UI**
+- [x] **Component tests for core UI**
   - **Task:** Use React Testing Library on:
     - Station list/filter behavior
     - Bottom sheet open/close
@@ -276,6 +276,12 @@
     - “User searches, selects station, starts route”
     - “Admin logs in and approves price report”
   - **Impact:** End-to-end sanity checks.
+
+### 8.3 CI/CD
+
+- [x] **GitHub Actions Pipeline**
+  - **Task:** Created `.github/workflows/ci.yml`
+  - **Impact:** Automated testing on push/PR.
 
 ---
 
