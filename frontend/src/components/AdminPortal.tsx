@@ -260,6 +260,7 @@ const AdminPortal: React.FC = () => {
   const [currentAdminView, setCurrentAdminView] = useState<
     "map" | "price-reports" | "user-analytics" | "reviews"
   >("map");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   // Form states - unified for all POI types
   const [addingMode, setAddingMode] = useState<boolean>(false);
@@ -357,7 +358,7 @@ const AdminPortal: React.FC = () => {
       if (savedMarkers) {
         setCustomMarkers(JSON.parse(savedMarkers));
       }
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   // Get user location
@@ -403,7 +404,7 @@ const AdminPortal: React.FC = () => {
   useEffect(() => {
     try {
       localStorage.setItem("custom_markers", JSON.stringify(customMarkers));
-    } catch (_) {}
+    } catch (_) { }
   }, [customMarkers]);
 
   const isAdminEnabled = adminValidated;
@@ -421,7 +422,7 @@ const AdminPortal: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         console.log("🔍 API Key validation response:", data);
-        
+
         // Backend returns "keyMatch" (singular), not "keysMatch" (plural)
         if (data.keyMatch) {
           return true;
@@ -449,14 +450,14 @@ const AdminPortal: React.FC = () => {
         localStorage.setItem("admin_api_key", adminApiKey.trim());
         setApiKey(adminApiKey.trim());
         setAdminValidated(true);
-      } catch (_) {}
+      } catch (_) { }
     }
   };
 
   const handleAdminDisable = () => {
     try {
       localStorage.removeItem("admin_api_key");
-    } catch (_) {}
+    } catch (_) { }
     setAdminApiKey("");
     setApiKey("");
     setAdminValidated(false);
@@ -790,21 +791,21 @@ const AdminPortal: React.FC = () => {
     if (!isValidPhilippinesLat && !isValidPhilippinesLng) {
       const confirmOutside = window.confirm(
         `⚠️ WARNING: These coordinates (${lat.toFixed(6)}, ${lng.toFixed(6)}) are outside the Philippines region.\n\n` +
-          `Expected ranges:\n` +
-          `• Latitude: 4° to 22°N (you entered: ${lat.toFixed(2)}°)\n` +
-          `• Longitude: 116° to 127°E (you entered: ${lng.toFixed(2)}°)\n\n` +
-          `Do you want to continue anyway?`,
+        `Expected ranges:\n` +
+        `• Latitude: 4° to 22°N (you entered: ${lat.toFixed(2)}°)\n` +
+        `• Longitude: 116° to 127°E (you entered: ${lng.toFixed(2)}°)\n\n` +
+        `Do you want to continue anyway?`,
       );
       if (!confirmOutside) return;
     } else if (!isValidPhilippinesLat && isValidPhilippinesLng) {
       // Latitude is out of range but longitude is valid - likely swapped!
       const shouldSwap = window.confirm(
         `⚠️ COORDINATE SWAP DETECTED!\n\n` +
-          `Your latitude (${lat.toFixed(6)}) looks like a longitude value.\n` +
-          `Your longitude (${lng.toFixed(6)}) looks like a latitude value.\n\n` +
-          `Did you accidentally swap them?\n\n` +
-          `Click OK to auto-swap to: ${lng.toFixed(6)}, ${lat.toFixed(6)}\n` +
-          `Click Cancel to keep original values`,
+        `Your latitude (${lat.toFixed(6)}) looks like a longitude value.\n` +
+        `Your longitude (${lng.toFixed(6)}) looks like a latitude value.\n\n` +
+        `Did you accidentally swap them?\n\n` +
+        `Click OK to auto-swap to: ${lng.toFixed(6)}, ${lat.toFixed(6)}\n` +
+        `Click Cancel to keep original values`,
       );
       if (shouldSwap) {
         [lat, lng] = [lng, lat];
@@ -814,11 +815,11 @@ const AdminPortal: React.FC = () => {
       // Longitude is out of range but latitude is valid - likely swapped!
       const shouldSwap = window.confirm(
         `⚠️ COORDINATE SWAP DETECTED!\n\n` +
-          `Your longitude (${lng.toFixed(6)}) looks like a latitude value.\n` +
-          `Your latitude (${lat.toFixed(6)}) looks like a longitude value.\n\n` +
-          `Did you accidentally swap them?\n\n` +
-          `Click OK to auto-swap to: ${lng.toFixed(6)}, ${lat.toFixed(6)}\n` +
-          `Click Cancel to keep original values`,
+        `Your longitude (${lng.toFixed(6)}) looks like a latitude value.\n` +
+        `Your latitude (${lat.toFixed(6)}) looks like a longitude value.\n\n` +
+        `Did you accidentally swap them?\n\n` +
+        `Click OK to auto-swap to: ${lng.toFixed(6)}, ${lat.toFixed(6)}\n` +
+        `Click Cancel to keep original values`,
       );
       if (shouldSwap) {
         [lat, lng] = [lng, lat];
@@ -1163,29 +1164,54 @@ const AdminPortal: React.FC = () => {
           <h1 className="admin-portal-title">Admin Portal</h1>
         </div>
 
+        {/* Hamburger Menu Button - Mobile Only */}
+        {isAdminEnabled && (
+          <button
+            className="hamburger-menu-button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            <span className={mobileMenuOpen ? "open" : ""}></span>
+            <span className={mobileMenuOpen ? "open" : ""}></span>
+            <span className={mobileMenuOpen ? "open" : ""}></span>
+          </button>
+        )}
+
         {/* View Switcher */}
         {isAdminEnabled && (
-          <div className="view-switcher">
+          <div className={`view-switcher ${mobileMenuOpen ? "mobile-open" : ""}`}>
             <button
-              onClick={() => setCurrentAdminView("map")}
+              onClick={() => {
+                setCurrentAdminView("map");
+                setMobileMenuOpen(false);
+              }}
               className={`view-switcher-button ${currentAdminView === "map" ? "active" : ""}`}
             >
               🗺️ Map View
             </button>
             <button
-              onClick={() => setCurrentAdminView("price-reports")}
+              onClick={() => {
+                setCurrentAdminView("price-reports");
+                setMobileMenuOpen(false);
+              }}
               className={`view-switcher-button ${currentAdminView === "price-reports" ? "active" : ""}`}
             >
               💰 Price Reports
             </button>
             <button
-              onClick={() => setCurrentAdminView("user-analytics")}
+              onClick={() => {
+                setCurrentAdminView("user-analytics");
+                setMobileMenuOpen(false);
+              }}
               className={`view-switcher-button ${currentAdminView === "user-analytics" ? "active" : ""}`}
             >
               👥 User Analytics
             </button>
             <button
-              onClick={() => setCurrentAdminView("reviews")}
+              onClick={() => {
+                setCurrentAdminView("reviews");
+                setMobileMenuOpen(false);
+              }}
               className={`view-switcher-button ${currentAdminView === "reviews" ? "active" : ""}`}
             >
               📝 Reviews
@@ -1513,7 +1539,7 @@ const AdminPortal: React.FC = () => {
                               padding: "10px 16px",
                               background:
                                 !manualCoords.trim() &&
-                                (!manualLat.trim() || !manualLng.trim())
+                                  (!manualLat.trim() || !manualLng.trim())
                                   ? "#ccc"
                                   : "#4CAF50",
                               color: "white",
@@ -1521,7 +1547,7 @@ const AdminPortal: React.FC = () => {
                               borderRadius: 4,
                               cursor:
                                 !manualCoords.trim() &&
-                                (!manualLat.trim() || !manualLng.trim())
+                                  (!manualLat.trim() || !manualLng.trim())
                                   ? "not-allowed"
                                   : "pointer",
                               fontSize: "13px",
