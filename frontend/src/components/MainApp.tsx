@@ -52,7 +52,7 @@ import { useMapSelection } from "../contexts/MapSelectionContext";
 // Simple component to center map to user location
 const CenterToLocationButton: React.FC<{ position: [number, number] | null }> = ({ position }) => {
   const map = useMap();
-  
+
   return (
     <button
       onClick={() => {
@@ -117,7 +117,7 @@ const PopupScaleFix: React.FC = () => {
         if (popup instanceof HTMLElement) {
           // Get the current transform value
           const transform = popup.style.transform;
-          
+
           // If there's a transform with translate but no scale, keep it
           // If there's a scale in the transform, remove it
           if (transform && transform.includes('scale')) {
@@ -235,7 +235,7 @@ const createFuelStationIcon = (
   // Quantize proximity to reduce cache misses (group similar values)
   const proxKey = proximity !== undefined ? Math.round(proximity * 4) / 4 : 'none';
   const cacheKey = `fuel-${brand}-${proxKey}-${isClosed}`;
-  
+
   // Return cached icon if available
   if (iconCache.has(cacheKey)) {
     return iconCache.get(cacheKey)!;
@@ -328,7 +328,7 @@ const createFuelStationIcon = (
     iconAnchor: [(width + 10) / 2, height + 15],
     popupAnchor: [0, -(height + 15)],
   });
-  
+
   // Cache the icon for future use
   iconCache.set(cacheKey, icon);
   return icon;
@@ -337,7 +337,7 @@ const createFuelStationIcon = (
 // POI icon creator with sharp points (with caching)
 const createPOIIcon = (type: string) => {
   const cacheKey = `poi-${type}`;
-  
+
   // Return cached icon if available
   if (iconCache.has(cacheKey)) {
     return iconCache.get(cacheKey)!;
@@ -414,7 +414,7 @@ const createPOIIcon = (type: string) => {
     iconAnchor: [(width + 10) / 2, height + 10],
     popupAnchor: [0, -(height + 10)],
   });
-  
+
   // Cache the icon for future use
   iconCache.set(cacheKey, poiIcon);
   return poiIcon;
@@ -433,9 +433,9 @@ const calculateDistance = (
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c;
   return distance;
@@ -445,10 +445,10 @@ const calculateDistance = (
 const MainApp: React.FC = () => {
   // Toast notifications
   const { toasts, hideToast, warning, info } = useToast();
-  
+
   // Mobile detection for bottom sheet vs popups
   const isMobile = useIsMobile();
-  
+
   const [position, setPosition] = useState<[number, number] | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
   const [pois, setPois] = useState<POI[]>([]);
@@ -457,20 +457,23 @@ const MainApp: React.FC = () => {
     radiusMeters,
     setRadiusMeters,
     selectedRouteType,
+    setSelectedRouteType,
     autoRefreshEnabled,
     toggleAutoRefresh,
     lastDataRefresh,
     setLastDataRefresh,
     autoRefreshIntervalMs,
+    isSearchPanelCollapsed,
     setIsSearchPanelCollapsed,
+    toggleSearchPanelCollapsed,
   } = useFilterContext();
   const { filteredStations, uniqueBrands } = useFilterDerived<Station>(stations);
   const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive } = useRoute(position);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  
+
   // Bottom sheet selection (shared via context)
   const { selectedItem, setSelectedItem, sheetMode, setSheetMode, closeSheet, expandSheet, collapseSheet } = useMapSelection();
-  
+
   const handleSheetClose = useCallback(() => {
     closeSheet();
   }, [closeSheet]);
@@ -482,7 +485,7 @@ const MainApp: React.FC = () => {
   const handleSheetCollapse = useCallback(() => {
     collapseSheet();
   }, [collapseSheet]);
-  
+
   // Filter bottom sheet for mobile (collapsed by default; opens on chip tap)
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState<boolean>(false);
   const [filterSheetMode, setFilterSheetMode] = useState<SheetMode>('collapsed');
@@ -499,7 +502,7 @@ const MainApp: React.FC = () => {
 
   const handleFilterSheetExpand = useCallback(() => setFilterSheetMode('expanded'), []);
   const handleFilterSheetCollapse = useCallback(() => setFilterSheetMode('collapsed'), []);
-  
+
   // Convert selectedItem to LatLng for map panning
   const selectedMarkerLatLng = useMemo(() => {
     if (!selectedItem) return null;
@@ -530,7 +533,7 @@ const MainApp: React.FC = () => {
 
   // Arrival notification state
   const { voiceEnabled, notificationsEnabled, keepScreenOn, toggleVoice, toggleNotifications, toggleKeepScreenOn } = useSettings();
-  
+
   // Visual alerts state
   const { alerts: visualAlerts, dismiss: dismissAlert } = useArrivalNotificationsUI();
 
@@ -678,7 +681,7 @@ const MainApp: React.FC = () => {
     };
 
     fetchStations();
-    
+
     return () => {
       cancelled = true;
     };
@@ -704,7 +707,7 @@ const MainApp: React.FC = () => {
     };
 
     fetchPOIs();
-    
+
     return () => {
       cancelled = true;
     };
@@ -724,7 +727,7 @@ const MainApp: React.FC = () => {
 
         // Update last refresh timestamp
         setLastDataRefresh(Date.now());
-        
+
         console.log("🔄 Auto-refresh: Data updated");
       } catch (error) {
         console.error("Auto-refresh failed:", error);
@@ -746,7 +749,7 @@ const MainApp: React.FC = () => {
   useUserTracking("main");
 
   // Settings and visual alert registration handled via context/hooks
-  
+
   // Dismiss visual alert
   const dismissVisualAlert = useCallback((id: string) => {
     dismissAlert(id);
@@ -931,17 +934,17 @@ const MainApp: React.FC = () => {
       {/* Location Accuracy Indicator */}
       {locationAccuracy !== null && (
         <div className="location-accuracy-indicator">
-        <div className="location-accuracy-header">
-          <span className="location-accuracy-dot" />
-          GPS Accuracy
+          <div className="location-accuracy-header">
+            <span className="location-accuracy-dot" />
+            GPS Accuracy
+          </div>
+          <div className="location-accuracy-value">
+            ±{Math.round(locationAccuracy)}m
+          </div>
+          <div className="location-accuracy-timestamp">
+            Updated {getTimeAgo(lastLocationUpdate)}
+          </div>
         </div>
-        <div className="location-accuracy-value">
-          ±{Math.round(locationAccuracy)}m
-        </div>
-        <div className="location-accuracy-timestamp">
-          Updated {getTimeAgo(lastLocationUpdate)}
-        </div>
-      </div>
       )}
 
       {/* Map */}
@@ -975,16 +978,16 @@ const MainApp: React.FC = () => {
           userLatLng={userLatLng}
           accuracy={locationAccuracy}
           navigationActive={navigationActive}
-          onControlsChange={() => {}}
+          onControlsChange={() => { }}
         />
-        
+
         {/* Map Pan Controller - pans map when bottom sheet opens/expands */}
         <MapPanController
           markerLatLng={selectedMarkerLatLng}
           sheetMode={selectedItem ? sheetMode : null}
           isSheetOpen={isMobile && !!selectedItem}
         />
-        
+
         {/* Fix popup scaling during zoom (desktop only - mobile uses bottom sheet) */}
         <PopupScaleFix />
 
@@ -1091,7 +1094,7 @@ const MainApp: React.FC = () => {
         {/* POI markers */}
         {pois.map((poi) => {
           const isSelected = selectedItem?.type === 'poi' && selectedItem?.data.id === poi.id;
-          
+
           return (
             <React.Fragment key={`poi-${poi.id}`}>
               {/* Highlight circle for selected marker */}
@@ -1140,13 +1143,13 @@ const MainApp: React.FC = () => {
             </React.Fragment>
           );
         })}
-        
+
         {/* Map Control Buttons - Right Side */}
         <MapOverlays>
           {!isMobile && (
             <SettingsButton />
           )}
-          
+
           {/* Voice Announcement Toggle Button */}
           {false && (
             <button
@@ -1201,32 +1204,16 @@ const MainApp: React.FC = () => {
       {/* Search Controls (desktop only) */}
       {!isMobile && (
         <SearchControlsDesktop
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          radiusMeters={radiusMeters}
-          onRadiusChange={setRadiusMeters}
-          selectedBrand={selectedBrand}
-          onSelectedBrandChange={setSelectedBrand}
-          maxPrice={maxPrice}
-          onMaxPriceChange={setMaxPrice}
           filteredStationsCount={filteredStations.length}
           poisCount={pois.length}
-          autoRefreshEnabled={autoRefreshEnabled}
-          onToggleAutoRefresh={toggleAutoRefresh}
-          autoRefreshIntervalMs={autoRefreshIntervalMs}
-          lastDataRefresh={lastDataRefresh}
           getTimeAgo={getTimeAgo}
-          selectedRouteType={selectedRouteType}
-          onSelectedRouteTypeChange={setSelectedRouteType}
           onRouteToNearest={routeToNearestPOI}
           loading={loading || loadingRoute}
-          isCollapsed={isSearchPanelCollapsed}
-          onToggleCollapsed={toggleSearchPanelCollapsed}
           uniqueBrands={uniqueBrands}
         />
       )}
 
-      
+
 
       {isMobile && isMenuOpen && (
         <div className="mobile-menu-overlay">
@@ -1316,11 +1303,11 @@ const MainApp: React.FC = () => {
         </div>
       )}
 
-      
+
 
       {/* Visual Alerts - In-app arrival notifications */}
       <VisualAlert alerts={visualAlerts} onDismiss={dismissVisualAlert} />
-      
+
       {/* Toast Notifications */}
       <div className="toast-container">
         {toasts.map((toast) => (
