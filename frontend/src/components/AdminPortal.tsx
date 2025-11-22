@@ -1150,6 +1150,12 @@ const AdminPortal: React.FC = () => {
 
   return (
     <div className="admin-portal">
+      {/* Mobile Menu Backdrop */}
+      <div
+        className={`mobile-menu-backdrop ${mobileMenuOpen ? "open" : ""}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
+
       {/* Navigation */}
       <div className="admin-portal-navigation">
         <a href="/" className="back-to-map-button">
