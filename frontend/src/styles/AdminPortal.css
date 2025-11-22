@@ -23,7 +23,8 @@
     padding: 10px 15px;
     border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    flex-wrap: wrap; /* Allow wrapping on small screens */
+    flex-wrap: wrap;
+    /* Allow wrapping on small screens */
 }
 
 .back-to-map-button {
@@ -47,7 +48,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    flex-grow: 1; /* Allow header to take up space */
+    flex-grow: 1;
+    /* Allow header to take up space */
 }
 
 .admin-portal-logo {
@@ -64,7 +66,8 @@
 
 /* Hamburger Menu Button */
 .hamburger-menu-button {
-    display: none; /* Hidden by default, shown on mobile */
+    display: none;
+    /* Hidden by default, shown on mobile */
     flex-direction: column;
     justify-content: space-around;
     width: 30px;
@@ -101,7 +104,8 @@
     display: flex;
     gap: 8px;
     margin-right: 16px;
-    flex-wrap: wrap; /* Allow wrapping */
+    flex-wrap: wrap;
+    /* Allow wrapping */
 }
 
 .view-switcher-button {
@@ -210,169 +214,172 @@
     .admin-portal-title {
         font-size: 18px;
     }
+
     .admin-controls-panel {
         width: 280px;
         top: 70px;
         left: 15px;
     }
+
     .poi-form-container {
         max-width: 450px;
     }
 }
 
-/* Tablets (Portrait) - Start showing hamburger */
+/* Tablets (Portrait) and Mobile - Unified Menu Logic */
 @media (max-width: 768px) {
     .admin-portal-navigation {
-        padding: 10px;
-        gap: 8px;
+        padding: 10px 15px;
+        gap: 10px;
         position: relative;
+        /* Changed from absolute to relative for better flow on mobile if needed, but keeping absolute for map overlay */
+        position: absolute;
+        flex-wrap: wrap;
+        justify-content: space-between;
     }
-    
+
     .admin-portal-header {
         gap: 8px;
+        flex-grow: 0;
+        /* Don't take all space, allow menu button */
     }
-    
+
     .admin-portal-logo {
-        height: 40px;
+        height: 36px;
     }
-    
+
+    .admin-portal-title {
+        font-size: 18px;
+    }
+
     /* Show hamburger menu button */
     .hamburger-menu-button {
         display: flex;
         margin-left: auto;
-        order: 3;
+        /* Remove order property to rely on DOM order or flex-direction */
     }
-    
+
     /* Hide view switcher by default on mobile */
     .view-switcher {
         position: absolute;
         top: 100%;
         left: 0;
         right: 0;
-        margin: 10px;
-        margin-right: 0;
+        margin: 0;
         flex-direction: column;
         background: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         max-height: 0;
         overflow: hidden;
         opacity: 0;
-        transition: all 0.3s ease;
+        transition: all 0.3s ease-in-out;
         pointer-events: none;
+        z-index: 1002;
+        width: 100%;
     }
-    
+
     .view-switcher.mobile-open {
         max-height: 400px;
         opacity: 1;
-        padding: 10px;
+        padding: 5px 0;
         pointer-events: all;
+        border-top: 1px solid #eee;
     }
-    
+
     .view-switcher-button {
         width: 100%;
         text-align: left;
-        padding: 12px 16px;
-        font-size: 14px;
+        padding: 12px 20px;
+        font-size: 15px;
         margin: 0;
+        border-radius: 0;
+        background: transparent;
+        border-bottom: 1px solid #f5f5f5;
     }
-    
+
+    .view-switcher-button:last-child {
+        border-bottom: none;
+    }
+
+    .view-switcher-button:hover {
+        background: #f9f9f9;
+    }
+
+    .view-switcher-button.active {
+        background: #e3f2fd;
+        color: #1976d2;
+        border-left: 4px solid #1976d2;
+    }
+
+    /* Hide the status text on small screens to save space, or move it into menu */
     .admin-status {
-        order: 4;
-        margin-left: auto;
+        display: none;
     }
-    
+
     .admin-controls-panel {
         width: 90%;
-        max-width: 300px;
-        left: 5%;
+        max-width: 350px;
+        left: 50%;
+        transform: translateX(-50%);
         top: 80px;
         max-height: calc(100vh - 100px);
     }
-    
+
     .poi-form-container {
         width: 95%;
     }
 }
 
-/* Mobile Devices */
+/* Mobile Devices specific adjustments */
 @media (max-width: 480px) {
     .admin-portal-navigation {
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
+        padding: 8px 12px;
     }
-    
+
     .back-to-map-button {
-        order: 0;
-        font-size: 13px;
-        padding: 6px 12px;
+        font-size: 0;
+        /* Hide text */
+        padding: 8px;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-    
-    .admin-portal-header {
-        order: 1;
-        flex-grow: 1;
+
+    .back-to-map-button::before {
+        content: "←";
+        font-size: 18px;
     }
-    
+
     .admin-portal-title {
         font-size: 16px;
     }
-    
-    .hamburger-menu-button {
-        order: 2;
-    }
-    
-    .view-switcher {
-        order: 5;
-        width: calc(100% + 20px);
-        margin-left: -10px;
-        margin-right: -10px;
-    }
-    
-    .admin-status {
-        order: 3;
-        width: 100%;
-        text-align: center;
-        margin: 8px 0 0 0;
-        font-size: 12px;
-    }
-    
-    .admin-controls-panel {
-        top: 140px;
-        max-height: calc(100vh - 160px);
-    }
-    
-    .poi-form-container {
-        padding: 15px;
-    }
-    
-    .poi-form-container h3 {
-        font-size: 18px;
-    }
-}
 
-/* iPhone 7 and smaller */
-@media (max-width: 400px) {
-    .admin-portal-logo {
-        height: 36px;
-    }
-    
-    .admin-portal-title {
-        font-size: 15px;
-    }
-    
-    .back-to-map-button {
-        padding: 5px 10px;
-        font-size: 12px;
-    }
-    
-    .view-switcher-button {
-        padding: 10px 14px;
-        font-size: 13px;
-    }
-    
     .admin-controls-panel {
+        top: 70px;
         width: 94%;
         left: 3%;
     }
+}
+
+/* Mobile Menu Backdrop */
+.mobile-menu-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(2px);
+}
+
+.mobile-menu-backdrop.open {
+    opacity: 1;
+    visibility: visible;
 }
