@@ -11,7 +11,8 @@
     "db:reset": "node database/init.js reset",
     "db:check": "node database/init.js check",
     "db:sample": "node database/init.js sample",
-    "test": "cross-env NODE_ENV=test jest"
+    "test": "cross-env NODE_ENV=test jest",
+    "test:load": "artillery run tests/load/load-test.yml"
   },
   "keywords": [
     "fuel",
@@ -29,12 +30,14 @@
     "axios": "^1.12.2",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "lru-cache": "^11.2.2",
     "multer": "^2.0.2",
     "pg": "^8.16.3",
     "sharp": "^0.33.5",
     "uuid": "^10.0.0"
   },
   "devDependencies": {
+    "artillery": "^2.0.27",
     "cross-env": "^10.1.0",
     "dotenv": "^16.6.1",
     "jest": "^30.2.0",

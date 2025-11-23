@@ -7,6 +7,14 @@
  */
 
 const { pool } = require("../config/database");
+const { LRUCache } = require("lru-cache");
+
+// Initialize cache for owner lookups
+// Cache up to 100 owners for 5 minutes to reduce database load
+const ownerCache = new LRUCache({
+  max: 100,
+  ttl: 1000 * 60 * 5, // 5 minutes
+});
 
 /**
  * Extract subdomain from hostname
@@ -38,12 +46,12 @@ function extractSubdomain(hostname) {
   if (parts.length >= 3) {
     // Get the first part (subdomain)
     const subdomain = parts[0];
-    
+
     // Ignore common prefixes that aren't owner subdomains
     if (subdomain === 'www' || subdomain === 'api' || subdomain === 'admin') {
       return null;
     }
-    
+
     return subdomain;
   }
 
@@ -68,14 +76,14 @@ async function detectOwner(req, res, next) {
     const ownerDomainHeader = req.header("x-owner-domain");
     if (ownerDomainHeader) {
       subdomain = ownerDomainHeader;
-      console.log(`🏷️  Owner domain from header: ${subdomain}`);
+      // console.log(`🏷️  Owner domain from header: ${subdomain}`);
     }
 
     // Method 2: If no header, try to extract subdomain from hostname
     if (!subdomain) {
       subdomain = extractSubdomain(req.hostname);
       if (subdomain) {
-        console.log(`🔍 Owner domain from hostname: ${subdomain} (${req.hostname})`);
+        // console.log(`🔍 Owner domain from hostname: ${subdomain} (${req.hostname})`);
       }
     }
 
@@ -83,7 +91,16 @@ async function detectOwner(req, res, next) {
       // No subdomain detected - this is a public/main domain request
       req.owner = null;
       req.ownerData = null;
-      console.log(`🌐 Public request from: ${req.hostname}`);
+      // console.log(`🌐 Public request from: ${req.hostname}`);
+      return next();
+    }
+
+    // CHECK CACHE FIRST
+    if (ownerCache.has(subdomain)) {
+      const cachedOwner = ownerCache.get(subdomain);
+      req.owner = cachedOwner.domain;
+      req.ownerData = cachedOwner;
+      // console.log(`⚡ Cached owner detected: ${cachedOwner.name}`);
       return next();
     }
 
@@ -98,7 +115,7 @@ async function detectOwner(req, res, next) {
     if (result.rows.length === 0) {
       // Subdomain doesn't match any active owner
       console.warn(`⚠️  Unknown subdomain: ${subdomain} (from ${req.hostname})`);
-      
+
       return res.status(404).json({
         error: "Owner not found",
         message: `Subdomain '${subdomain}' is not registered. Please check your URL.`,
@@ -110,9 +127,12 @@ async function detectOwner(req, res, next) {
     const owner = result.rows[0];
     req.owner = owner.domain; // Just the subdomain string
     req.ownerData = owner; // Full owner object
-    
+
+    // STORE IN CACHE
+    ownerCache.set(subdomain, owner);
+
     console.log(`👤 Owner request detected: ${owner.name} (${owner.domain}) from ${req.hostname}`);
-    
+
     next();
   } catch (error) {
     console.error("❌ Error in owner detection middleware:", error);
@@ -142,21 +162,33 @@ function requireOwner(req, res, next) {
 async function optionalOwnerDetection(req, res, next) {
   try {
     const subdomain = extractSubdomain(req.hostname);
-    
+
     if (subdomain) {
+      // CHECK CACHE FIRST
+      if (ownerCache.has(subdomain)) {
+        const cachedOwner = ownerCache.get(subdomain);
+        req.owner = cachedOwner.domain;
+        req.ownerData = cachedOwner;
+        return next();
+      }
+
       const result = await pool.query(
         `SELECT id, name, domain, email, is_active, theme_config
          FROM owners 
          WHERE domain = $1 AND is_active = TRUE`,
         [subdomain]
       );
-      
+
       if (result.rows.length > 0) {
-        req.owner = result.rows[0].domain;
-        req.ownerData = result.rows[0];
+        const owner = result.rows[0];
+        req.owner = owner.domain;
+        req.ownerData = owner;
+
+        // STORE IN CACHE
+        ownerCache.set(subdomain, owner);
       }
     }
-    
+
     next();
   } catch (error) {
     console.error("❌ Error in optional owner detection:", error);
