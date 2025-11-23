@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'fuel-finder',
-    script: './server.js',
+    script: './server_modular_entry.js',
     instances: 1, // IMPORTANT: Only run 1 instance to prevent duplicate uploads
     exec_mode: 'fork', // Use fork mode instead of cluster mode
     env: {
