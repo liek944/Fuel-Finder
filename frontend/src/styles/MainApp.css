@@ -543,3 +543,121 @@
 .mobile-menu-toggle-button[aria-checked="true"] {
     background: #4caf50;
 }
+
+/* Dark Mode Styles */
+.dark-mode {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+.dark-mode .main-header {
+    background: rgba(30, 30, 30, 0.95);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.dark-mode .main-header-title {
+    color: #e0e0e0;
+}
+
+.dark-mode .location-accuracy-indicator {
+    background: rgba(30, 30, 30, 0.95);
+    border-color: #4caf50;
+    color: #e0e0e0;
+}
+
+.dark-mode .location-accuracy-value {
+    color: #e0e0e0;
+}
+
+.dark-mode .location-accuracy-timestamp {
+    color: #aaaaaa;
+}
+
+.dark-mode .search-controls {
+    background: rgba(30, 30, 30, 0.95);
+    color: #e0e0e0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.dark-mode .search-controls-header h3 {
+    color: #e0e0e0;
+}
+
+.dark-mode .search-bar input,
+.dark-mode .brand-filter select,
+.dark-mode .route-to-nearest select {
+    background: #2c2c2c;
+    border: 1px solid #444;
+    color: #e0e0e0;
+}
+
+.dark-mode .results-summary {
+    background: #2c2c2c;
+    color: #aaaaaa;
+}
+
+.dark-mode .collapsed-summary {
+    color: #aaaaaa;
+}
+
+.dark-mode .filter-chip {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid #444;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.dark-mode .filter-chip-title {
+    color: #e0e0e0;
+}
+
+.dark-mode .filter-chip-summary {
+    color: #aaaaaa;
+}
+
+.dark-mode .mobile-menu-button {
+    background: rgba(30, 30, 30, 0.96);
+    border: 1px solid #444;
+    color: #e0e0e0;
+}
+
+.dark-mode .mobile-menu-panel {
+    background: #1e1e1e;
+    color: #e0e0e0;
+}
+
+.dark-mode .mobile-menu-title {
+    color: #e0e0e0;
+}
+
+.dark-mode .mobile-menu-close {
+    color: #e0e0e0;
+}
+
+.dark-mode .mobile-menu-link {
+    color: #e0e0e0;
+}
+
+.dark-mode .mobile-menu-link:hover {
+    color: #64b5f6;
+}
+
+.dark-mode .mobile-menu-section-title {
+    color: #aaaaaa;
+}
+
+.dark-mode .mobile-menu-setting-label {
+    color: #e0e0e0;
+}
+
+.dark-mode .auto-refresh-control {
+    background: #2c2c2c !important;
+    border: 1px solid #444 !important;
+}
+
+.dark-mode .auto-refresh-control label {
+    color: #e0e0e0 !important;
+}
+
+.dark-mode .auto-refresh-control div {
+    color: #aaaaaa !important;
+}

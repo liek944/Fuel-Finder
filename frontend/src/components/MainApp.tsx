@@ -534,7 +534,7 @@ const MainApp: React.FC = () => {
   const MAX_ACCURACY_METERS = 50;
 
   // Arrival notification state
-  const { voiceEnabled, notificationsEnabled, keepScreenOn, toggleVoice, toggleNotifications, toggleKeepScreenOn } = useSettings();
+  const { voiceEnabled, notificationsEnabled, keepScreenOn, darkMode, toggleVoice, toggleNotifications, toggleKeepScreenOn, toggleDarkMode } = useSettings();
 
   // Visual alerts state
   const { alerts: visualAlerts, dismiss: dismissAlert } = useArrivalNotificationsUI();
@@ -876,6 +876,10 @@ const MainApp: React.FC = () => {
 
   const handleToggleKeepScreenOn = (_enabled: boolean) => {
     toggleKeepScreenOn();
+  };
+
+  const handleToggleDarkMode = (_enabled: boolean) => {
+    toggleDarkMode();
   };
 
   // Get unique brands for filter (memoized for performance)
@@ -1298,6 +1302,21 @@ const MainApp: React.FC = () => {
                   onClick={() => handleToggleKeepScreenOn(!keepScreenOn)}
                 >
                   {keepScreenOn ? "ON" : "OFF"}
+                </button>
+              </div>
+              <div className="mobile-menu-setting-row">
+                <div className="mobile-menu-setting-label">
+                  🌙 Dark Mode
+                </div>
+                <button
+                  type="button"
+                  className="mobile-menu-toggle-button"
+                  aria-label="Toggle dark mode"
+                  role="switch"
+                  aria-checked={darkMode}
+                  onClick={() => handleToggleDarkMode(!darkMode)}
+                >
+                  {darkMode ? "ON" : "OFF"}
                 </button>
               </div>
             </div>
