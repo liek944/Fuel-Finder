@@ -6,9 +6,11 @@ const SettingsButton: React.FC = () => {
     voiceEnabled,
     notificationsEnabled,
     keepScreenOn,
+    darkMode,
     toggleVoice,
     toggleNotifications,
     toggleKeepScreenOn,
+    toggleDarkMode,
   } = useSettings();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -132,6 +134,11 @@ const SettingsButton: React.FC = () => {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>📱 Keep screen on</div>
               <Toggle on={keepScreenOn} onClick={toggleKeepScreenOn} label="Toggle keep screen on" />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>🌙 Dark Mode</div>
+              <Toggle on={darkMode} onClick={toggleDarkMode} label="Toggle dark mode" />
             </div>
           </div>
         </div>

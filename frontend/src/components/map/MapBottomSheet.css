@@ -14,6 +14,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -40,7 +41,8 @@
 
 /* Collapsed State */
 .map-bottom-sheet--collapsed {
-  height: 180px; /* Increased from 96px to show station name, brand, and basic info */
+  height: 180px;
+  /* Increased from 96px to show station name, brand, and basic info */
   animation: sheet-slide-up 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
@@ -54,6 +56,7 @@
   from {
     transform: translateY(100%);
   }
+
   to {
     transform: translateY(0);
   }
@@ -63,6 +66,7 @@
   from {
     height: 180px;
   }
+
   to {
     height: 80vh;
   }
@@ -214,7 +218,8 @@
 /* Landscape mode on mobile */
 @media (max-height: 500px) and (orientation: landscape) {
   .map-bottom-sheet--collapsed {
-    height: 120px; /* Reduced in landscape but still shows essential info */
+    height: 120px;
+    /* Reduced in landscape but still shows essential info */
   }
 
   .map-bottom-sheet--expanded {
@@ -252,8 +257,59 @@ body.sheet-open {
     backdrop-filter: saturate(120%) blur(8px);
   }
 
-  .map-bottom-sheet--translucent .map-bottom-sheet__header,
   .map-bottom-sheet--translucent .map-bottom-sheet__footer {
     background-color: rgba(250, 250, 250, 0.7);
+  }
+}
+
+/* Dark Mode Styles */
+body.dark-mode .map-bottom-sheet {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+}
+
+body.dark-mode .map-bottom-sheet__header {
+  border-bottom: 1px solid #333;
+}
+
+body.dark-mode .map-bottom-sheet__footer {
+  background-color: #2c2c2c;
+  border-top: 1px solid #333;
+}
+
+body.dark-mode .map-bottom-sheet__handle {
+  background-color: #555;
+}
+
+body.dark-mode .map-bottom-sheet__handle-container:hover .map-bottom-sheet__handle {
+  background-color: #777;
+}
+
+body.dark-mode .map-bottom-sheet__close {
+  background-color: rgba(44, 44, 44, 0.9);
+  color: #e0e0e0;
+}
+
+body.dark-mode .map-bottom-sheet__close:hover {
+  background-color: #333;
+  color: #fff;
+}
+
+body.dark-mode .map-bottom-sheet-backdrop {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+body.dark-mode .map-bottom-sheet--translucent {
+  background-color: rgba(30, 30, 30, 0.85);
+}
+
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  body.dark-mode .map-bottom-sheet--translucent {
+    background-color: rgba(30, 30, 30, 0.72);
+  }
+
+  body.dark-mode .map-bottom-sheet--translucent .map-bottom-sheet__header,
+  body.dark-mode .map-bottom-sheet--translucent .map-bottom-sheet__footer {
+    background-color: rgba(44, 44, 44, 0.7);
   }
 }
