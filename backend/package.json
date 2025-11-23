@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server_modular_entry.js",
     "dev": "node server_modular_entry.js",
-    "start:legacy": "node server.js",
+    "start:legacy": "node server_modular_entry.js",
     "db:init": "node database/init.js",
     "db:reset": "node database/init.js reset",
     "db:check": "node database/init.js check",
