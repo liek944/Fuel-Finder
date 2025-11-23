@@ -13,6 +13,7 @@ const AdminPortalContainer: React.FC = () => {
   const [currentAdminView, setCurrentAdminView] = useState<
     "map" | "price-reports" | "user-analytics" | "reviews"
   >("map");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
   useEffect(() => {
     try {
@@ -68,6 +69,10 @@ const AdminPortalContainer: React.FC = () => {
 
   return (
     <div className="admin-portal">
+      <div
+        className={`mobile-menu-backdrop ${mobileMenuOpen ? "open" : ""}`}
+        onClick={() => setMobileMenuOpen(false)}
+      />
       {/* Navigation */}
       <div className="admin-portal-navigation">
         <a href="/" className="back-to-map-button">
@@ -78,29 +83,53 @@ const AdminPortalContainer: React.FC = () => {
           <h1 className="admin-portal-title">Admin Portal</h1>
         </div>
 
+        {isAdminEnabled && (
+          <button
+            className="hamburger-menu-button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            <span className={mobileMenuOpen ? "open" : ""}></span>
+            <span className={mobileMenuOpen ? "open" : ""}></span>
+            <span className={mobileMenuOpen ? "open" : ""}></span>
+          </button>
+        )}
+
         {/* View Switcher */}
         {isAdminEnabled && (
-          <div className="view-switcher">
+          <div className={`view-switcher ${mobileMenuOpen ? "mobile-open" : ""}`}>
             <button
-              onClick={() => setCurrentAdminView("map")}
+              onClick={() => {
+                setCurrentAdminView("map");
+                setMobileMenuOpen(false);
+              }}
               className={`view-switcher-button ${currentAdminView === "map" ? "active" : ""}`}
             >
               🗺️ Map View
             </button>
             <button
-              onClick={() => setCurrentAdminView("price-reports")}
+              onClick={() => {
+                setCurrentAdminView("price-reports");
+                setMobileMenuOpen(false);
+              }}
               className={`view-switcher-button ${currentAdminView === "price-reports" ? "active" : ""}`}
             >
               💰 Price Reports
             </button>
             <button
-              onClick={() => setCurrentAdminView("user-analytics")}
+              onClick={() => {
+                setCurrentAdminView("user-analytics");
+                setMobileMenuOpen(false);
+              }}
               className={`view-switcher-button ${currentAdminView === "user-analytics" ? "active" : ""}`}
             >
               👥 User Analytics
             </button>
             <button
-              onClick={() => setCurrentAdminView("reviews")}
+              onClick={() => {
+                setCurrentAdminView("reviews");
+                setMobileMenuOpen(false);
+              }}
               className={`view-switcher-button ${currentAdminView === "reviews" ? "active" : ""}`}
             >
               📝 Reviews
