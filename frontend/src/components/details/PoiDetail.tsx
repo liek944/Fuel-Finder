@@ -40,6 +40,11 @@ interface PoiDetailProps {
   onClearRoute: () => void;
 }
 
+const formatPoiType = (type: string) => {
+  const formatted = type.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+  return formatted === "Convenience" ? "Convenience Store" : formatted;
+};
+
 const PoiDetail: React.FC<PoiDetailProps> = React.memo(({
   poi,
   distance,
@@ -52,7 +57,7 @@ const PoiDetail: React.FC<PoiDetailProps> = React.memo(({
     <div>
       <b>{poi.name}</b>
       <div style={{ marginTop: 4, color: "#666" }}>
-        Type: {poi.type.replace("_", " ")}
+        {formatPoiType(poi.type)}
       </div>
 
       {poi.address && (
