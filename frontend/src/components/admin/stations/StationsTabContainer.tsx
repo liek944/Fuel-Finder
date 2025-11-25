@@ -442,6 +442,8 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
       if (isGasStation) {
         payload.brand = formBrand;
         payload.fuel_price = parseFloat(formPrice);
+        payload.address = formAddress;
+        payload.phone = formPhone;
         payload.services = formServices;
         payload.fuel_prices = formFuelPrices
           .filter((fp) => fp.fuel_type.trim() && parseFloat(fp.price) > 0)
@@ -916,17 +918,33 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
               </div>
             )}
 
-            {formType !== "gas" && (
-              <>
-                <div style={{ marginBottom: 10 }}>
-                  <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#555", fontSize: 12 }}>Address</label>
-                  <input type="text" value={formAddress} onChange={(e) => setFormAddress(e.target.value)} style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, fontSize: 12 }} />
-                </div>
-                <div style={{ marginBottom: 10 }}>
-                  <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#555", fontSize: 12 }}>Phone</label>
-                  <input type="text" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, fontSize: 12 }} />
-                </div>
-              </>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#555", fontSize: 12 }}>Address</label>
+              <input type="text" value={formAddress} onChange={(e) => setFormAddress(e.target.value)} style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, fontSize: 12 }} />
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#555", fontSize: 12 }}>Phone</label>
+              <input type="text" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, fontSize: 12 }} />
+            </div>
+
+            {formType === "gas" && (
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: "block", marginBottom: 6, fontWeight: 600, color: "#555", fontSize: 12 }}>Services (comma-separated)</label>
+                <input
+                  type="text"
+                  value={formServices.join(", ")}
+                  onChange={(e) =>
+                    setFormServices(
+                      e.target.value
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter((s) => s.length > 0),
+                    )
+                  }
+                  style={{ width: "100%", padding: 8, border: "1px solid #ddd", borderRadius: 4, fontSize: 12 }}
+                  placeholder="e.g., Air, Car Wash, Restroom"
+                />
+              </div>
             )}
 
             <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Operating Hours</div>
