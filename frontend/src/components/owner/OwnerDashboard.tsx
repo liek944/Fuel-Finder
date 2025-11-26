@@ -102,6 +102,99 @@ interface MarketInsights {
   stations: InsightsStation[];
 }
 
+function normalizeMarketInsights(raw: any, ownerStations: Station[]): MarketInsights {
+  const sourceStations = Array.isArray(raw?.stations)
+    ? raw.stations
+    : Array.isArray(raw?.competitors)
+      ? raw.competitors
+      : [];
+  const ownerIds = new Set(ownerStations.map((s) => s.id));
+  const stationsNorm: InsightsStation[] = sourceStations.map((row: any) => {
+    const fps = Array.isArray(row?.fuel_prices) ? row.fuel_prices : [];
+    return {
+      id: row.id,
+      name: row.name,
+      brand: row.brand ?? null,
+      is_owner_station: ownerIds.has(row.id),
+      municipality: null,
+      fuel_prices: fps.map((fp: any) => ({ fuel_type: String(fp.fuel_type), price: fp.price })),
+      avg_rating: Number(row.avg_rating || 0),
+      reviews_count: Number(row.reviews_count || 0),
+    };
+  });
+
+  const fuelTypeSet = new Set<string>();
+  stationsNorm.forEach((station) => {
+    (station.fuel_prices || []).forEach((fp) => fuelTypeSet.add(fp.fuel_type));
+  });
+  const fuelTypes = Array.from(fuelTypeSet);
+
+  const priceInsights: PriceInsight[] = fuelTypes.map((ft) => {
+    const entries = stationsNorm
+      .map((s) => {
+        const entry = (s.fuel_prices || []).find((p) => p.fuel_type === ft);
+        const priceNum = entry != null ? Number(entry.price) : NaN;
+        return { station: s, price: priceNum };
+      })
+      .filter((x) => !Number.isNaN(x.price));
+
+    const totalStations = entries.length;
+    const marketAvgPrice = totalStations > 0
+      ? (entries.reduce((sum, e) => sum + e.price, 0) / totalStations).toFixed(2)
+      : '0.00';
+
+    const ownerEntries = entries.filter((e) => e.station.is_owner_station);
+    const ownerAvgPriceNum = ownerEntries.length > 0
+      ? ownerEntries.reduce((sum, e) => sum + e.price, 0) / ownerEntries.length
+      : null;
+    const ownerAvgPrice = ownerAvgPriceNum !== null ? ownerAvgPriceNum.toFixed(2) : null;
+
+    let ownerRankByPrice: number | null = null;
+    if (ownerEntries.length > 0) {
+      const minOwner = Math.min(...ownerEntries.map((e) => e.price));
+      const sorted = entries.map((e) => e.price).sort((a, b) => a - b);
+      ownerRankByPrice = sorted.findIndex((p) => p === minOwner) + 1;
+    }
+
+    let cheapest_station = { id: 0, name: '', brand: null as string | null, price: '0.00' };
+    let most_expensive_station = { id: 0, name: '', brand: null as string | null, price: '0.00' };
+    if (entries.length > 0) {
+      const cheapest = entries.reduce((min, e) => (e.price < min.price ? e : min), entries[0]);
+      const expensive = entries.reduce((max, e) => (e.price > max.price ? e : max), entries[0]);
+      cheapest_station = {
+        id: cheapest.station.id,
+        name: cheapest.station.name,
+        brand: cheapest.station.brand,
+        price: cheapest.price.toFixed(2),
+      };
+      most_expensive_station = {
+        id: expensive.station.id,
+        name: expensive.station.name,
+        brand: expensive.station.brand,
+        price: expensive.price.toFixed(2),
+      };
+    }
+
+    return {
+      fuel_type: ft,
+      owner_avg_price: ownerAvgPrice,
+      market_avg_price: marketAvgPrice,
+      owner_rank_by_price: ownerRankByPrice,
+      total_stations: totalStations,
+      cheapest_station,
+      most_expensive_station,
+    };
+  });
+
+  return {
+    municipality: raw?.municipality ?? null,
+    days: raw?.days ?? 7,
+    fuelTypes,
+    priceInsights,
+    stations: stationsNorm,
+  };
+}
+
 const OwnerDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
@@ -215,8 +308,9 @@ const OwnerDashboard: React.FC = () => {
     try {
       setInsightsError(null);
       setInsightsLoading(true);
-      const data: MarketInsights = await ownerApi.getMarketInsights(apiKey, subdomain, days);
-      setMarketInsights(data);
+      const raw = await ownerApi.getMarketInsights(apiKey, subdomain, days);
+      const normalized = normalizeMarketInsights(raw, stations || []);
+      setMarketInsights(normalized);
     } catch (err: any) {
       console.error('Market insights error:', err);
       setInsightsError(err.message || 'Failed to load market insights');
@@ -428,11 +522,13 @@ const OwnerDashboard: React.FC = () => {
       fuelTypesForColumns = marketInsights.fuelTypes;
     } else {
       const fuelTypeSet = new Set<string>();
-      marketInsights.stations.forEach((station) => {
-        station.fuel_prices.forEach((fp) => {
-          fuelTypeSet.add(fp.fuel_type);
+      if (Array.isArray(marketInsights.stations)) {
+        marketInsights.stations.forEach((station) => {
+          (station.fuel_prices || []).forEach((fp) => {
+            fuelTypeSet.add(fp.fuel_type);
+          });
         });
-      });
+      }
       fuelTypesForColumns = Array.from(fuelTypeSet);
     }
   }
@@ -884,13 +980,13 @@ const OwnerDashboard: React.FC = () => {
               </div>
             )}
 
-            {!insightsLoading && !insightsError && (!marketInsights || marketInsights.stations.length === 0) && (
+            {!insightsLoading && !insightsError && (!marketInsights || !Array.isArray(marketInsights.stations) || marketInsights.stations.length === 0) && (
               <div className="empty-state">
                 <p>No market insights available for this time range.</p>
               </div>
             )}
 
-            {!insightsLoading && !insightsError && marketInsights && marketInsights.stations.length > 0 && (
+            {!insightsLoading && !insightsError && marketInsights && Array.isArray(marketInsights.stations) && marketInsights.stations.length > 0 && (
               <>
                 <div className="stats-grid">
                   <StatCard
@@ -964,7 +1060,7 @@ const OwnerDashboard: React.FC = () => {
                           </td>
                           <td>{station.brand || '-'}</td>
                           {fuelTypesForColumns.map((ft) => {
-                            const priceEntry = station.fuel_prices.find((p) => p.fuel_type === ft);
+                            const priceEntry = (station.fuel_prices || []).find((p) => p.fuel_type === ft);
                             return (
                               <td key={ft}>
                                 {priceEntry
