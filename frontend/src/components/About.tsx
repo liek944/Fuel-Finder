@@ -11,7 +11,7 @@ const About: React.FC = () => {
           <h1 style={{ margin: 0, fontSize: "2.5rem", color: "#1976D2" }}>Fuel Finder</h1>
         </div>
         <h2 style={{ fontSize: "1.25rem", fontWeight: 500, color: "#555", maxWidth: 700, margin: "0 auto", lineHeight: 1.5 }}>
-          An Online Fuel Station Locator and Navigation Web-App using OSRM A*-based Routing and OpenStreetMap
+          An Online Fuel Station Locator and Navigation Mobile-App using OSRM A*-based Routing and OpenStreetMap
         </h2>
         <p style={{ marginTop: 16, fontSize: "0.9rem", color: "#777", fontStyle: "italic" }}>
           A BS Computer Science Thesis Project | Oriental Mindoro, Philippines
