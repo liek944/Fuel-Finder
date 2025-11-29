@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { routingApi, RouteData } from "../api/routingApi";
 import { arrivalNotifications } from "../utils/arrivalNotifications";
+import { backgroundLocation } from "../capacitor/backgroundLocation";
 
 export interface RoutableLocation {
   name: string;
@@ -35,6 +36,9 @@ export function useRoute(userPosition: LatLngTuple | null) {
   const [routeStartPosition, setRouteStartPosition] = useState<LatLngTuple | null>(null);
   const [loadingRoute, setLoadingRoute] = useState<boolean>(false);
 
+  const originalCoordsRef = useRef<LatLngTuple[] | null>(null);
+  const lastTrimmedIndexRef = useRef<number>(0);
+
   const clearRoute = useCallback(() => {
     setRouteData(null);
     setRoutingTo(null);
@@ -42,6 +46,13 @@ export function useRoute(userPosition: LatLngTuple | null) {
 
     // Clear destination from arrival notifications
     arrivalNotifications.clearDestination();
+
+    // Stop native background tracking if running (no-op on web)
+    backgroundLocation.stopTracking().catch(() => {});
+    backgroundLocation.clearDestination().catch(() => {});
+
+    originalCoordsRef.current = null;
+    lastTrimmedIndexRef.current = 0;
   }, []);
 
   const routeTo = useCallback(
@@ -61,11 +72,29 @@ export function useRoute(userPosition: LatLngTuple | null) {
         );
         setRouteData(data || null);
 
+        originalCoordsRef.current = data ? data.coordinates : null;
+        lastTrimmedIndexRef.current = 0;
+
         // Set destination for arrival notifications
         arrivalNotifications.setDestination({
           name: location.name,
           location: location.location,
         });
+
+        // Start native background tracking (no-op on web)
+        try {
+          const ok = await backgroundLocation.ensurePermissions();
+          if (ok) {
+            await backgroundLocation.setDestination({
+              lat: location.location.lat,
+              lng: location.location.lng,
+              radiusM: 100,
+            });
+            await backgroundLocation.startTracking({ intervalMs: 2000, minDistanceM: 5 });
+          }
+        } catch (e) {
+          console.warn("Background tracking unavailable:", e);
+        }
       } catch (error) {
         console.error("Failed to get route:", error);
       } finally {
@@ -77,7 +106,7 @@ export function useRoute(userPosition: LatLngTuple | null) {
 
   // Auto-clear route if moved significantly from original start position
   useEffect(() => {
-    if (!routeData || !routeStartPosition || !userPosition) return;
+    if (!routeData || !routeStartPosition || !userPosition || !originalCoordsRef.current || originalCoordsRef.current.length === 0) return;
 
     const distanceKm = calculateDistanceKm(
       userPosition[0],
@@ -87,13 +116,26 @@ export function useRoute(userPosition: LatLngTuple | null) {
     );
     const distanceMeters = distanceKm * 1000;
 
-    if (distanceMeters > 100) {
-      console.log(
-        `🧭 Auto-clearing route - moved ${Math.round(distanceMeters)}m from original start position`,
-      );
-      clearRoute();
+    if (distanceMeters < 30) return;
+
+    const coords = originalCoordsRef.current;
+    let nearestIdx = lastTrimmedIndexRef.current;
+    let best = Infinity;
+    for (let i = lastTrimmedIndexRef.current; i < coords.length; i++) {
+      const d =
+        calculateDistanceKm(userPosition[0], userPosition[1], coords[i][0], coords[i][1]) * 1000;
+      if (d < best) {
+        best = d;
+        nearestIdx = i;
+      }
     }
-  }, [userPosition, routeData, routeStartPosition, clearRoute]);
+
+    if (nearestIdx > lastTrimmedIndexRef.current) {
+      lastTrimmedIndexRef.current = nearestIdx;
+      const newCoords = coords.slice(nearestIdx);
+      setRouteData((prev) => (prev ? { ...prev, coordinates: newCoords } : prev));
+    }
+  }, [userPosition, routeData, routeStartPosition]);
 
   return {
     // state
