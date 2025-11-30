@@ -38,6 +38,8 @@ export function useRoute(userPosition: LatLngTuple | null) {
 
   const originalCoordsRef = useRef<LatLngTuple[] | null>(null);
   const lastTrimmedIndexRef = useRef<number>(0);
+  const lastRerouteTimeRef = useRef<number | null>(null);
+  const isReroutingRef = useRef(false);
 
   const clearRoute = useCallback(() => {
     setRouteData(null);
@@ -104,6 +106,45 @@ export function useRoute(userPosition: LatLngTuple | null) {
     [userPosition],
   );
 
+  const recalculateRouteFromCurrentPosition = useCallback(
+    async () => {
+      if (!userPosition || !routingTo) return;
+
+      const now = Date.now();
+      if (
+        lastRerouteTimeRef.current &&
+        now - lastRerouteTimeRef.current < 10000
+      ) {
+        return;
+      }
+      if (isReroutingRef.current) return;
+
+      isReroutingRef.current = true;
+      setLoadingRoute(true);
+
+      try {
+        const data = await routingApi.route(
+          userPosition[0],
+          userPosition[1],
+          routingTo.location.lat,
+          routingTo.location.lng,
+        );
+        setRouteData(data || null);
+        originalCoordsRef.current = data ? data.coordinates : null;
+        lastTrimmedIndexRef.current = 0;
+        setRouteStartPosition(userPosition);
+        lastRerouteTimeRef.current = now;
+        console.log("🔁 Route recalculated from current position");
+      } catch (error) {
+        console.error("Failed to recalculate route:", error);
+      } finally {
+        isReroutingRef.current = false;
+        setLoadingRoute(false);
+      }
+    },
+    [userPosition, routingTo],
+  );
+
   // Auto-clear route if moved significantly from original start position
   useEffect(() => {
     if (!routeData || !routeStartPosition || !userPosition || !originalCoordsRef.current || originalCoordsRef.current.length === 0) return;
@@ -135,7 +176,11 @@ export function useRoute(userPosition: LatLngTuple | null) {
       const newCoords = coords.slice(nearestIdx);
       setRouteData((prev) => (prev ? { ...prev, coordinates: newCoords } : prev));
     }
-  }, [userPosition, routeData, routeStartPosition]);
+    const offRouteThresholdMeters = 80;
+    if (best > offRouteThresholdMeters) {
+      recalculateRouteFromCurrentPosition();
+    }
+  }, [userPosition, routeData, routeStartPosition, recalculateRouteFromCurrentPosition]);
 
   return {
     // state
