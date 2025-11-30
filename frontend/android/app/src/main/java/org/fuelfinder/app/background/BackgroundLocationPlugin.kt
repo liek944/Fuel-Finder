@@ -7,11 +7,10 @@ import androidx.core.content.ContextCompat
 import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginCall
+import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
-import com.getcapacitor.annotation.PermissionAlias
-import com.getcapacitor.annotation.PluginMethod
 
 @CapacitorPlugin(
     name = "BackgroundLocation",
@@ -70,7 +69,7 @@ class BackgroundLocationPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun checkPermissions(call: PluginCall) {
+    override fun checkPermissions(call: PluginCall) {
         val ret = JSObject()
         val fineGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
         val coarseGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
@@ -85,7 +84,7 @@ class BackgroundLocationPlugin : Plugin() {
     }
 
     @PluginMethod
-    fun requestPermissions(call: PluginCall) {
+    override fun requestPermissions(call: PluginCall) {
         // Request all declared permission aliases
         requestPermissionForAliases(arrayOf("location", "background", "notifications"), call, "permissionsCallback")
     }
