@@ -469,7 +469,7 @@ const MainApp: React.FC = () => {
     toggleSearchPanelCollapsed,
   } = useFilterContext();
   const { filteredStations, uniqueBrands } = useFilterDerived<Station>(stations);
-  const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive } = useRoute(position);
+  const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive, lastRerouteAt } = useRoute(position);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const navigate = useNavigate();
 
@@ -770,6 +770,11 @@ const MainApp: React.FC = () => {
       routeData: routeData,
     });
   }, [routeData]);
+
+  useEffect(() => {
+    if (!lastRerouteAt) return;
+    info("Rerouting...");
+  }, [lastRerouteAt, info]);
 
   // Filter stations based on search criteria (with useMemo for performance)
 

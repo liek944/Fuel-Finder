@@ -35,6 +35,7 @@ export function useRoute(userPosition: LatLngTuple | null) {
   const [routingTo, setRoutingTo] = useState<RoutableLocation | null>(null);
   const [routeStartPosition, setRouteStartPosition] = useState<LatLngTuple | null>(null);
   const [loadingRoute, setLoadingRoute] = useState<boolean>(false);
+  const [lastRerouteAt, setLastRerouteAt] = useState<number | null>(null);
 
   const originalCoordsRef = useRef<LatLngTuple[] | null>(null);
   const lastTrimmedIndexRef = useRef<number>(0);
@@ -55,6 +56,8 @@ export function useRoute(userPosition: LatLngTuple | null) {
 
     originalCoordsRef.current = null;
     lastTrimmedIndexRef.current = 0;
+    lastRerouteTimeRef.current = null;
+    setLastRerouteAt(null);
   }, []);
 
   const routeTo = useCallback(
@@ -121,6 +124,8 @@ export function useRoute(userPosition: LatLngTuple | null) {
 
       isReroutingRef.current = true;
       setLoadingRoute(true);
+      lastRerouteTimeRef.current = now;
+      setLastRerouteAt(now);
 
       try {
         const data = await routingApi.route(
@@ -133,7 +138,6 @@ export function useRoute(userPosition: LatLngTuple | null) {
         originalCoordsRef.current = data ? data.coordinates : null;
         lastTrimmedIndexRef.current = 0;
         setRouteStartPosition(userPosition);
-        lastRerouteTimeRef.current = now;
         console.log("🔁 Route recalculated from current position");
       } catch (error) {
         console.error("Failed to recalculate route:", error);
@@ -187,6 +191,7 @@ export function useRoute(userPosition: LatLngTuple | null) {
     routeData,
     routingTo,
     routeStartPosition,
+    lastRerouteAt,
 
     // controls
     routeTo,
