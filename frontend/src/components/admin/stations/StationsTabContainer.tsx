@@ -165,23 +165,40 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
         return;
       }
 
-      const newList: Array<{ fuel_type: string; price: string }> = (fuel_prices || []).filter((fp: any) => String(fp.fuel_type || "").trim().length > 0);
+      const rawList: Array<{ fuel_type: string; price: string }> = (fuel_prices || []);
       const newMap = new Map<string, number>();
-      newList.forEach((fp) => newMap.set(fp.fuel_type.trim(), parseFloat(fp.price)));
+
+      for (const fp of rawList) {
+        const fuelType = String(fp.fuel_type || "").trim();
+        if (!fuelType) continue;
+
+        const priceStr = String(fp.price ?? "").trim();
+        if (priceStr === "") {
+          // Empty price means remove this fuel type (handled in delete loop below)
+          continue;
+        }
+
+        const priceNum = parseFloat(priceStr);
+        if (!Number.isFinite(priceNum) || priceNum < 0) {
+          // Ignore invalid or negative values
+          continue;
+        }
+
+        newMap.set(fuelType, priceNum);
+      }
+
       const originalSet = new Set<string>((_originalFuelTypes || []) as string[]);
 
       for (const [ft, price] of Array.from(newMap.entries())) {
-        if (price > 0) {
-          const path = `/api/stations/${stationId}/fuel-prices/${encodeURIComponent(ft)}`;
-          const putRes = await apiPut(path, { price, updated_by: "admin" }, adminApiKey.trim());
-          if (!putRes.ok) {
-            const e = await putRes.json().catch(() => ({}));
-            console.warn("Fuel price upsert failed", ft, e);
-          }
+        const path = `/api/stations/${stationId}/fuel-prices/${encodeURIComponent(ft)}`;
+        const putRes = await apiPut(path, { price, updated_by: "admin" }, adminApiKey.trim());
+        if (!putRes.ok) {
+          const e = await putRes.json().catch(() => ({}));
+          console.warn("Fuel price upsert failed", ft, e);
         }
       }
 
-      const newTypes = new Set<string>(Array.from(newMap.keys()).filter((ft) => newMap.get(ft)! > 0));
+      const newTypes = new Set<string>(Array.from(newMap.keys()));
       for (const ft of originalSet) {
         if (!newTypes.has(ft)) {
           const delPath = `/api/stations/${stationId}/fuel-prices/${encodeURIComponent(ft)}`;
@@ -446,8 +463,17 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
         payload.phone = formPhone;
         payload.services = formServices;
         payload.fuel_prices = formFuelPrices
-          .filter((fp) => fp.fuel_type.trim() && parseFloat(fp.price) > 0)
-          .map((fp) => ({ fuel_type: fp.fuel_type.trim(), price: parseFloat(fp.price) }));
+          .filter((fp) => fp.fuel_type.trim())
+          .map((fp) => {
+            const priceStr = String(fp.price ?? "").trim();
+            const priceNum = parseFloat(priceStr);
+            const normalizedPrice =
+              Number.isFinite(priceNum) && priceNum >= 0 ? priceNum : 0;
+            return {
+              fuel_type: fp.fuel_type.trim(),
+              price: normalizedPrice,
+            };
+          });
         if (!unknownTime && formOpenTime && formCloseTime) {
           payload.operating_hours = { open: formOpenTime, close: formCloseTime };
         }
