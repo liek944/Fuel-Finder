@@ -119,35 +119,50 @@ const StationDetail: React.FC<StationDetailProps> = React.memo(({
                 <span style={{ fontWeight: 500 }}>
                   {fp.fuel_type}:
                 </span>{" "}
-                ₱{Number(fp.price).toFixed(2)}/L
-                {fp.price_updated_by === "owner" && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: "#2563eb",
-                      marginLeft: 4,
-                      fontWeight: 500,
-                    }}
-                  >
-                    (verified by owner)
-                  </span>
-                )}
-                {fp.price_updated_by === "community" && (
-                  <span
-                    style={{
-                      fontSize: 10,
-                      color: "#666",
-                      marginLeft: 4,
-                    }}
-                  >
-                    (community)
-                  </span>
-                )}
+                {(() => {
+                  const numericPrice = Number(fp.price);
+                  const hasPrice = Number.isFinite(numericPrice) && numericPrice > 0;
+                  if (!hasPrice) {
+                    return <span>Unknown</span>;
+                  }
+                  return (
+                    <>
+                      ₱{numericPrice.toFixed(2)}/L
+                      {fp.price_updated_by === "owner" && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "#2563eb",
+                            marginLeft: 4,
+                            fontWeight: 500,
+                          }}
+                        >
+                          (verified by owner)
+                        </span>
+                      )}
+                      {fp.price_updated_by === "community" && (
+                        <span
+                          style={{
+                            fontSize: 10,
+                            color: "#666",
+                            marginLeft: 4,
+                          }}
+                        >
+                          (community)
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>
         ) : (
-          <span> ₱{station.fuel_price}/L</span>
+          (() => {
+            const numericPrice = Number(station.fuel_price);
+            const hasPrice = Number.isFinite(numericPrice) && numericPrice > 0;
+            return <span> {hasPrice ? `₱${numericPrice.toFixed(2)}/L` : "Unknown"}</span>;
+          })()
         )}
       </div>
 
