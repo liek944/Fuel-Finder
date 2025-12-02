@@ -345,11 +345,12 @@ async function updateStationFuelPrice(req, res) {
       });
     }
 
-    const priceNum = parseFloat(price);
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+    const rawPrice = price;
+    const priceNum = typeof rawPrice === "number" ? rawPrice : parseFloat(String(rawPrice));
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
       return res.status(400).json({
         error: "Invalid price",
-        message: "Price must be a positive number",
+        message: "Price must be zero or a positive number",
       });
     }
 
