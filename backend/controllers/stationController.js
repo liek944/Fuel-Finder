@@ -321,6 +321,99 @@ async function getAveragePriceFromReports(req, res) {
   }
 }
 
+/**
+ * Update station fuel price (admin/owner via /api/stations/:id/fuel-prices/:fuelType)
+ */
+async function updateStationFuelPrice(req, res) {
+  try {
+    const stationId = parseInt(req.params.id);
+    const fuelTypeRaw = req.params.fuelType;
+    const { price, updated_by } = req.body || {};
+
+    if (!stationId || isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    const fuelType = (fuelTypeRaw || "").trim();
+    if (!fuelType) {
+      return res.status(400).json({
+        error: "Invalid fuel type",
+        message: "Fuel type is required",
+      });
+    }
+
+    const priceNum = parseFloat(price);
+    if (!Number.isFinite(priceNum) || priceNum <= 0) {
+      return res.status(400).json({
+        error: "Invalid price",
+        message: "Price must be a positive number",
+      });
+    }
+
+    const updatedBy = updated_by || "admin";
+
+    const result = await priceService.updateFuelPrice(stationId, fuelType, priceNum, updatedBy);
+
+    res.json({
+      success: true,
+      message: `${fuelType} price updated to ₱${priceNum.toFixed(2)}`,
+      fuel_type: fuelType,
+      price: result ? result.price : priceNum,
+      price_updated_at: result ? result.price_updated_at : undefined,
+      price_updated_by: result ? result.price_updated_by : updatedBy,
+    });
+  } catch (error) {
+    logger.error("Error in updateStationFuelPrice:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
+  }
+}
+
+/**
+ * Delete station fuel price (admin/owner via /api/stations/:id/fuel-prices/:fuelType)
+ */
+async function deleteStationFuelPrice(req, res) {
+  try {
+    const stationId = parseInt(req.params.id);
+    const fuelTypeRaw = req.params.fuelType;
+
+    if (!stationId || isNaN(stationId)) {
+      return res.status(400).json({
+        error: "Invalid station ID",
+        message: "Station ID must be a valid number",
+      });
+    }
+
+    const fuelType = (fuelTypeRaw || "").trim();
+    if (!fuelType) {
+      return res.status(400).json({
+        error: "Invalid fuel type",
+        message: "Fuel type is required",
+      });
+    }
+
+    const result = await priceService.deleteFuelPrice(stationId, fuelType, "admin");
+
+    if (!result) {
+      return res.status(404).json({
+        error: "Fuel price not found",
+        message: `No ${fuelType} price found for this station`,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `${fuelType} price deleted successfully`,
+      fuel_type: fuelType,
+    });
+  } catch (error) {
+    logger.error("Error in deleteStationFuelPrice:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
+  }
+}
+
 module.exports = {
   getAllStations,
   getNearbyStations,
@@ -332,5 +425,7 @@ module.exports = {
   getStationsByBrand,
   submitPriceReport,
   getPriceReportsForStation,
-  getAveragePriceFromReports
+  getAveragePriceFromReports,
+  updateStationFuelPrice,
+  deleteStationFuelPrice
 };

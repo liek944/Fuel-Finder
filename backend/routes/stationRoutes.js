@@ -24,6 +24,20 @@ router.post("/:id/report-price", rateLimit, asyncHandler(stationController.submi
 router.get("/:id/price-reports", asyncHandler(stationController.getPriceReportsForStation));
 router.get("/:id/average-price", asyncHandler(stationController.getAveragePriceFromReports));
 
+// Direct fuel price management routes (used by admin portal & owner tools)
+router.put(
+  "/:id/fuel-prices/:fuelType",
+  rateLimit,
+  optionalApiKey,
+  asyncHandler(stationController.updateStationFuelPrice)
+);
+
+router.delete(
+  "/:id/fuel-prices/:fuelType",
+  optionalApiKey,
+  asyncHandler(stationController.deleteStationFuelPrice)
+);
+
 // Protected routes (require API key if configured)
 router.post(
   "/",
