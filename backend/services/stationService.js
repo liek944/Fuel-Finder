@@ -126,7 +126,7 @@ async function createStation(stationData) {
  * Update a station
  */
 async function updateStation(stationId, updateData) {
-  const { name, brand, fuel_price, services, address, phone, operating_hours, location } = updateData;
+  const { name, brand, fuel_price, services, address, phone, operating_hours, location, fuel_prices } = updateData;
 
   // Check if station exists
   const existing = await stationRepository.getStationById(stationId);
@@ -136,7 +136,8 @@ async function updateStation(stationId, updateData) {
 
   logger.info(`Updating station ${stationId}: ${name || existing.name}`);
 
-  const updated = await stationRepository.updateStation(stationId, {
+  // Update core station fields (including legacy single fuel_price)
+  await stationRepository.updateStation(stationId, {
     name: name || existing.name,
     brand: brand !== undefined ? brand : existing.brand,
     fuel_price: fuel_price !== undefined ? fuel_price : existing.fuel_price,
@@ -148,7 +149,38 @@ async function updateStation(stationId, updateData) {
     lng: location?.lng || existing.lng,
   });
 
-  const data = transformStationData([updated])[0];
+  // Update individual fuel prices if provided (mirror createStation behavior)
+  if (fuel_prices && Array.isArray(fuel_prices) && fuel_prices.length > 0) {
+    logger.info(`Updating ${fuel_prices.length} fuel price(s) for station ${stationId}`);
+    for (const fp of fuel_prices) {
+      const fuelType = fp && typeof fp.fuel_type === "string" ? fp.fuel_type.trim() : "";
+      if (!fuelType) continue;
+
+      const rawPrice = fp.price;
+      const priceNum = typeof rawPrice === "number" ? rawPrice : parseFloat(String(rawPrice));
+
+      // Allow 0 as a valid stored value (interpreted as Unknown on frontend).
+      // Ignore invalid (NaN) or negative values entirely.
+      if (!Number.isFinite(priceNum) || priceNum < 0) {
+        continue;
+      }
+
+      try {
+        await priceRepository.updateStationFuelPrice(
+          stationId,
+          fuelType,
+          priceNum,
+          "admin"
+        );
+      } catch (err) {
+        logger.error(`Error updating fuel price ${fuelType}:`, err);
+      }
+    }
+  }
+
+  // Re-fetch the station to get the latest fuel_prices array populated
+  const stationWithPrices = await stationRepository.getStationById(stationId);
+  const data = transformStationData([stationWithPrices])[0];
 
   logger.info(`Updated station: ${data.name}`);
   return data;
