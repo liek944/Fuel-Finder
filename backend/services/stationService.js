@@ -89,17 +89,27 @@ async function createStation(stationData) {
   if (fuel_prices && Array.isArray(fuel_prices) && fuel_prices.length > 0) {
     logger.info(`Adding ${fuel_prices.length} fuel price(s) for station ${newStation.id}`);
     for (const fp of fuel_prices) {
-      if (fp.fuel_type && fp.price && parseFloat(fp.price) > 0) {
-        try {
-          await priceRepository.updateStationFuelPrice(
-            newStation.id,
-            fp.fuel_type,
-            parseFloat(fp.price),
-            'admin'
-          );
-        } catch (err) {
-          logger.error(`Error adding fuel price ${fp.fuel_type}:`, err);
-        }
+      const fuelType = fp && typeof fp.fuel_type === 'string' ? fp.fuel_type.trim() : '';
+      if (!fuelType) continue;
+
+      const rawPrice = fp.price;
+      const priceNum = typeof rawPrice === 'number' ? rawPrice : parseFloat(String(rawPrice));
+
+      // Allow 0 as a valid stored value (interpreted as Unknown on frontend).
+      // Ignore invalid (NaN) or negative values entirely.
+      if (!Number.isFinite(priceNum) || priceNum < 0) {
+        continue;
+      }
+
+      try {
+        await priceRepository.updateStationFuelPrice(
+          newStation.id,
+          fuelType,
+          priceNum,
+          'admin'
+        );
+      } catch (err) {
+        logger.error(`Error adding fuel price ${fuelType}:`, err);
       }
     }
   }
