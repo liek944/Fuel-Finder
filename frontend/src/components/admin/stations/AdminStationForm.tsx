@@ -209,6 +209,40 @@ const AdminStationForm: React.FC<AdminStationFormProps> = ({
         <div style={{ fontSize: 11, fontWeight: 600, margin: "6px 0 2px" }}>
           Fuel Types & Prices:
         </div>
+        <label
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 11,
+            margin: "4px 0",
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={
+              (editFormData.fuel_prices || []).length > 0 &&
+              (editFormData.fuel_prices || []).every((p: any) => {
+                const v = Number(p.price);
+                return !Number.isFinite(v) || v <= 0;
+              })
+            }
+            onChange={(e) => {
+              const checked = e.target.checked;
+              if (!checked) {
+                return;
+              }
+              setEditFormData({
+                ...editFormData,
+                fuel_prices: (editFormData.fuel_prices || []).map((p: any) => ({
+                  ...p,
+                  price: "0",
+                })),
+              });
+            }}
+          />
+          <span>Set all fuel prices to Unknown (0.00)</span>
+        </label>
         {(editFormData.fuel_prices || []).map((item: any, idx: number) => (
           <div
             key={idx}
