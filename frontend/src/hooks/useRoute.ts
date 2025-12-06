@@ -36,6 +36,7 @@ export function useRoute(userPosition: LatLngTuple | null) {
   const [routeStartPosition, setRouteStartPosition] = useState<LatLngTuple | null>(null);
   const [loadingRoute, setLoadingRoute] = useState<boolean>(false);
   const [lastRerouteAt, setLastRerouteAt] = useState<number | null>(null);
+  const [traveledIndex, setTraveledIndex] = useState<number>(0);
 
   const originalCoordsRef = useRef<LatLngTuple[] | null>(null);
   const lastTrimmedIndexRef = useRef<number>(0);
@@ -58,6 +59,7 @@ export function useRoute(userPosition: LatLngTuple | null) {
     lastTrimmedIndexRef.current = 0;
     lastRerouteTimeRef.current = null;
     setLastRerouteAt(null);
+    setTraveledIndex(0);
   }, []);
 
   // Register route clearing callback with arrival notifications
@@ -189,12 +191,57 @@ export function useRoute(userPosition: LatLngTuple | null) {
     }
   }, [userPosition, routeData, routeStartPosition, recalculateRouteFromCurrentPosition]);
 
+  // Track traveled portion of the route
+  useEffect(() => {
+    if (!routeData || !userPosition || !originalCoordsRef.current || originalCoordsRef.current.length === 0) return;
+
+    const coords = originalCoordsRef.current;
+    let closestIndex = traveledIndex;
+    let closestDistance = Infinity;
+
+    // Only search from current traveled index forward to prevent going backwards
+    // Also check a few points before in case GPS jumps around
+    const searchStart = Math.max(0, traveledIndex - 2);
+    const searchEnd = Math.min(coords.length, traveledIndex + 15); // Look ahead up to 15 points
+
+    for (let i = searchStart; i < searchEnd; i++) {
+      const d = calculateDistanceKm(
+        userPosition[0],
+        userPosition[1],
+        coords[i][0],
+        coords[i][1]
+      ) * 1000; // Convert to meters
+
+      if (d < closestDistance) {
+        closestDistance = d;
+        closestIndex = i;
+      }
+    }
+
+    // Only update if we've moved forward (or are very close to a point ahead)
+    // This prevents the traveled line from jumping back and forth
+    if (closestIndex > traveledIndex || (closestIndex === traveledIndex && closestDistance < 50)) {
+      setTraveledIndex(closestIndex);
+    }
+  }, [userPosition, routeData, traveledIndex]);
+
+  // Derive traveled and remaining coordinates from the route
+  const traveledCoordinates: LatLngTuple[] = routeData?.coordinates && originalCoordsRef.current
+    ? originalCoordsRef.current.slice(0, traveledIndex + 1)
+    : [];
+
+  const remainingCoordinates: LatLngTuple[] = routeData?.coordinates && originalCoordsRef.current
+    ? originalCoordsRef.current.slice(traveledIndex)
+    : routeData?.coordinates || [];
+
   return {
     // state
     routeData,
     routingTo,
     routeStartPosition,
     lastRerouteAt,
+    traveledCoordinates,
+    remainingCoordinates,
 
     // controls
     routeTo,

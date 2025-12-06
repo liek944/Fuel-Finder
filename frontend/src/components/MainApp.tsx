@@ -471,7 +471,7 @@ const MainApp: React.FC = () => {
     toggleSearchPanelCollapsed,
   } = useFilterContext();
   const { filteredStations, uniqueBrands } = useFilterDerived<Station>(stations);
-  const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive, lastRerouteAt } = useRoute(position);
+  const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive, lastRerouteAt, traveledCoordinates, remainingCoordinates } = useRoute(position);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [showOfflineSettings, setShowOfflineSettings] = useState(false);
   const navigate = useNavigate();
@@ -1066,8 +1066,12 @@ const MainApp: React.FC = () => {
           </Popup>
         </Marker>
 
-        {/* Route polyline with layered styling */}
-        <RouteDisplay routeData={routeData} />
+        {/* Route polyline with layered styling - shows traveled (gray) and remaining (blue) */}
+        <RouteDisplay 
+          routeData={routeData} 
+          traveledCoordinates={traveledCoordinates}
+          remainingCoordinates={remainingCoordinates}
+        />
 
         {/* Station markers */}
         {filteredStations.map((station) => {
