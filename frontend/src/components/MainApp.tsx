@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   TileLayer,
@@ -6,7 +6,6 @@ import {
   Popup,
   Circle,
   LayersControl,
-  useMap,
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
@@ -16,24 +15,22 @@ import MapOverlays from "./map/MapOverlays";
 import SearchControlsDesktop from "./map/SearchControlsDesktop";
 import FilterChipMobile from "./map/FilterChipMobile";
 import FilterSheetMobile from "./map/FilterSheetMobile";
+import CenterToLocationButton from "./map/CenterToLocationButton";
+import PopupScaleFix from "./map/PopupScaleFix";
 import { stationsApi } from "../api/stationsApi";
 import { poisApi } from "../api/poisApi";
-// import TripRecorder from './TripRecorder';
-// import TripHistoryPanel from './TripHistoryPanel';
-// import TripReplayVisualizer from './TripReplayVisualizer';
 import PWAInstallButton from "./PWAInstallButton";
 import SettingsButton from "./SettingsButton";
-// import DonationWidget from "./DonationWidget"; // COMMENTED OUT: PayMongo payment integration disabled
 import Toast from "./Toast";
 import { useToast } from "../hooks/useToast";
 import VisualAlert from "./VisualAlert";
-// import { Trip } from '../utils/indexedDB';
 import StationDetail from "./details/StationDetail";
 import PoiDetail from "./details/PoiDetail";
 import { MapBottomSheet, SheetMode } from "./map/MapBottomSheet";
 import MapPanController from "./map/MapPanController";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { useRoute } from "../hooks/useRoute";
+import { useLocationTracking } from "../hooks/useLocationTracking";
 import RouteDisplay from "./map/RouteDisplay";
 import "../styles/TripReplayVisualizer.css";
 import "../styles/MainApp.css";
@@ -47,403 +44,15 @@ import { Station, POI } from "../types/station.types";
 import { useMapSelection } from "../contexts/MapSelectionContext";
 import { OfflineIndicator } from './OfflineIndicator';
 import { OfflineSettings } from './OfflineSettings';
+import {
+  createUserLocationIcon,
+  createFuelStationIcon,
+  createPOIIcon,
+  calculateDistance,
+} from "../utils/mapIcons";
 
-// Canvas-based markers are created dynamically - no static image imports needed
-
-// RouteData is now provided by routingApi and consumed via useRoute
-
-// Simple component to center map to user location
-const CenterToLocationButton: React.FC<{ position: [number, number] | null }> = ({ position }) => {
-  const map = useMap();
-
-  return (
-    <button
-      onClick={() => {
-        if (position) {
-          map.flyTo(position, map.getZoom(), {
-            duration: 0.5,
-          });
-          console.log("📍 Manually centered to user location");
-        }
-      }}
-      className="center-location-button"
-      style={{
-        position: "fixed",
-        top: "50%",
-        right: "20px",
-        transform: "translateY(-50%)",
-        width: "50px",
-        height: "50px",
-        borderRadius: "50%",
-        background: "#2196F3",
-        color: "white",
-        border: "3px solid white",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-        cursor: "pointer",
-        fontSize: "24px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        transition: "all 0.2s ease",
-        zIndex: 1000,
-      }}
-      title="Center to my location"
-      aria-label="Center map to my location"
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-50%) scale(1.1)";
-        e.currentTarget.style.background = "#1976D2";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(-50%) scale(1)";
-        e.currentTarget.style.background = "#2196F3";
-      }}
-    >
-      📍
-    </button>
-  );
-}
-
-// Component to fix popup scaling on zoom (Desktop only - mobile uses bottom sheet)
-// Leaflet bug: popups scale during zoom, causing visual glitches
-// This removes scale transforms while preserving position
-const PopupScaleFix: React.FC = () => {
-  const map = useMap();
-
-  useEffect(() => {
-    const fixPopupScale = () => {
-      // Get all popup wrapper elements
-      const popupPane = map.getPane('popupPane');
-      if (!popupPane) return;
-
-      const popups = popupPane.querySelectorAll('.leaflet-popup');
-      popups.forEach((popup) => {
-        if (popup instanceof HTMLElement) {
-          // Get the current transform value
-          const transform = popup.style.transform;
-
-          // If there's a transform with translate but no scale, keep it
-          // If there's a scale in the transform, remove it
-          if (transform && transform.includes('scale')) {
-            // Extract translate values and reapply without scale
-            const translateMatch = transform.match(/translate3d\(([^)]+)\)/);
-            if (translateMatch) {
-              popup.style.transform = `translate3d(${translateMatch[1]})`;
-            } else {
-              // Fallback: just keep translate if present
-              const translate2dMatch = transform.match(/translate\(([^)]+)\)/);
-              if (translate2dMatch) {
-                popup.style.transform = `translate(${translate2dMatch[1]})`;
-              }
-            }
-          }
-        }
-      });
-    };
-
-    // Fix popups during zoom animation
-    map.on('zoom', fixPopupScale);
-    map.on('zoomend', fixPopupScale);
-    map.on('zoomanim', fixPopupScale);
-
-    // Initial fix
-    fixPopupScale();
-
-    return () => {
-      map.off('zoom', fixPopupScale);
-      map.off('zoomend', fixPopupScale);
-      map.off('zoomanim', fixPopupScale);
-    };
-  }, [map]);
-
-  return null;
-};
-
-// Create custom user location icon with sharp point
-const createUserLocationIcon = () => {
-  const width = 36;
-  const height = 50;
-  const canvas = document.createElement("canvas");
-  canvas.width = width + 10;
-  canvas.height = height + 10;
-  const ctx = canvas.getContext("2d");
-
-  if (ctx) {
-    const centerX = (width + 10) / 2;
-    const topRadius = width / 2 - 2;
-    const circleY = 5 + topRadius;
-    const pointY = height + 5;
-
-    // Draw shadow
-    ctx.save();
-    ctx.translate(3, 3);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, topRadius, 0, Math.PI, true);
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // Draw pin shape - circle top with sharp triangle bottom
-    ctx.fillStyle = "#2196F3";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, topRadius, 0, Math.PI, true);
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Draw border
-    ctx.strokeStyle = "#1565C0";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, topRadius, 0, Math.PI, true);
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.stroke();
-
-    // Inner white circle
-    ctx.fillStyle = "white";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, topRadius * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Inner blue dot
-    ctx.fillStyle = "#2196F3";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, topRadius * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  return new L.Icon({
-    iconUrl: canvas.toDataURL(),
-    iconSize: [width + 10, height + 10],
-    iconAnchor: [(width + 10) / 2, height + 10],
-    popupAnchor: [0, -(height + 10)],
-    className: "user-location-marker",
-    zIndexOffset: 10000,
-  });
-};
-
+// Create user location icon instance
 const DefaultIcon = createUserLocationIcon();
-
-// Icon cache to avoid redundant canvas operations
-const iconCache = new Map<string, L.Icon>();
-
-// Function to create brand-specific fuel station markers with sharp points (with caching)
-const createFuelStationIcon = (
-  brand: string,
-  proximity?: number,
-  isClosed: boolean = false,
-) => {
-  // Quantize proximity to reduce cache misses (group similar values)
-  const proxKey = proximity !== undefined ? Math.round(proximity * 4) / 4 : 'none';
-  const cacheKey = `fuel-${brand}-${proxKey}-${isClosed}`;
-
-  // Return cached icon if available
-  if (iconCache.has(cacheKey)) {
-    return iconCache.get(cacheKey)!;
-  }
-  const brandColors: { [key: string]: string } = {
-    Shell: "#FFCC00",
-    Petron: "#FF0000",
-    Caltex: "#0066B2",
-    Phoenix: "#FF6600",
-    Unioil: "#00AA00",
-    Seaoil: "#0066CC",
-    Local: "#ff6b6b",
-    default: "#ff6b6b",
-  };
-
-  const baseSize = proximity
-    ? Math.max(24, Math.min(36, 36 - proximity * 8))
-    : 32;
-  const width = baseSize;
-  const height = baseSize * 1.4; // Pin height ratio
-  const canvas = document.createElement("canvas");
-  canvas.width = width + 10;
-  canvas.height = height + 15; // Extra space for CLOSED text
-  const ctx = canvas.getContext("2d");
-
-  if (ctx) {
-    // Use gray for closed stations
-    const color = isClosed
-      ? "#9E9E9E"
-      : brandColors[brand] || brandColors.default;
-    const centerX = (width + 10) / 2;
-    const radius = width / 2 - 2;
-    const circleY = 5 + radius;
-    const pointY = height + 5;
-
-    // Draw shadow
-    ctx.save();
-    ctx.translate(2, 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
-    // Sharp triangular point
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // Draw pin shape with sharp point
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
-    // Create sharp triangular point
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Draw darker border for better definition
-    ctx.strokeStyle = isClosed ? "#616161" : "rgba(0, 0, 0, 0.5)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.stroke();
-
-    // Inner white circle for icon background
-    ctx.fillStyle = isClosed ? "#f5f5f5" : "white";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, radius * 0.75, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Draw fuel pump icon smaller and cleaner
-    ctx.fillStyle = isClosed ? "#757575" : color;
-    ctx.font = `bold ${Math.floor(radius * 0.7)}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("⛽", centerX, circleY);
-
-    // Add "CLOSED" text below for closed stations
-    if (isClosed) {
-      ctx.fillStyle = "#f44336";
-      ctx.font = "bold 8px Arial";
-      ctx.fillText("CLOSED", centerX, pointY + 8);
-    }
-  }
-
-  const icon = new L.Icon({
-    iconUrl: canvas.toDataURL(),
-    iconSize: [width + 10, height + 15],
-    iconAnchor: [(width + 10) / 2, height + 15],
-    popupAnchor: [0, -(height + 15)],
-  });
-
-  // Cache the icon for future use
-  iconCache.set(cacheKey, icon);
-  return icon;
-};
-
-// POI icon creator with sharp points (with caching)
-const createPOIIcon = (type: string) => {
-  const cacheKey = `poi-${type}`;
-
-  // Return cached icon if available
-  if (iconCache.has(cacheKey)) {
-    return iconCache.get(cacheKey)!;
-  }
-  const iconMap: { [key: string]: string } = {
-    gas: "⛽",
-    convenience: "🏪",
-    repair: "🔧",
-    car_wash: "🚗",
-    motor_shop: "🏍️",
-  };
-
-  const baseSize = 28;
-  const width = baseSize;
-  const height = baseSize * 1.4; // Pin height ratio
-  const canvas = document.createElement("canvas");
-  canvas.width = width + 10;
-  canvas.height = height + 10;
-  const ctx = canvas.getContext("2d");
-
-  if (ctx) {
-    const centerX = (width + 10) / 2;
-    const radius = width / 2 - 2;
-    const circleY = 5 + radius;
-    const pointY = height + 5;
-
-    // Draw shadow
-    ctx.save();
-    ctx.translate(2, 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
-    // Sharp triangular point
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // Draw pin shape with sharp point
-    ctx.fillStyle = "#8B5CF6";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
-    // Create sharp triangular point
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.fill();
-
-    // Draw darker border for better definition
-    ctx.strokeStyle = "#5B21B6";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, radius, 0, Math.PI, true);
-    ctx.lineTo(centerX, pointY);
-    ctx.closePath();
-    ctx.stroke();
-
-    // Inner white circle for icon background
-    ctx.fillStyle = "white";
-    ctx.beginPath();
-    ctx.arc(centerX, circleY, radius * 0.75, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Draw POI icon smaller and cleaner
-    const icon = iconMap[type] || "📍";
-    ctx.font = `${Math.floor(radius * 0.65)}px Arial`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(icon, centerX, circleY);
-  }
-
-  const poiIcon = new L.Icon({
-    iconUrl: canvas.toDataURL(),
-    iconSize: [width + 10, height + 10],
-    iconAnchor: [(width + 10) / 2, height + 10],
-    popupAnchor: [0, -(height + 10)],
-  });
-
-  // Cache the icon for future use
-  iconCache.set(cacheKey, poiIcon);
-  return poiIcon;
-};
-
-// Distance calculation function
-const calculateDistance = (
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number => {
-  const R = 6371; // Radius of the Earth in km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLng = (lng2 - lng1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-    Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLng / 2) *
-    Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-  return distance;
-};
-
 
 const MainApp: React.FC = () => {
   // Toast notifications
@@ -452,10 +61,19 @@ const MainApp: React.FC = () => {
   // Mobile detection for bottom sheet vs popups
   const isMobile = useIsMobile();
 
-  const [position, setPosition] = useState<[number, number] | null>(null);
   const [stations, setStations] = useState<Station[]>([]);
   const [pois, setPois] = useState<POI[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+
+  // Location tracking via custom hook (must be declared early since position is used by other hooks)
+  const {
+    position,
+    accuracy: locationAccuracy,
+    speed: currentSpeed,
+    lastUpdate: lastLocationUpdate,
+    loading,
+  } = useLocationTracking();
+  const [speedUnit, setSpeedUnit] = useState<'kmh' | 'mph'>('kmh');
+
   const {
     radiusMeters,
     setRadiusMeters,
@@ -523,21 +141,6 @@ const MainApp: React.FC = () => {
     }
   }, [isMobile]);
 
-  // Location tracking states
-  const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
-  const [currentSpeed, setCurrentSpeed] = useState<number | null>(null);
-  const [speedUnit, setSpeedUnit] = useState<'kmh' | 'mph'>('kmh');
-  const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(
-    Date.now(),
-  );
-  const [, setIsLocationUpdating] = useState<boolean>(false);
-  const lastUpdateRef = useRef<number>(0);
-  const lastAcceptedPositionRef = useRef<[number, number] | null>(null);
-  const lastAccuracyRef = useRef<number | null>(null);
-  const UPDATE_THROTTLE = 3000; // 3 seconds minimum between position updates
-  const STALE_POSITION_MS = 20000;
-  const MAX_ACCURACY_METERS = 50;
-
   // Arrival notification state
   const { voiceEnabled, notificationsEnabled, keepScreenOn, darkMode, toggleVoice, toggleNotifications, toggleKeepScreenOn, toggleDarkMode } = useSettings();
 
@@ -557,117 +160,6 @@ const MainApp: React.FC = () => {
     const hours = Math.floor(minutes / 60);
     return `${hours}h ago`;
   };
-
-  // Continuous location tracking with watchPosition
-  useEffect(() => {
-    let watchId: number | null = null;
-
-    setLoading(true);
-    console.log("🌍 Starting continuous location tracking...");
-
-    // Start watching position with high accuracy
-    watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const now = Date.now();
-        const newPosition: [number, number] = [
-          pos.coords.latitude,
-          pos.coords.longitude,
-        ];
-        const newAccuracy = pos.coords.accuracy;
-        const newSpeed = pos.coords.speed; // Speed in meters/second (can be null)
-
-        const previousPosition = lastAcceptedPositionRef.current;
-        const previousAccuracy = lastAccuracyRef.current;
-
-        // Smart throttling: only update if enough time passed or moved significantly
-        const timeSinceUpdate = now - lastUpdateRef.current;
-
-        if (
-          previousPosition &&
-          previousAccuracy !== null &&
-          newAccuracy > MAX_ACCURACY_METERS &&
-          timeSinceUpdate < STALE_POSITION_MS
-        ) {
-          console.log("📍 Ignoring low-accuracy location update:", {
-            lat: newPosition[0].toFixed(6),
-            lng: newPosition[1].toFixed(6),
-            accuracy: `±${Math.round(newAccuracy)}m`,
-          });
-
-          setLoading(false);
-          return;
-        }
-
-        let shouldUpdate = timeSinceUpdate >= UPDATE_THROTTLE;
-
-        if (previousPosition && timeSinceUpdate < UPDATE_THROTTLE) {
-          const distanceKm = calculateDistance(
-            previousPosition[0],
-            previousPosition[1],
-            newPosition[0],
-            newPosition[1],
-          );
-          const distanceMeters = distanceKm * 1000;
-          // Update if moved more than 20 meters even within throttle period
-          shouldUpdate = distanceMeters > 20;
-        }
-
-        if (!previousPosition || shouldUpdate) {
-          console.log("📍 Location updated:", {
-            lat: newPosition[0].toFixed(6),
-            lng: newPosition[1].toFixed(6),
-            accuracy: `±${Math.round(newAccuracy)}m`,
-          });
-
-          setPosition(newPosition);
-          setLocationAccuracy(newAccuracy);
-          setCurrentSpeed(newSpeed);
-          setLastLocationUpdate(now);
-          lastUpdateRef.current = now;
-          lastAcceptedPositionRef.current = newPosition;
-          lastAccuracyRef.current = newAccuracy;
-
-          // Update arrival notifications with new position
-          arrivalNotifications.updatePosition(newPosition[0], newPosition[1]);
-
-          // Visual feedback
-          setIsLocationUpdating(true);
-          setTimeout(() => setIsLocationUpdating(false), 600);
-        }
-
-        setLoading(false);
-      },
-      (err) => {
-        console.warn("Geolocation error:", err.message);
-
-        // Only set default location if we don't have a position yet
-        if (!lastAcceptedPositionRef.current) {
-          console.log("📍 Using default location (Oriental Mindoro)");
-          const defaultPosition: [number, number] = [12.5966, 121.5258];
-          setPosition(defaultPosition);
-          lastAcceptedPositionRef.current = defaultPosition;
-          lastAccuracyRef.current = null;
-          lastUpdateRef.current = Date.now();
-          setLastLocationUpdate(Date.now());
-        }
-
-        setLoading(false);
-      },
-      {
-        enableHighAccuracy: true, // Use GPS for better accuracy
-        maximumAge: 10000, // Accept cached position up to 10s old
-        timeout: 15000, // 15 second timeout
-      },
-    );
-
-    // Cleanup: stop watching position when component unmounts
-    return () => {
-      if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        console.log("🛑 Stopped location tracking");
-      }
-    };
-  }, []); // Only run once on mount, but sets up continuous watching
 
   // Fetch nearby stations
   useEffect(() => {

@@ -86,8 +86,14 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
   useEffect(() => {
     if (!open) return;
 
+    // Flag to prevent stale popstate handlers from triggering
+    let isActive = true;
+
     const handlePopState = () => {
-      onClose();
+      // Only close if this effect is still active (prevents race conditions)
+      if (isActive) {
+        onClose();
+      }
     };
 
     // Push a dummy history state when sheet opens - back button will pop this first
@@ -95,11 +101,11 @@ export const MapBottomSheet: React.FC<MapBottomSheetProps> = ({
     window.addEventListener('popstate', handlePopState);
 
     return () => {
+      isActive = false; // Prevent stale handler from closing newly opened sheets
       window.removeEventListener('popstate', handlePopState);
-      // Clean up history if sheet is still open
-      if (window.history.state?.sheetOpen) {
-        window.history.back();
-      }
+      // Note: We intentionally don't call history.back() here because:
+      // 1. It triggers popstate which can close a newly re-opened sheet
+      // 2. The extra history entry is harmless and gets cleaned up naturally
     };
   }, [open, onClose]);
 
