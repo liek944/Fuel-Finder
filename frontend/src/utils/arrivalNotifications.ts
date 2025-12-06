@@ -23,6 +23,10 @@ interface VisualAlertCallback {
   (title: string, message: string, icon: string): void;
 }
 
+interface RouteClearCallback {
+  (): void;
+}
+
 class ArrivalNotificationManager {
   private notificationState: NotificationState | null = null;
   private currentDestination: Destination | null = null;
@@ -32,6 +36,7 @@ class ArrivalNotificationManager {
   private keepScreenOn: boolean = false;
   private wakeLock: any | null = null;
   private visualAlertCallback: VisualAlertCallback | null = null;
+  private routeClearCallback: RouteClearCallback | null = null;
   private handleWakeLockVisibilityChange = async (): Promise<void> => {
     if (!this.keepScreenOn) return;
     if (document.hidden) {
@@ -102,6 +107,13 @@ class ArrivalNotificationManager {
    */
   setVisualAlertCallback(callback: VisualAlertCallback | null): void {
     this.visualAlertCallback = callback;
+  }
+
+  /**
+   * Register callback for route clearing
+   */
+  setRouteClearCallback(callback: RouteClearCallback | null): void {
+    this.routeClearCallback = callback;
   }
 
   /**
@@ -198,6 +210,12 @@ class ArrivalNotificationManager {
       this.speak(`You have arrived at ${destName}`);
       (navigator as any).vibrate && (navigator as any).vibrate(200);
       console.log('🎉 Arrival notification triggered');
+      
+      // Automatically clear the route when user arrives
+      if (this.routeClearCallback) {
+        console.log('🧹 Auto-clearing route on arrival');
+        this.routeClearCallback();
+      }
     }
     // 100m notification
     else if (
