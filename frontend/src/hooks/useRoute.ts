@@ -60,6 +60,15 @@ export function useRoute(userPosition: LatLngTuple | null) {
     setLastRerouteAt(null);
   }, []);
 
+  // Register route clearing callback with arrival notifications
+  useEffect(() => {
+    arrivalNotifications.setRouteClearCallback(clearRoute);
+    
+    return () => {
+      arrivalNotifications.setRouteClearCallback(null);
+    };
+  }, [clearRoute]);
+
   const routeTo = useCallback(
     async (location: RoutableLocation) => {
       if (!userPosition) return;
@@ -149,7 +158,7 @@ export function useRoute(userPosition: LatLngTuple | null) {
     [userPosition, routingTo],
   );
 
-  // Auto-clear route if moved significantly from original start position
+  // Auto-reroute if user goes significantly off-route
   useEffect(() => {
     if (!routeData || !routeStartPosition || !userPosition || !originalCoordsRef.current || originalCoordsRef.current.length === 0) return;
 
@@ -164,22 +173,16 @@ export function useRoute(userPosition: LatLngTuple | null) {
     if (distanceMeters < 30) return;
 
     const coords = originalCoordsRef.current;
-    let nearestIdx = lastTrimmedIndexRef.current;
     let best = Infinity;
     for (let i = lastTrimmedIndexRef.current; i < coords.length; i++) {
       const d =
         calculateDistanceKm(userPosition[0], userPosition[1], coords[i][0], coords[i][1]) * 1000;
       if (d < best) {
         best = d;
-        nearestIdx = i;
       }
     }
 
-    if (nearestIdx > lastTrimmedIndexRef.current) {
-      lastTrimmedIndexRef.current = nearestIdx;
-      const newCoords = coords.slice(nearestIdx);
-      setRouteData((prev) => (prev ? { ...prev, coordinates: newCoords } : prev));
-    }
+    // Trigger rerouting if user is more than 150m away from the route
     const offRouteThresholdMeters = 150;
     if (best > offRouteThresholdMeters) {
       recalculateRouteFromCurrentPosition();
