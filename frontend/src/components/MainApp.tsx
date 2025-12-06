@@ -525,6 +525,8 @@ const MainApp: React.FC = () => {
 
   // Location tracking states
   const [locationAccuracy, setLocationAccuracy] = useState<number | null>(null);
+  const [currentSpeed, setCurrentSpeed] = useState<number | null>(null);
+  const [speedUnit, setSpeedUnit] = useState<'kmh' | 'mph'>('kmh');
   const [lastLocationUpdate, setLastLocationUpdate] = useState<number>(
     Date.now(),
   );
@@ -572,6 +574,7 @@ const MainApp: React.FC = () => {
           pos.coords.longitude,
         ];
         const newAccuracy = pos.coords.accuracy;
+        const newSpeed = pos.coords.speed; // Speed in meters/second (can be null)
 
         const previousPosition = lastAcceptedPositionRef.current;
         const previousAccuracy = lastAccuracyRef.current;
@@ -618,6 +621,7 @@ const MainApp: React.FC = () => {
 
           setPosition(newPosition);
           setLocationAccuracy(newAccuracy);
+          setCurrentSpeed(newSpeed);
           setLastLocationUpdate(now);
           lastUpdateRef.current = now;
           lastAcceptedPositionRef.current = newPosition;
@@ -945,15 +949,33 @@ const MainApp: React.FC = () => {
         </button>
       )}
 
-      {/* Location Accuracy Indicator */}
+      {/* Location Accuracy & Speed Indicator */}
       {locationAccuracy !== null && (
         <div className="location-accuracy-indicator">
           <div className="location-accuracy-header">
             <span className="location-accuracy-dot" />
-            GPS Accuracy
+            GPS Status
           </div>
           <div className="location-accuracy-value">
             ±{Math.round(locationAccuracy)}m
+          </div>
+          <div 
+            className="location-speed-display"
+            onClick={() => setSpeedUnit(speedUnit === 'kmh' ? 'mph' : 'kmh')}
+            style={{ cursor: 'pointer' }}
+            title="Click to toggle km/h ↔ mph"
+          >
+            <span className="speed-icon">🚗</span>
+            <span className="speed-value">
+              {currentSpeed !== null && currentSpeed > 0.5
+                ? speedUnit === 'kmh'
+                  ? `${Math.round(currentSpeed * 3.6)} km/h`
+                  : `${Math.round(currentSpeed * 2.237)} mph`
+                : '--'}
+            </span>
+            <span className="speed-unit-toggle">
+              {speedUnit === 'kmh' ? '↔ mph' : '↔ km/h'}
+            </span>
           </div>
           <div className="location-accuracy-timestamp">
             Updated {getTimeAgo(lastLocationUpdate)}
