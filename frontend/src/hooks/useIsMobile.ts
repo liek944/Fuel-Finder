@@ -5,11 +5,19 @@ import { useState, useEffect } from 'react';
  * Updates on window resize
  */
 export function useIsMobile(breakpoint: number = 768): boolean {
-  const getIsMobile = () =>
-    typeof window !== 'undefined' && (
-      (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
-      Math.min(window.innerWidth, window.innerHeight) <= breakpoint
-    );
+  const getIsMobile = () => {
+    if (typeof window === 'undefined') return false;
+    
+    // Check for true mobile: requires BOTH coarse pointer (touch) AND no hover capability
+    // Laptops with touchscreens have hover via trackpad/mouse, so they won't match
+    const isTouchOnly = window.matchMedia && 
+      window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    
+    // Also check screen size as fallback for unusual configurations
+    const isSmallScreen = Math.min(window.innerWidth, window.innerHeight) <= breakpoint;
+    
+    return isTouchOnly || isSmallScreen;
+  };
 
   const [isMobile, setIsMobile] = useState<boolean>(getIsMobile);
 
