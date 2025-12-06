@@ -180,7 +180,7 @@ export function useRoute(userPosition: LatLngTuple | null) {
       const newCoords = coords.slice(nearestIdx);
       setRouteData((prev) => (prev ? { ...prev, coordinates: newCoords } : prev));
     }
-    const offRouteThresholdMeters = 80;
+    const offRouteThresholdMeters = 150;
     if (best > offRouteThresholdMeters) {
       recalculateRouteFromCurrentPosition();
     }
