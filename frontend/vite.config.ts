@@ -12,23 +12,79 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        // Offline fallback page for navigation requests
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
+          // OSM Map Tiles - Increased capacity for offline map caching
           {
             urlPattern: /^https:\/\/tile\.openstreetmap\.org\/.*/i,
             handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'osm-tiles',
               expiration: {
-                maxEntries: 1000,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 1 week
+                maxEntries: 5000, // Increased from 1000 for offline maps
+                maxAgeSeconds: 60 * 60 * 24 * 90 // 90 days for offline use
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
               }
             }
           },
+          // Station Images - Cache first for fast loading
+          {
+            urlPattern: /\/uploads\/stations\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'station-images',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // API - Station Data with network timeout fallback
+          {
+            urlPattern: /\/api\/stations\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'station-data',
+              networkTimeoutSeconds: 5, // Fallback to cache after 5 seconds
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // API - Routing Data with network timeout fallback
+          {
+            urlPattern: /\/api\/routing\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'routing-data',
+              networkTimeoutSeconds: 5,
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          // General API - Fallback for other API calls
           {
             urlPattern: /^.*\/api\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
+              networkTimeoutSeconds: 10,
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 // 1 day

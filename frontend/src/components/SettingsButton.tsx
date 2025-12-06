@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSettings } from "../contexts/SettingsContext";
 
-const SettingsButton: React.FC = () => {
+interface SettingsButtonProps {
+  onOpenOfflineSettings?: () => void;
+}
+
+const SettingsButton: React.FC<SettingsButtonProps> = ({ onOpenOfflineSettings }) => {
   const {
     voiceEnabled,
     notificationsEnabled,
@@ -121,6 +125,30 @@ const SettingsButton: React.FC = () => {
           </div>
 
           <div style={{ display: "grid", gap: 10 }}>
+            {onOpenOfflineSettings && (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>📴 Offline Mode</div>
+                <button
+                  onClick={() => {
+                    onOpenOfflineSettings();
+                    setOpen(false);
+                  }}
+                  style={{
+                    background: "#2196F3",
+                    color: "white",
+                    border: "none",
+                    padding: "4px 10px",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}
+                >
+                  MANAGE
+                </button>
+              </div>
+            )}
+
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div style={{ fontSize: 12, color: "#333", fontWeight: 600 }}>🔊 Voice announcements</div>
               <Toggle on={voiceEnabled} onClick={toggleVoice} label="Toggle voice announcements" />
