@@ -1,0 +1,178 @@
+/**
+ * OfflineIndicator Component Styles
+ */
+
+.offline-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1a1a1a;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+  margin: 0.75rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.offline-indicator::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.offline-indicator-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.offline-indicator-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  position: relative;
+  z-index: 1;
+}
+
+.offline-indicator-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.offline-indicator-sync {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.offline-indicator-pending {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #7c2d12;
+}
+
+.offline-indicator-retry {
+  background: rgba(0, 0, 0, 0.15);
+  border: none;
+  color: #1a1a1a;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.offline-indicator-retry:hover {
+  background: rgba(0, 0, 0, 0.25);
+  transform: scale(1.05);
+}
+
+.offline-indicator-retry:active {
+  transform: scale(0.98);
+}
+
+/* Fixed position variant for top of screen */
+.offline-indicator--fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  border-radius: 0;
+  z-index: 9999;
+}
+
+/* Compact variant */
+.offline-indicator--compact {
+  padding: 0.5rem 0.75rem;
+}
+
+.offline-indicator--compact .offline-indicator-content {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.offline-indicator--compact .offline-indicator-sync {
+  font-size: 0.7rem;
+}
+
+/* Dark theme variant */
+.offline-indicator--dark {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  color: #f3f4f6;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.offline-indicator--dark .offline-indicator-retry {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f3f4f6;
+}
+
+.offline-indicator--dark .offline-indicator-retry:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.offline-indicator--dark .offline-indicator-pending {
+  color: #fbbf24;
+}
+
+/* Animation for appearing */
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.offline-indicator {
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .offline-indicator {
+    margin: 0.5rem;
+    padding: 0.625rem 0.75rem;
+  }
+
+  .offline-indicator-content {
+    gap: 0;
+  }
+
+  .offline-indicator-title {
+    font-size: 0.85rem;
+  }
+
+  .offline-indicator-sync,
+  .offline-indicator-pending {
+    font-size: 0.7rem;
+  }
+}

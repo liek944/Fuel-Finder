@@ -45,6 +45,8 @@ import { useFilterContext } from "../contexts/FilterContext";
 import { useFilterDerived } from "../hooks/useFilterDerived";
 import { Station, POI } from "../types/station.types";
 import { useMapSelection } from "../contexts/MapSelectionContext";
+import { OfflineIndicator } from './OfflineIndicator';
+import { OfflineSettings } from './OfflineSettings';
 
 // Canvas-based markers are created dynamically - no static image imports needed
 
@@ -471,6 +473,7 @@ const MainApp: React.FC = () => {
   const { filteredStations, uniqueBrands } = useFilterDerived<Station>(stations);
   const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive, lastRerouteAt } = useRoute(position);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [showOfflineSettings, setShowOfflineSettings] = useState(false);
   const navigate = useNavigate();
 
   // Bottom sheet selection (shared via context)
@@ -1158,7 +1161,7 @@ const MainApp: React.FC = () => {
         {/* Map Control Buttons - Right Side */}
         <MapOverlays>
           {!isMobile && (
-            <SettingsButton />
+            <SettingsButton onOpenOfflineSettings={() => setShowOfflineSettings(true)} />
           )}
 
           {/* Voice Announcement Toggle Button */}
@@ -1325,6 +1328,27 @@ const MainApp: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            <div className="mobile-menu-section-title">Offline</div>
+            <div className="mobile-menu-settings">
+              <div className="mobile-menu-setting-row">
+                <div className="mobile-menu-setting-label">
+                  📴 Offline Mode
+                </div>
+                <button
+                  type="button"
+                  className="mobile-menu-toggle-button"
+                  aria-label="Manage offline mode"
+                  style={{ fontSize: '11px', width: 'auto', padding: '0 10px' }}
+                  onClick={() => {
+                    setShowOfflineSettings(true);
+                    setIsMenuOpen(false);
+                  }}
+                >
+                  MANAGE
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1405,6 +1429,11 @@ const MainApp: React.FC = () => {
           )}
         </MapBottomSheet>
       )}
+      {/* Offline Settings Panel */}
+      <OfflineSettings isOpen={showOfflineSettings} onClose={() => setShowOfflineSettings(false)} />
+      
+      {/* Offline Indicator - Always visible when offline/cached data is used */}
+      <OfflineIndicator />
     </div>
   );
 };

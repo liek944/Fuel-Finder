@@ -1,0 +1,399 @@
+/**
+ * OfflineMapDownloader Component Styles
+ */
+
+.offline-map-downloader {
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  border-radius: 16px;
+  padding: 1.5rem;
+  color: #f1f5f9;
+  max-width: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.offline-map-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.offline-map-icon {
+  font-size: 1.5rem;
+}
+
+.offline-map-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  flex: 1;
+}
+
+.offline-map-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.offline-map-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+/* Existing Data */
+.offline-map-existing {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.existing-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.existing-label {
+  font-weight: 600;
+  color: #22c55e;
+}
+
+.existing-details {
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.existing-time {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.clear-button {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-button:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* Form */
+.offline-map-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.region-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.region-icon {
+  font-size: 1.25rem;
+}
+
+/* Zoom Options */
+.zoom-options {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.zoom-option {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  padding: 0.75rem 0.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.zoom-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.zoom-option.selected {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: #3b82f6;
+}
+
+.zoom-label {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.zoom-desc {
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.zoom-option.selected .zoom-desc {
+  color: #93c5fd;
+}
+
+/* Download Info */
+.download-info {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
+
+.info-row span:first-child {
+  color: #94a3b8;
+}
+
+.info-row span:last-child {
+  font-weight: 500;
+}
+
+/* Download Button */
+.download-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  border: none;
+  color: #fff;
+  padding: 1rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.download-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.download-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Progress */
+.offline-map-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-text span:first-child {
+  font-weight: 500;
+}
+
+.zoom-info {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.progress-bar-container {
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #22c55e 100%);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.progress-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.failed-tiles {
+  color: #f59e0b;
+}
+
+/* Progress Controls */
+.progress-controls {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.control-button {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.control-button.pause {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.control-button.pause:hover {
+  background: rgba(234, 179, 8, 0.25);
+}
+
+.control-button.resume {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.control-button.resume:hover {
+  background: rgba(34, 197, 94, 0.25);
+}
+
+.control-button.cancel {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.control-button.cancel:hover {
+  background: rgba(239, 68, 68, 0.25);
+}
+
+/* Confirm Dialog */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.confirm-dialog {
+  background: #1e293b;
+  padding: 1.5rem;
+  border-radius: 16px;
+  max-width: 320px;
+  text-align: center;
+}
+
+.confirm-dialog p {
+  margin: 0 0 1.25rem;
+  color: #f1f5f9;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.confirm-buttons button {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.confirm-buttons button:first-child {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #94a3b8;
+}
+
+.confirm-buttons button:first-child:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.confirm-primary {
+  background: #3b82f6 !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+.confirm-primary:hover {
+  background: #2563eb !important;
+}
+
+/* Error */
+.offline-map-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  padding: 1rem;
+  color: #ef4444;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 400px) {
+  .offline-map-downloader {
+    border-radius: 0;
+    max-width: 100%;
+  }
+
+  .zoom-options {
+    flex-direction: column;
+  }
+
+  .zoom-option {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 1rem;
+  }
+}
