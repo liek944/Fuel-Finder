@@ -24,23 +24,8 @@ async function getAllPois(req, res) {
  */
 async function getNearbyPois(req, res) {
   try {
-    const lat = parseFloat(req.query.lat);
-    const lng = parseFloat(req.query.lng);
-    const radius = parseInt(req.query.radiusMeters || req.query.radius) || 3000;
-
-    if (isNaN(lat) || isNaN(lng)) {
-      return res.status(400).json({
-        error: "Invalid coordinates",
-        message: "Please provide valid latitude and longitude values",
-      });
-    }
-
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      return res.status(400).json({
-        error: "Coordinates out of range",
-        message: "Latitude must be between -90 and 90, longitude between -180 and 180",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { lat, lng, radius } = req.validated.query;
 
     const data = await poiService.getNearbyPois(lat, lng, radius);
     res.json(data);
@@ -55,14 +40,8 @@ async function getNearbyPois(req, res) {
  */
 async function getPoiById(req, res) {
   try {
-    const poiId = parseInt(req.params.id);
-
-    if (!poiId || isNaN(poiId)) {
-      return res.status(400).json({
-        error: "Invalid ID",
-        message: "POI ID must be a valid number",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: poiId } = req.validated.params;
 
     const data = await poiService.getPoiById(poiId);
 
@@ -85,24 +64,10 @@ async function getPoiById(req, res) {
  */
 async function createPoi(req, res) {
   try {
-    const { name, type, location } = req.body;
+    // Validation is handled by middleware; use validated data
+    const poiData = req.validated.body;
 
-    // Validation
-    if (!name || !type || !location || !location.lat || !location.lng) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        message: "Name, type, and location (lat, lng) are required",
-      });
-    }
-
-    if (!["gas", "convenience", "repair", "car_wash", "motor_shop"].includes(type)) {
-      return res.status(400).json({
-        error: "Invalid type",
-        message: "Type must be one of: gas, convenience, repair, car_wash, motor_shop",
-      });
-    }
-
-    const data = await poiService.createPoi(req.body);
+    const data = await poiService.createPoi(poiData);
     res.status(201).json(data);
   } catch (error) {
     logger.error("Error in createPoi:", error);
@@ -115,25 +80,11 @@ async function createPoi(req, res) {
  */
 async function updatePoi(req, res) {
   try {
-    const poiId = parseInt(req.params.id);
-    const { type } = req.body;
+    // Validation is handled by middleware; use validated data
+    const { id: poiId } = req.validated.params;
+    const updateData = req.validated.body;
 
-    if (!poiId || isNaN(poiId)) {
-      return res.status(400).json({
-        error: "Invalid ID",
-        message: "POI ID must be a valid number",
-      });
-    }
-
-    // Validate type if provided
-    if (type && !["gas", "convenience", "repair", "car_wash", "motor_shop"].includes(type)) {
-      return res.status(400).json({
-        error: "Invalid type",
-        message: "Type must be one of: gas, convenience, repair, car_wash, motor_shop",
-      });
-    }
-
-    const data = await poiService.updatePoi(poiId, req.body);
+    const data = await poiService.updatePoi(poiId, updateData);
 
     if (!data) {
       return res.status(404).json({
@@ -154,14 +105,8 @@ async function updatePoi(req, res) {
  */
 async function deletePoi(req, res) {
   try {
-    const poiId = parseInt(req.params.id);
-
-    if (!poiId || isNaN(poiId)) {
-      return res.status(400).json({
-        error: "Invalid ID",
-        message: "POI ID must be a valid number",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: poiId } = req.validated.params;
 
     const deleted = await poiService.deletePoi(poiId);
 
@@ -191,3 +136,4 @@ module.exports = {
   updatePoi,
   deletePoi
 };
+

@@ -8,6 +8,8 @@ const router = express.Router();
 const reviewController = require('../controllers/reviewController');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { createRateLimiter } = require('../middleware/rateLimiter');
+const { validate } = require('../middleware/validate');
+const schemas = require('../schemas').review;
 
 // Rate limiters
 const reviewReadLimiter = createRateLimiter({
@@ -23,8 +25,8 @@ const reviewWriteLimiter = createRateLimiter({
 });
 
 // Public routes
-router.post('/', reviewWriteLimiter, asyncHandler(reviewController.createReview));
-router.get('/', reviewReadLimiter, asyncHandler(reviewController.getReviews));
-router.get('/summary', reviewReadLimiter, asyncHandler(reviewController.getReviewSummary));
+router.post('/', reviewWriteLimiter, validate(schemas.createReviewSchema), asyncHandler(reviewController.createReview));
+router.get('/', reviewReadLimiter, validate(schemas.getReviewsSchema), asyncHandler(reviewController.getReviews));
+router.get('/summary', reviewReadLimiter, validate(schemas.getReviewSummarySchema), asyncHandler(reviewController.getReviewSummary));
 
 module.exports = router;

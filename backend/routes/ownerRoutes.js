@@ -14,6 +14,8 @@ const { detectOwner, requireOwner } = require("../middleware/ownerDetection");
 const { verifyOwnerApiKey, enforceOwnerStationAccess } = require("../middleware/ownerAuth");
 const { asyncHandler } = require("../middleware/errorHandler");
 const ownerRateLimit = require("../middleware/ownerRateLimiter");
+const { validate } = require("../middleware/validate");
+const schemas = require("../schemas").owner;
 
 // Apply owner detection to all routes
 router.use(detectOwner);
@@ -67,6 +69,7 @@ router.get(
  */
 router.get(
   "/stations/:id",
+  validate(schemas.getOwnerStationSchema),
   asyncHandler(ownerController.getOwnerStation)
 );
 
@@ -76,6 +79,7 @@ router.get(
  */
 router.put(
   "/stations/:id",
+  validate(schemas.updateOwnerStationSchema),
   asyncHandler(ownerController.updateOwnerStation)
 );
 
@@ -85,6 +89,7 @@ router.put(
  */
 router.put(
   "/stations/:id/fuel-price",
+  validate(schemas.updateFuelPriceSchema),
   asyncHandler(ownerController.updateFuelPrice)
 );
 
@@ -94,6 +99,7 @@ router.put(
  */
 router.delete(
   "/stations/:id/fuel-price/:fuelType",
+  validate(schemas.deleteFuelPriceSchema),
   asyncHandler(ownerController.deleteFuelPrice)
 );
 
@@ -103,6 +109,7 @@ router.delete(
  */
 router.get(
   "/price-reports/pending",
+  validate(schemas.getPendingPriceReportsSchema),
   asyncHandler(ownerController.getPendingPriceReports)
 );
 
@@ -112,6 +119,7 @@ router.get(
  */
 router.post(
   "/price-reports/:id/verify",
+  validate(schemas.verifyPriceReportSchema),
   asyncHandler(ownerController.verifyPriceReport)
 );
 
@@ -121,6 +129,7 @@ router.post(
  */
 router.post(
   "/price-reports/:id/reject",
+  validate(schemas.rejectPriceReportSchema),
   asyncHandler(ownerController.rejectPriceReport)
 );
 
@@ -130,6 +139,7 @@ router.post(
  */
 router.get(
   "/activity-logs",
+  validate(schemas.getActivityLogsSchema),
   asyncHandler(ownerController.getActivityLogs)
 );
 
@@ -148,6 +158,7 @@ router.get(
  */
 router.get(
   "/market-insights",
+  validate(schemas.getMarketInsightsSchema),
   asyncHandler(ownerController.getMarketInsights)
 );
 
