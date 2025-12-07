@@ -52,14 +52,8 @@ async function getOwnerStations(req, res) {
  */
 async function getOwnerStation(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
-
-    if (isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
 
     const data = await ownerService.getOwnerStation(req.ownerData.id, stationId);
 
@@ -82,16 +76,11 @@ async function getOwnerStation(req, res) {
  */
 async function updateOwnerStation(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
+    const updateData = req.validated.body;
 
-    if (isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
-
-    const data = await ownerService.updateOwnerStation(req.ownerData, stationId, req.body, req.ip, req.get('user-agent'));
+    const data = await ownerService.updateOwnerStation(req.ownerData, stationId, updateData, req.ip, req.get('user-agent'));
 
     if (!data) {
       return res.status(404).json({
@@ -118,32 +107,11 @@ async function updateOwnerStation(req, res) {
  */
 async function updateFuelPrice(req, res) {
   try {
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
+    const { fuel_type, price } = req.validated.body;
+
     const ownerId = req.ownerData.id;
-    const stationId = parseInt(req.params.id);
-    const { fuel_type, price } = req.body;
-
-    if (isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
-
-    if (!fuel_type || !price) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        message: "fuel_type and price are required",
-      });
-    }
-
-    // Validate price
-    const priceFloat = parseFloat(price);
-    if (isNaN(priceFloat) || priceFloat <= 0) {
-      return res.status(400).json({
-        error: "Invalid price",
-        message: "Price must be a positive number",
-      });
-    }
 
     // Check ownership
     const hasAccess = await checkStationOwnership(ownerId, stationId);
@@ -154,7 +122,7 @@ async function updateFuelPrice(req, res) {
       });
     }
 
-    await priceService.updateFuelPrice(stationId, fuel_type, priceFloat, 'owner');
+    await priceService.updateFuelPrice(stationId, fuel_type, price, 'owner');
 
     // Log the update
     await logOwnerActivity(
@@ -163,14 +131,14 @@ async function updateFuelPrice(req, res) {
       stationId,
       req.ip,
       req.get('user-agent'),
-      { fuel_type, price: priceFloat }
+      { fuel_type, price }
     );
 
     res.json({
       success: true,
-      message: `${fuel_type} price updated to ₱${priceFloat.toFixed(2)}`,
+      message: `${fuel_type} price updated to ₱${price.toFixed(2)}`,
       fuel_type,
-      price: priceFloat,
+      price,
     });
   } catch (error) {
     logger.error("Error in updateFuelPrice:", error);
@@ -183,23 +151,9 @@ async function updateFuelPrice(req, res) {
  */
 async function deleteFuelPrice(req, res) {
   try {
+    // Validation is handled by middleware; use validated data
+    const { id: stationId, fuelType } = req.validated.params;
     const ownerId = req.ownerData.id;
-    const stationId = parseInt(req.params.id);
-    const fuelType = req.params.fuelType;
-
-    if (isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
-
-    if (!fuelType) {
-      return res.status(400).json({
-        error: "Missing fuel type",
-        message: "Fuel type is required",
-      });
-    }
 
     // Check ownership
     const hasAccess = await checkStationOwnership(ownerId, stationId);
@@ -259,16 +213,10 @@ async function getPendingPriceReports(req, res) {
  */
 async function verifyPriceReport(req, res) {
   try {
+    // Validation is handled by middleware; use validated data
+    const { id: reportId } = req.validated.params;
+    const { notes } = req.validated.body;
     const ownerId = req.ownerData.id;
-    const reportId = parseInt(req.params.id);
-    const { notes } = req.body;
-
-    if (isNaN(reportId)) {
-      return res.status(400).json({
-        error: "Invalid report ID",
-        message: "Report ID must be a valid number",
-      });
-    }
 
     // We need to check ownership first, but verifyPriceReport in service doesn't take ownerId to check
     // However, the service method I implemented does the verification directly.
@@ -343,16 +291,10 @@ async function verifyPriceReport(req, res) {
  */
 async function rejectPriceReport(req, res) {
   try {
+    // Validation is handled by middleware; use validated data
+    const { id: reportId } = req.validated.params;
+    const { reason } = req.validated.body;
     const ownerId = req.ownerData.id;
-    const reportId = parseInt(req.params.id);
-    const { reason } = req.body;
-
-    if (isNaN(reportId)) {
-      return res.status(400).json({
-        error: "Invalid report ID",
-        message: "Report ID must be a valid number",
-      });
-    }
 
     // Check ownership
     const { pool } = require("../config/database");

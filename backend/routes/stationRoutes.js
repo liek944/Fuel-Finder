@@ -11,30 +11,34 @@ const { optionalApiKey } = require("../middleware/authentication");
 const rateLimit = require("../middleware/rateLimiter");
 const requestDeduplication = require("../middleware/deduplication");
 const { asyncHandler } = require("../middleware/errorHandler");
+const { validate } = require("../middleware/validate");
+const schemas = require("../schemas").station;
 
 // GET routes (public)
 router.get("/", asyncHandler(stationController.getAllStations));
-router.get("/nearby", asyncHandler(stationController.getNearbyStations));
-router.get("/search", asyncHandler(stationController.searchStations));
-router.get("/brand/:brand", asyncHandler(stationController.getStationsByBrand));
-router.get("/:id", asyncHandler(stationController.getStationById));
+router.get("/nearby", validate(schemas.getNearbyStationsSchema), asyncHandler(stationController.getNearbyStations));
+router.get("/search", validate(schemas.searchStationsSchema), asyncHandler(stationController.searchStations));
+router.get("/brand/:brand", validate(schemas.getStationsByBrandSchema), asyncHandler(stationController.getStationsByBrand));
+router.get("/:id", validate(schemas.getStationByIdSchema), asyncHandler(stationController.getStationById));
 
 // Price reporting routes (public)
-router.post("/:id/report-price", rateLimit, asyncHandler(stationController.submitPriceReport));
-router.get("/:id/price-reports", asyncHandler(stationController.getPriceReportsForStation));
-router.get("/:id/average-price", asyncHandler(stationController.getAveragePriceFromReports));
+router.post("/:id/report-price", rateLimit, validate(schemas.submitPriceReportSchema), asyncHandler(stationController.submitPriceReport));
+router.get("/:id/price-reports", validate(schemas.getPriceReportsSchema), asyncHandler(stationController.getPriceReportsForStation));
+router.get("/:id/average-price", validate(schemas.getAveragePriceSchema), asyncHandler(stationController.getAveragePriceFromReports));
 
 // Direct fuel price management routes (used by admin portal & owner tools)
 router.put(
   "/:id/fuel-prices/:fuelType",
   rateLimit,
   optionalApiKey,
+  validate(schemas.updateFuelPriceSchema),
   asyncHandler(stationController.updateStationFuelPrice)
 );
 
 router.delete(
   "/:id/fuel-prices/:fuelType",
   optionalApiKey,
+  validate(schemas.deleteFuelPriceSchema),
   asyncHandler(stationController.deleteStationFuelPrice)
 );
 
@@ -44,6 +48,7 @@ router.post(
   requestDeduplication,
   rateLimit,
   optionalApiKey,
+  validate(schemas.createStationSchema),
   asyncHandler(stationController.createStation)
 );
 
@@ -51,12 +56,14 @@ router.put(
   "/:id",
   rateLimit,
   optionalApiKey,
+  validate(schemas.updateStationSchema),
   asyncHandler(stationController.updateStation)
 );
 
 router.delete(
   "/:id",
   optionalApiKey,
+  validate(schemas.deleteStationSchema),
   asyncHandler(stationController.deleteStation)
 );
 

@@ -27,23 +27,8 @@ async function getAllStations(req, res) {
  */
 async function getNearbyStations(req, res) {
   try {
-    const lat = parseFloat(req.query.lat);
-    const lng = parseFloat(req.query.lng);
-    const radius = parseInt(req.query.radiusMeters || req.query.radius) || 3000;
-
-    if (isNaN(lat) || isNaN(lng)) {
-      return res.status(400).json({
-        error: "Invalid coordinates",
-        message: "Please provide valid latitude and longitude values",
-      });
-    }
-
-    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      return res.status(400).json({
-        error: "Coordinates out of range",
-        message: "Latitude must be between -90 and 90, longitude between -180 and 180",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { lat, lng, radius } = req.validated.query;
 
     const data = await stationService.getNearbyStations(lat, lng, radius, req.ownerData);
     res.json(data);
@@ -58,14 +43,8 @@ async function getNearbyStations(req, res) {
  */
 async function getStationById(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
-
-    if (!stationId || isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid ID",
-        message: "Station ID must be a valid number",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
 
     const data = await stationService.getStationById(stationId);
 
@@ -88,17 +67,10 @@ async function getStationById(req, res) {
  */
 async function createStation(req, res) {
   try {
-    const { name, brand, location } = req.body;
+    // Validation is handled by middleware; use validated data
+    const stationData = req.validated.body;
 
-    // Validation
-    if (!name || !brand || !location || !location.lat || !location.lng) {
-      return res.status(400).json({
-        error: "Missing required fields",
-        message: "Name, brand, and location (lat, lng) are required",
-      });
-    }
-
-    const data = await stationService.createStation(req.body);
+    const data = await stationService.createStation(stationData);
     res.status(201).json(data);
   } catch (error) {
     logger.error("Error in createStation:", error);
@@ -111,16 +83,11 @@ async function createStation(req, res) {
  */
 async function updateStation(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
+    const updateData = req.validated.body;
 
-    if (!stationId || isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid ID",
-        message: "Station ID must be a valid number",
-      });
-    }
-
-    const data = await stationService.updateStation(stationId, req.body);
+    const data = await stationService.updateStation(stationId, updateData);
 
     if (!data) {
       return res.status(404).json({
@@ -141,14 +108,8 @@ async function updateStation(req, res) {
  */
 async function deleteStation(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
-
-    if (!stationId || isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid ID",
-        message: "Station ID must be a valid number",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
 
     const deleted = await stationService.deleteStation(stationId);
 
@@ -175,14 +136,8 @@ async function deleteStation(req, res) {
  */
 async function searchStations(req, res) {
   try {
-    const query = req.query.q;
-
-    if (!query || query.trim().length < 2) {
-      return res.status(400).json({
-        error: "Invalid search query",
-        message: "Search query must be at least 2 characters long",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { q: query } = req.validated.query;
 
     const data = await stationService.searchStations(query);
     res.json(data);
@@ -197,14 +152,8 @@ async function searchStations(req, res) {
  */
 async function getStationsByBrand(req, res) {
   try {
-    const brand = req.params.brand;
-
-    if (!brand) {
-      return res.status(400).json({
-        error: "Invalid brand",
-        message: "Brand name is required",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { brand } = req.validated.params;
 
     const data = await stationService.getStationsByBrand(brand);
     res.json(data);
@@ -219,33 +168,9 @@ async function getStationsByBrand(req, res) {
  */
 async function submitPriceReport(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
-
-    if (!stationId || isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
-
-    const { price } = req.body;
-
-    // Validate price
-    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
-      return res.status(400).json({
-        error: "Invalid price",
-        message: "Price must be a positive number",
-      });
-    }
-
-    // Validate price range (reasonable limits for Philippine fuel prices)
-    const priceNum = parseFloat(price);
-    if (priceNum < 30 || priceNum > 200) {
-      return res.status(400).json({
-        error: "Invalid price range",
-        message: "Price must be between ₱30 and ₱200 per liter",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
+    const { price, fuel_type, notes } = req.validated.body;
 
     // Get reporter IP
     const reporter_ip =
@@ -254,7 +179,11 @@ async function submitPriceReport(req, res) {
       req.connection.remoteAddress ||
       "unknown";
 
-    const report = await priceService.submitPriceReport(stationId, { ...req.body, price: priceNum }, reporter_ip);
+    const report = await priceService.submitPriceReport(
+      stationId,
+      { price, fuel_type, notes },
+      reporter_ip
+    );
 
     if (!report) {
       return res.status(404).json({
@@ -279,15 +208,9 @@ async function submitPriceReport(req, res) {
  */
 async function getPriceReportsForStation(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
-    const limit = parseInt(req.query.limit || "10");
-
-    if (!stationId || isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
+    const { limit } = req.validated.query;
 
     const reports = await priceService.getPriceReportsForStation(stationId, limit);
     res.json({ reports });
@@ -302,16 +225,9 @@ async function getPriceReportsForStation(req, res) {
  */
 async function getAveragePriceFromReports(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
-    const fuelType = req.query.fuel_type || "Regular";
-    const days = parseInt(req.query.days || "7");
-
-    if (!stationId || isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: stationId } = req.validated.params;
+    const { fuel_type: fuelType, days } = req.validated.query;
 
     const stats = await priceService.getAveragePriceFromReports(stationId, fuelType, days);
     res.json(stats);
@@ -326,43 +242,19 @@ async function getAveragePriceFromReports(req, res) {
  */
 async function updateStationFuelPrice(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
-    const fuelTypeRaw = req.params.fuelType;
-    const { price, updated_by } = req.body || {};
-
-    if (!stationId || isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
-
-    const fuelType = (fuelTypeRaw || "").trim();
-    if (!fuelType) {
-      return res.status(400).json({
-        error: "Invalid fuel type",
-        message: "Fuel type is required",
-      });
-    }
-
-    const rawPrice = price;
-    const priceNum = typeof rawPrice === "number" ? rawPrice : parseFloat(String(rawPrice));
-    if (!Number.isFinite(priceNum) || priceNum < 0) {
-      return res.status(400).json({
-        error: "Invalid price",
-        message: "Price must be zero or a positive number",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: stationId, fuelType } = req.validated.params;
+    const { price, updated_by } = req.validated.body;
 
     const updatedBy = updated_by || "admin";
 
-    const result = await priceService.updateFuelPrice(stationId, fuelType, priceNum, updatedBy);
+    const result = await priceService.updateFuelPrice(stationId, fuelType, price, updatedBy);
 
     res.json({
       success: true,
-      message: `${fuelType} price updated to ₱${priceNum.toFixed(2)}`,
+      message: `${fuelType} price updated to ₱${price.toFixed(2)}`,
       fuel_type: fuelType,
-      price: result ? result.price : priceNum,
+      price: result ? result.price : price,
       price_updated_at: result ? result.price_updated_at : undefined,
       price_updated_by: result ? result.price_updated_by : updatedBy,
     });
@@ -377,23 +269,8 @@ async function updateStationFuelPrice(req, res) {
  */
 async function deleteStationFuelPrice(req, res) {
   try {
-    const stationId = parseInt(req.params.id);
-    const fuelTypeRaw = req.params.fuelType;
-
-    if (!stationId || isNaN(stationId)) {
-      return res.status(400).json({
-        error: "Invalid station ID",
-        message: "Station ID must be a valid number",
-      });
-    }
-
-    const fuelType = (fuelTypeRaw || "").trim();
-    if (!fuelType) {
-      return res.status(400).json({
-        error: "Invalid fuel type",
-        message: "Fuel type is required",
-      });
-    }
+    // Validation is handled by middleware; use validated data
+    const { id: stationId, fuelType } = req.validated.params;
 
     const result = await priceService.deleteFuelPrice(stationId, fuelType, "admin");
 
