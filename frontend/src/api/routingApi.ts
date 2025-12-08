@@ -1,7 +1,7 @@
 import { apiGet } from '../utils/api';
 import { apiEndpoints } from '../constants/apiEndpoints';
 import { offlineStorage } from '../utils/offlineStorage';
-import { generateSimplifiedRoute } from '../utils/simplifiedRouting';
+import { offlineRouter, isOfflineRoute, getOfflineRouteWarning, type OfflineRouteResult } from '../utils/offlineRouting';
 
 export interface RouteData {
   coordinates: [number, number][];
@@ -12,12 +12,13 @@ export interface RouteData {
 }
 
 /**
- * Routing API with offline support
- * Falls back to cached routes or simplified routing when offline
+ * Routing API with comprehensive offline support
+ * Falls back to offlineRouter for cached routes, graph-based routing, or simplified routing
  */
 export const routingApi = {
   /**
    * Get route with offline fallback
+   * Uses tiered approach: network -> cached -> graph -> simplified
    */
   route: async (
     startLat: number,
@@ -45,29 +46,59 @@ export const routingApi = {
       
       return routeData;
     } catch (error) {
-      // If offline or network error
+      // If offline or network error, use offline router
       if (!navigator.onLine || (error instanceof TypeError)) {
-        console.log('[routingApi] Attempting offline fallback');
+        console.log('[routingApi] Network unavailable, using offline router');
         
-        // Try to get cached route
-        const cachedRoute = await offlineStorage.getOfflineRoute(
-          startLat, 
-          startLng, 
-          endLat, 
-          endLng
-        );
+        // Use the comprehensive offline router
+        const offlineRoute = await offlineRouter.route(startLat, startLng, endLat, endLng);
         
-        if (cachedRoute) {
-          console.log('[routingApi] Using cached route');
-          return { ...cachedRoute, cachedAt: Date.now() };
-        }
+        console.log(`[routingApi] Offline route method: ${offlineRoute.routingMethod}`);
         
-        // Last resort: generate simplified route
-        console.log('[routingApi] Generating simplified offline route');
-        return generateSimplifiedRoute(startLat, startLng, endLat, endLng);
+        // Convert to standard RouteData format
+        return {
+          coordinates: offlineRoute.coordinates,
+          distance: offlineRoute.distance,
+          duration: offlineRoute.duration,
+          isSimplified: offlineRoute.routingMethod === 'simplified',
+          cachedAt: offlineRoute.routingMethod === 'cached' ? Date.now() : undefined,
+        };
       }
       
       throw error;
     }
   },
+
+  /**
+   * Check if offline routing data is available
+   */
+  isOfflineRoutingAvailable: (): boolean => {
+    return offlineRouter.isGraphAvailable();
+  },
+
+  /**
+   * Get offline routing metadata
+   */
+  getOfflineRoutingInfo: () => {
+    return offlineRouter.getGraphMetadata();
+  },
+
+  /**
+   * Download offline routing data for Oriental Mindoro
+   */
+  downloadOfflineRouting: async (
+    onProgress?: (progress: { current: number; total: number }) => void
+  ): Promise<boolean> => {
+    return offlineRouter.downloadRoutingData(onProgress);
+  },
+
+  /**
+   * Clear offline routing data
+   */
+  clearOfflineRouting: async (): Promise<void> => {
+    await offlineRouter.clearRoutingData();
+  },
 };
+
+// Re-export utilities for checking offline routes
+export { isOfflineRoute, getOfflineRouteWarning, type OfflineRouteResult };
