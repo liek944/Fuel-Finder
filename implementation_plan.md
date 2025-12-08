@@ -80,11 +80,11 @@ Users in rural areas of Oriental Mindoro face expensive mobile data costs and un
 >
 > True offline routing requires either:
 >
-> 1. **Client-side routing engine** (e.g., OSRM.js) - adds ~10MB to bundle size
+> 1. **Client-side routing engine** (e.g., OSRM.js, Leaflet Routing Machine with offline tiles) - adds ~10MB to bundle size
 > 2. **Pre-cached common routes** - limited to frequently used routes
-> 3. **Simplified routing** - straight-line or basic pathfinding
+> 3. **Simplified routing** - straight-line or basic pathfinding (fallback only)
 >
-> **Recommendation**: Start with pre-cached routes for top 50 station pairs, add full offline routing in Phase 2.
+> **Recommendation**: Integrate a client-side routing engine for full offline routing capability. Use pre-cached routes as a performance optimization and simplified routing only as a last-resort fallback.
 
 ---
 
@@ -100,6 +100,7 @@ Users in rural areas of Oriental Mindoro face expensive mobile data costs and un
 
 - Separate object stores for:
   - `stations`: Cached station data with metadata
+  - `pois`: Cached POI data (gas, convenience, repair, car_wash, motor_shop)
   - `routes`: Pre-cached route geometries
   - `mapTiles`: Map tile metadata (tiles cached by service worker)
   - `syncQueue`: Pending operations to sync when online
@@ -114,6 +115,11 @@ class OfflineStorageManager {
   async cacheStations(stations: Station[]): Promise<void>;
   async getOfflineStations(bounds?: LatLngBounds): Promise<Station[]>;
   async updateStation(id: number, data: Partial<Station>): Promise<void>;
+
+  // POIs (gas, convenience, repair, car_wash, motor_shop)
+  async cachePOIs(pois: POI[]): Promise<void>;
+  async getOfflinePOIs(bounds?: LatLngBounds, type?: string): Promise<POI[]>;
+  async updatePOI(id: number, data: Partial<POI>): Promise<void>;
 
   // Routes
   async cacheRoute(key: string, route: RouteData): Promise<void>;
@@ -339,16 +345,35 @@ interface UseMapDownloaderReturn {
 
 ---
 
-#### [NEW] `src/utils/simplifiedRouting.ts`
+#### [NEW] `src/utils/offlineRouting.ts`
 
-**Purpose**: Fallback routing when offline and no cached route exists
+**Purpose**: Client-side routing engine for full offline navigation
 
 **Strategy**:
 
-- Use Turf.js (already installed) for basic pathfinding
-- Calculate straight-line distance
-- Estimate duration based on average speed
-- Add disclaimer: "Offline route - for reference only"
+- Integrate Leaflet Routing Machine with offline OSRM support
+- Pre-download routing graph data for Oriental Mindoro (~10-15 MB)
+- Full turn-by-turn navigation without network dependency
+- Fall back to Turf.js straight-line routing if routing data unavailable
+- Add disclaimer for fallback: "Simplified route - for reference only"
+
+**Implementation**:
+
+```typescript
+interface OfflineRouter {
+  // Initialize with downloaded routing data
+  initialize(routingData: ArrayBuffer): Promise<void>;
+
+  // Calculate route offline
+  route(start: LatLng, end: LatLng): Promise<RouteResult>;
+
+  // Check if routing data is available
+  isAvailable(): boolean;
+
+  // Download routing data for region
+  downloadRoutingData(region: MapRegion): Promise<void>;
+}
+```
 
 ---
 
@@ -404,7 +429,7 @@ self.addEventListener("sync", (event) => {
 
 1. Add `<OfflineIndicator />` component
 2. Add online/offline event listeners
-3. Show data freshness indicators on station markers
+3. Show data freshness indicators on station and POI markers
 4. Disable features that require network (e.g., price reporting)
 
 **Lines to add**: After line 30 (imports), around line 100 (component render)
@@ -552,19 +577,20 @@ npm run test -- serviceWorker.test.ts
 
 ---
 
-#### 2. **Offline Station Access**
+#### 2. **Offline Station & POI Access**
 
 **Steps**:
 
 1. Load app with internet connection
-2. View stations in Oriental Mindoro
+2. View stations and POIs in Oriental Mindoro
 3. Open DevTools → Network tab
 4. Check "Offline" checkbox
 5. Pan map to different area
-6. Verify stations still appear (from cache)
+6. Verify stations and POIs still appear (from cache)
 7. Check for "Offline Mode" banner
+8. Verify all POI types display correctly (gas, convenience, repair, car_wash, motor_shop)
 
-**Expected Result**: Cached stations display, offline indicator shows
+**Expected Result**: Cached stations and POIs display with correct icons, offline indicator shows
 
 ---
 
@@ -576,10 +602,11 @@ npm run test -- serviceWorker.test.ts
 2. Enable offline mode in DevTools
 3. Navigate to the same station again
 4. Verify route displays from cache
-5. Try navigating to a new station
-6. Verify simplified route or "offline" message
+5. Try navigating to a new station (or POI)
+6. Verify client-side routing engine calculates route offline
+7. If routing data not downloaded, verify fallback message
 
-**Expected Result**: Cached routes work, new routes show fallback
+**Expected Result**: Cached routes work, client-side routing works for new routes, graceful fallback if routing data unavailable
 
 ---
 
@@ -672,12 +699,13 @@ npm run test -- serviceWorker.test.ts
 **Tasks**:
 
 1. Modify `stationsApi.ts` with offline fallback
-2. Modify `routingApi.ts` with caching
-3. Create `simplifiedRouting.ts` for fallback
-4. Add data freshness indicators
-5. Write API tests
+2. Modify `poisApi.ts` with offline fallback for all POI types
+3. Modify `routingApi.ts` with caching
+4. Create `offlineRouting.ts` with client-side routing engine
+5. Add data freshness indicators for stations and POIs
+6. Write API tests
 
-**Deliverable**: Stations and routes work offline
+**Deliverable**: Stations, POIs, and routes work offline with full routing capability
 
 ---
 
@@ -772,10 +800,10 @@ npm run test -- serviceWorker.test.ts
 
 ## Future Enhancements (Post-MVP)
 
-1. **Client-Side Routing Engine**
+1. **Enhanced Routing Data**
 
-   - Integrate OSRM.js for full offline routing
-   - Requires ~10 MB additional bundle size
+   - Pre-download optimized routing graphs for faster calculations
+   - Support for traffic-aware routing with periodic updates
 
 2. **Multi-Region Support**
 
