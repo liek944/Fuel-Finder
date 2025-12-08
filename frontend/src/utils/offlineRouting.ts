@@ -9,19 +9,11 @@
  */
 
 import type { RouteData } from '../api/routingApi';
-import { offlineStorage, type MapTileMetadata } from './offlineStorage';
+import { offlineStorage } from './offlineStorage';
 import { generateSimplifiedRoute, isSimplifiedRoute } from './simplifiedRouting';
 
 // Storage key for routing graph data
 const ROUTING_DATA_KEY = 'routing_graph_oriental_mindoro';
-
-// Oriental Mindoro bounding box
-const ORIENTAL_MINDORO_BOUNDS = {
-  north: 13.55,
-  south: 12.25,
-  east: 121.65,
-  west: 120.95,
-};
 
 /**
  * Routing data stored in IndexedDB
