@@ -9,16 +9,17 @@
  * - syncQueue: Pending operations to sync when online
  */
 
-import type { Station } from '../types/station.types';
+import type { Station, POI } from '../types/station.types';
 import type { RouteData } from '../api/routingApi';
 
 // Database configuration
 const DB_NAME = 'FuelFinderOffline';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented for POI store
 
 // Store names
 const STORES = {
   STATIONS: 'stations',
+  POIS: 'pois',
   ROUTES: 'routes',
   MAP_TILES: 'mapTiles',
   SYNC_QUEUE: 'syncQueue',
@@ -28,6 +29,7 @@ const STORES = {
 // Expiration times in milliseconds
 export const EXPIRATION = {
   STATIONS: 7 * 24 * 60 * 60 * 1000, // 7 days
+  POIS: 7 * 24 * 60 * 60 * 1000, // 7 days (same as stations)
   ROUTES: 30 * 24 * 60 * 60 * 1000, // 30 days
   MAP_TILES: 90 * 24 * 60 * 60 * 1000, // 90 days
   PRICE_DATA: 24 * 60 * 60 * 1000, // 24 hours
@@ -35,6 +37,11 @@ export const EXPIRATION = {
 
 // Types
 export interface CachedStation extends Station {
+  cachedAt: number;
+  expiresAt: number;
+}
+
+export interface CachedPOI extends POI {
   cachedAt: number;
   expiresAt: number;
 }
@@ -72,6 +79,7 @@ export interface LatLngBounds {
 
 export interface StorageEstimate {
   stations: { count: number; sizeBytes: number };
+  pois: { count: number; sizeBytes: number };
   routes: { count: number; sizeBytes: number };
   mapTiles: { count: number; sizeBytes: number };
   syncQueue: { count: number };
@@ -134,6 +142,16 @@ class OfflineStorageManager {
           const routesStore = db.createObjectStore(STORES.ROUTES, { keyPath: 'key' });
           routesStore.createIndex('cachedAt', 'cachedAt', { unique: false });
           console.log('[OfflineStorage] Created routes store');
+        }
+
+        // Create POIs store
+        if (!db.objectStoreNames.contains(STORES.POIS)) {
+          const poisStore = db.createObjectStore(STORES.POIS, { keyPath: 'id' });
+          poisStore.createIndex('cachedAt', 'cachedAt', { unique: false });
+          poisStore.createIndex('type', 'type', { unique: false });
+          poisStore.createIndex('lat', 'location.lat', { unique: false });
+          poisStore.createIndex('lng', 'location.lng', { unique: false });
+          console.log('[OfflineStorage] Created POIs store');
         }
 
         // Create map tiles store
@@ -302,6 +320,151 @@ class OfflineStorageManager {
     return new Promise((resolve, reject) => {
       const transaction = db.transaction([STORES.STATIONS], 'readonly');
       const store = transaction.objectStore(STORES.STATIONS);
+      const request = store.count();
+
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ==================== POIS ====================
+
+  /**
+   * Cache an array of POIs (gas, convenience, repair, car_wash, motor_shop)
+   */
+  async cachePOIs(pois: POI[]): Promise<void> {
+    const db = await this.ensureDB();
+    const now = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORES.POIS], 'readwrite');
+      const store = transaction.objectStore(STORES.POIS);
+
+      pois.forEach((poi) => {
+        const cachedPOI: CachedPOI = {
+          ...poi,
+          cachedAt: now,
+          expiresAt: now + EXPIRATION.POIS,
+        };
+        store.put(cachedPOI);
+      });
+
+      transaction.oncomplete = () => {
+        console.log(`[OfflineStorage] Cached ${pois.length} POIs`);
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        console.error('[OfflineStorage] Failed to cache POIs:', transaction.error);
+        reject(transaction.error);
+      };
+    });
+  }
+
+  /**
+   * Get offline POIs, optionally filtered by type and/or bounds
+   */
+  async getOfflinePOIs(options?: {
+    lat?: number;
+    lng?: number;
+    radiusMeters?: number;
+    bounds?: LatLngBounds;
+    type?: string; // Filter by POI type (gas, convenience, repair, car_wash, motor_shop)
+  }): Promise<CachedPOI[]> {
+    const db = await this.ensureDB();
+    const now = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORES.POIS], 'readonly');
+      const store = transaction.objectStore(STORES.POIS);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        let pois = (request.result as CachedPOI[]).filter(
+          (poi) => poi.expiresAt > now
+        );
+
+        // Filter by type if provided
+        if (options?.type) {
+          pois = pois.filter((poi) => poi.type === options.type);
+        }
+
+        // Filter by bounds if provided
+        if (options?.bounds) {
+          const { north, south, east, west } = options.bounds;
+          pois = pois.filter((poi) => {
+            const { lat, lng } = poi.location;
+            return lat <= north && lat >= south && lng <= east && lng >= west;
+          });
+        }
+
+        // Filter by radius if provided
+        if (options?.lat !== undefined && options?.lng !== undefined && options?.radiusMeters) {
+          pois = pois.filter((poi) => {
+            const distance = this.haversineDistance(
+              options.lat!,
+              options.lng!,
+              poi.location.lat,
+              poi.location.lng
+            );
+            return distance <= options.radiusMeters!;
+          });
+        }
+
+        console.log(`[OfflineStorage] Retrieved ${pois.length} offline POIs`);
+        resolve(pois);
+      };
+
+      request.onerror = () => {
+        console.error('[OfflineStorage] Failed to get offline POIs:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Update a single POI
+   */
+  async updatePOI(id: number, data: Partial<POI>): Promise<void> {
+    const db = await this.ensureDB();
+
+    return new Promise(async (resolve, reject) => {
+      const transaction = db.transaction([STORES.POIS], 'readwrite');
+      const store = transaction.objectStore(STORES.POIS);
+      
+      const getRequest = store.get(id);
+      
+      getRequest.onsuccess = () => {
+        if (!getRequest.result) {
+          reject(new Error('POI not found'));
+          return;
+        }
+
+        const updated = {
+          ...getRequest.result,
+          ...data,
+          cachedAt: Date.now(),
+        };
+
+        const putRequest = store.put(updated);
+        
+        putRequest.onsuccess = () => resolve();
+        putRequest.onerror = () => reject(putRequest.error);
+      };
+
+      getRequest.onerror = () => reject(getRequest.error);
+    });
+  }
+
+  /**
+   * Get POI count
+   */
+  async getPOICount(): Promise<number> {
+    const db = await this.ensureDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORES.POIS], 'readonly');
+      const store = transaction.objectStore(STORES.POIS);
       const request = store.count();
 
       request.onsuccess = () => resolve(request.result);
@@ -647,6 +810,7 @@ class OfflineStorageManager {
 
     const estimate: StorageEstimate = {
       stations: { count: 0, sizeBytes: 0 },
+      pois: { count: 0, sizeBytes: 0 },
       routes: { count: 0, sizeBytes: 0 },
       mapTiles: { count: 0, sizeBytes: 0 },
       syncQueue: { count: 0 },
@@ -655,6 +819,7 @@ class OfflineStorageManager {
 
     // Get counts
     estimate.stations.count = await this.getStationCount();
+    estimate.pois.count = await this.getPOICount();
     estimate.routes.count = await this.getRouteCount();
     estimate.syncQueue.count = await this.getSyncQueueCount();
 
@@ -665,17 +830,20 @@ class OfflineStorageManager {
 
     // Estimate sizes (rough estimates)
     estimate.stations.sizeBytes = estimate.stations.count * 1024; // ~1KB per station
+    estimate.pois.sizeBytes = estimate.pois.count * 512; // ~512B per POI
     estimate.routes.sizeBytes = estimate.routes.count * 5120; // ~5KB per route
 
     // Calculate totals
     estimate.total.count = 
       estimate.stations.count + 
+      estimate.pois.count +
       estimate.routes.count + 
       estimate.mapTiles.count + 
       estimate.syncQueue.count;
     
     estimate.total.sizeBytes = 
       estimate.stations.sizeBytes + 
+      estimate.pois.sizeBytes +
       estimate.routes.sizeBytes + 
       estimate.mapTiles.sizeBytes;
 
