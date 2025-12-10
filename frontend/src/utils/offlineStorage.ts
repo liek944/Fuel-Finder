@@ -505,7 +505,6 @@ class OfflineStorageManager {
       };
     });
   }
-
   /**
    * Get a cached route by coordinates
    */
@@ -540,6 +539,59 @@ class OfflineStorageManager {
 
       request.onerror = () => {
         console.error('[OfflineStorage] Failed to get offline route:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
+   * Find a cached route with fuzzy coordinate matching
+   * Looks for routes where start and end points are within tolerance distance
+   * @param tolerance - Distance tolerance in meters (default: 150m)
+   */
+  async findNearbyRoute(
+    startLat: number,
+    startLng: number,
+    endLat: number,
+    endLng: number,
+    tolerance: number = 150
+  ): Promise<RouteData | null> {
+    const db = await this.ensureDB();
+    const now = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORES.ROUTES], 'readonly');
+      const store = transaction.objectStore(STORES.ROUTES);
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const routes = (request.result as CachedRoute[]).filter(r => r.expiresAt > now);
+        
+        // Find a route with nearby start and end points
+        for (const cached of routes) {
+          // Parse the key to extract coordinates
+          const match = cached.key.match(/^([\d.-]+),([\d.-]+)-([\d.-]+),([\d.-]+)$/);
+          if (!match) continue;
+          
+          const [, cachedStartLat, cachedStartLng, cachedEndLat, cachedEndLng] = match.map(Number);
+          
+          // Check if start and end are within tolerance
+          const startDistance = this.haversineDistance(startLat, startLng, cachedStartLat, cachedStartLng);
+          const endDistance = this.haversineDistance(endLat, endLng, cachedEndLat, cachedEndLng);
+          
+          if (startDistance <= tolerance && endDistance <= tolerance) {
+            console.log(`[OfflineStorage] Nearby route found (start: ${Math.round(startDistance)}m, end: ${Math.round(endDistance)}m): ${cached.key}`);
+            resolve(cached.data);
+            return;
+          }
+        }
+        
+        console.log('[OfflineStorage] No nearby cached route found');
+        resolve(null);
+      };
+
+      request.onerror = () => {
+        console.error('[OfflineStorage] Failed to find nearby route:', request.error);
         reject(request.error);
       };
     });

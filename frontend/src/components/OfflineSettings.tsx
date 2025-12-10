@@ -6,7 +6,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { offlineStorage, StorageEstimate } from '../utils/offlineStorage';
 import { backgroundSync } from '../utils/backgroundSync';
-import { routingApi } from '../api/routingApi';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { OfflineMapDownloader } from './OfflineMapDownloader';
 import { formatRelativeTime } from '../utils/dataFreshness';
@@ -25,11 +24,6 @@ export const OfflineSettings: React.FC<OfflineSettingsProps> = ({ isOpen, onClos
   const [isClearing, setIsClearing] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
-  
-  // Routing data states
-  const [routingDataInfo, setRoutingDataInfo] = useState<{ downloadedAt: number; sizeBytes: number; region: string } | null>(null);
-  const [isDownloadingRouting, setIsDownloadingRouting] = useState(false);
-  const [routingDownloadProgress, setRoutingDownloadProgress] = useState(0);
 
   // Load data on mount and updates
   const loadData = useCallback(async () => {
@@ -42,10 +36,6 @@ export const OfflineSettings: React.FC<OfflineSettingsProps> = ({ isOpen, onClos
 
       const lastSync = await offlineStorage.getMetadata<number>('lastSyncAt');
       setLastSyncAt(lastSync);
-
-      // Load routing data info
-      const routingInfo = routingApi.getOfflineRoutingInfo();
-      setRoutingDataInfo(routingInfo);
     } catch (error) {
       console.error('[OfflineSettings] Failed to load data:', error);
     }
@@ -100,34 +90,6 @@ export const OfflineSettings: React.FC<OfflineSettingsProps> = ({ isOpen, onClos
       console.error('[OfflineSettings] Failed to sync:', error);
     } finally {
       setIsSyncing(false);
-    }
-  };
-
-  const handleDownloadRoutingData = async () => {
-    if (!isOnline) return;
-    
-    setIsDownloadingRouting(true);
-    setRoutingDownloadProgress(0);
-    try {
-      await routingApi.downloadOfflineRouting((progress) => {
-        setRoutingDownloadProgress(Math.round((progress.current / progress.total) * 100));
-      });
-      await loadData();
-    } catch (error) {
-      console.error('[OfflineSettings] Failed to download routing data:', error);
-    } finally {
-      setIsDownloadingRouting(false);
-      setRoutingDownloadProgress(0);
-    }
-  };
-
-  const handleClearRoutingData = async () => {
-    try {
-      await routingApi.clearOfflineRouting();
-      setRoutingDataInfo(null);
-      await loadData();
-    } catch (error) {
-      console.error('[OfflineSettings] Failed to clear routing data:', error);
     }
   };
 
@@ -258,73 +220,17 @@ export const OfflineSettings: React.FC<OfflineSettingsProps> = ({ isOpen, onClos
             </button>
           </div>
 
-          {/* Routing Data Card */}
+          {/* Routing Info Card */}
           <div className="settings-card">
             <div className="card-header">
               <span className="card-icon">🛣️</span>
-              <span className="card-title">Offline Routing Data</span>
+              <span className="card-title">Offline Navigation</span>
             </div>
             <p className="card-description">
-              Download routing data for turn-by-turn navigation when offline
+              Routes you've navigated while online are automatically cached for offline use.
+              When offline, cached routes will be used. If no cached route exists, a simplified
+              straight-line route will be shown.
             </p>
-            
-            {routingDataInfo ? (
-              <>
-                <div className="status-row">
-                  <span>Region:</span>
-                  <span>{routingDataInfo.region}</span>
-                </div>
-                <div className="status-row">
-                  <span>Size:</span>
-                  <span>{formatBytes(routingDataInfo.sizeBytes)}</span>
-                </div>
-                <div className="status-row">
-                  <span>Downloaded:</span>
-                  <span>{formatRelativeTime(routingDataInfo.downloadedAt)}</span>
-                </div>
-                <div className="storage-actions">
-                  <button
-                    className="action-button secondary"
-                    onClick={handleDownloadRoutingData}
-                    disabled={!isOnline || isDownloadingRouting}
-                  >
-                    {isDownloadingRouting ? `Updating... ${routingDownloadProgress}%` : 'Update Data'}
-                  </button>
-                  <button
-                    className="action-button danger"
-                    onClick={handleClearRoutingData}
-                    disabled={isDownloadingRouting}
-                  >
-                    Clear
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                {isDownloadingRouting ? (
-                  <div className="download-progress">
-                    <p>Downloading routing data... {routingDownloadProgress}%</p>
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ width: `${routingDownloadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    className="action-button primary"
-                    onClick={handleDownloadRoutingData}
-                    disabled={!isOnline}
-                  >
-                    Download Routing Data
-                  </button>
-                )}
-                {!isOnline && (
-                  <p className="offline-notice">Connect to internet to download</p>
-                )}
-              </>
-            )}
           </div>
         </div>
 
@@ -342,3 +248,4 @@ export const OfflineSettings: React.FC<OfflineSettingsProps> = ({ isOpen, onClos
 };
 
 export default OfflineSettings;
+
