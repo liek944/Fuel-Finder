@@ -13,12 +13,12 @@ export interface RouteData {
 
 /**
  * Routing API with comprehensive offline support
- * Falls back to offlineRouter for cached routes, graph-based routing, or simplified routing
+ * Falls back to offlineRouter for cached routes or simplified routing
  */
 export const routingApi = {
   /**
    * Get route with offline fallback
-   * Uses tiered approach: network -> cached -> graph -> simplified
+   * Uses tiered approach: network -> cached -> simplified
    */
   route: async (
     startLat: number,
@@ -50,7 +50,7 @@ export const routingApi = {
       if (!navigator.onLine || (error instanceof TypeError)) {
         console.log('[routingApi] Network unavailable, using offline router');
         
-        // Use the comprehensive offline router
+        // Use the offline router (cached + simplified fallback)
         const offlineRoute = await offlineRouter.route(startLat, startLng, endLat, endLng);
         
         console.log(`[routingApi] Offline route method: ${offlineRoute.routingMethod}`);
@@ -68,37 +68,8 @@ export const routingApi = {
       throw error;
     }
   },
-
-  /**
-   * Check if offline routing data is available
-   */
-  isOfflineRoutingAvailable: (): boolean => {
-    return offlineRouter.isGraphAvailable();
-  },
-
-  /**
-   * Get offline routing metadata
-   */
-  getOfflineRoutingInfo: () => {
-    return offlineRouter.getGraphMetadata();
-  },
-
-  /**
-   * Download offline routing data for Oriental Mindoro
-   */
-  downloadOfflineRouting: async (
-    onProgress?: (progress: { current: number; total: number }) => void
-  ): Promise<boolean> => {
-    return offlineRouter.downloadRoutingData(onProgress);
-  },
-
-  /**
-   * Clear offline routing data
-   */
-  clearOfflineRouting: async (): Promise<void> => {
-    await offlineRouter.clearRoutingData();
-  },
 };
 
 // Re-export utilities for checking offline routes
 export { isOfflineRoute, getOfflineRouteWarning, type OfflineRouteResult };
+
