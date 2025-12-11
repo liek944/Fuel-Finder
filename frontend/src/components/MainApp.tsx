@@ -56,7 +56,7 @@ const DefaultIcon = createUserLocationIcon();
 
 // Minimum distance (in meters) user must move before refetching stations/POIs
 // This prevents excessive API calls while still allowing responsive location updates
-const MIN_FETCH_DISTANCE_METERS = 1000;
+const MIN_FETCH_DISTANCE_METERS = 500;
 
 const MainApp: React.FC = () => {
   // Toast notifications
@@ -83,17 +83,17 @@ const MainApp: React.FC = () => {
 
   const {
     radiusMeters,
-    setRadiusMeters,
+    setRadiusMeters: _setRadiusMeters,
     selectedRouteType,
-    setSelectedRouteType,
+    setSelectedRouteType: _setSelectedRouteType,
     autoRefreshEnabled,
-    toggleAutoRefresh,
-    lastDataRefresh,
+    toggleAutoRefresh: _toggleAutoRefresh,
+    lastDataRefresh: _lastDataRefresh,
     setLastDataRefresh,
     autoRefreshIntervalMs,
-    isSearchPanelCollapsed,
+    isSearchPanelCollapsed: _isSearchPanelCollapsed,
     setIsSearchPanelCollapsed,
-    toggleSearchPanelCollapsed,
+    toggleSearchPanelCollapsed: _toggleSearchPanelCollapsed,
   } = useFilterContext();
   const { filteredStations, uniqueBrands } = useFilterDerived<Station>(stations);
   const { routeData, routingTo, routeTo, clearRoute, loadingRoute, navigationActive, lastRerouteAt, traveledCoordinates, remainingCoordinates } = useRoute(position);
