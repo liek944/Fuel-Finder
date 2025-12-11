@@ -112,12 +112,15 @@ router.get("/", async (req, res) => {
       return res.json(cachedRoute);
     }
 
-    // Call OSRM API (configurable base URL, default to HTTPS)
-    const OSRM_BASE_URL =
-      process.env.OSRM_BASE_URL || "https://router.project-osrm.org";
+    // Call OSRM API - PRIMARY is EC2, FALLBACK is public OSRM
+    const OSRM_BASE_URL = process.env.OSRM_BASE_URL || "http://52.64.226.94:5000";
+    const FALLBACK_OSRM_URL = "https://router.project-osrm.org";
     const queryParams = "overview=full&geometries=geojson&alternatives=false";
-    const osrmUrl = `${OSRM_BASE_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
-    console.log(`➡️  OSRM URL: ${osrmUrl}`);
+    
+    const primaryOsrmUrl = `${OSRM_BASE_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
+    const fallbackOsrmUrl = `${FALLBACK_OSRM_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
+    
+    console.log(`➡️  Primary OSRM URL: ${primaryOsrmUrl}`);
 
     // Prefer IPv4 for DNS resolution (workaround for some networks)
     try {
@@ -143,32 +146,22 @@ router.get("/", async (req, res) => {
     }
 
     let osrmResponse;
-    const isDefaultHttps = OSRM_BASE_URL === "https://router.project-osrm.org";
-    const fallbackUrl = osrmUrl.replace("https://", "http://");
-    const attempts = [];
-    const maxTries = 2; // primary + maybe fallback
-    for (let i = 0; i < maxTries; i++) {
+    
+    // Try primary (EC2) first, then fallback to public OSRM
+    try {
+      console.log(`🔄 Trying primary OSRM (EC2)...`);
+      osrmResponse = await tryGet(primaryOsrmUrl);
+      console.log(`✅ Primary OSRM succeeded`);
+    } catch (primaryError) {
+      console.warn(`⚠️ Primary OSRM failed: ${primaryError?.message || primaryError}`);
+      console.log(`↩️ Trying fallback OSRM (public): ${fallbackOsrmUrl}`);
+      
       try {
-        const targetUrl =
-          i === 0 ? osrmUrl : isDefaultHttps ? fallbackUrl : osrmUrl;
-        if (i === 1 && isDefaultHttps) {
-          console.warn(`↩️  Retrying OSRM via HTTP fallback: ${targetUrl}`);
-        }
-        osrmResponse = await tryGet(targetUrl);
-        break;
-      } catch (e) {
-        attempts.push(e);
-        const isNetworkish =
-          e?.code === "ETIMEDOUT" ||
-          e?.code === "ECONNRESET" ||
-          e?.code === "EAI_AGAIN" ||
-          e?.response == null;
-        if (i < maxTries - 1 && (isDefaultHttps || isNetworkish)) {
-          // small backoff before retry
-          await new Promise((r) => setTimeout(r, 800 * (i + 1)));
-          continue;
-        }
-        throw e;
+        osrmResponse = await tryGet(fallbackOsrmUrl);
+        console.log(`✅ Fallback OSRM succeeded`);
+      } catch (fallbackError) {
+        console.error(`❌ Both primary and fallback OSRM failed`);
+        throw primaryError; // Throw original error for better diagnostics
       }
     }
 

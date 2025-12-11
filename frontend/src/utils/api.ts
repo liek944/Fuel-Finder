@@ -43,6 +43,58 @@ const getApiBaseUrl = (): string => {
 export const API_BASE_URL = getApiBaseUrl();
 
 /**
+ * Fallback API URL (Render) used when primary (EC2) fails
+ */
+const FALLBACK_API_BASE_URL = "https://fuel-finder-backend-iw23.onrender.com";
+
+/**
+ * Track which backend is currently being used
+ */
+let usingFallback = false;
+
+/**
+ * Fetch with automatic fallback from EC2 to Render
+ * Tries primary URL first, falls back on network errors
+ */
+const fetchWithFallback = async (
+  url: string,
+  options: RequestInit,
+): Promise<Response> => {
+  // If already using fallback, go directly to fallback
+  if (usingFallback) {
+    const fallbackUrl = url.replace(API_BASE_URL, FALLBACK_API_BASE_URL);
+    return fetch(fallbackUrl, { ...options, signal: AbortSignal.timeout(15000) });
+  }
+
+  try {
+    // Try primary (EC2) with timeout
+    const response = await fetch(url, { ...options, signal: AbortSignal.timeout(10000) });
+    return response;
+  } catch (error) {
+    // Network error - try fallback
+    const fallbackUrl = url.replace(API_BASE_URL, FALLBACK_API_BASE_URL);
+    console.warn(`⚠️ [API] Primary backend failed, trying fallback: ${FALLBACK_API_BASE_URL}`);
+    
+    try {
+      const fallbackResponse = await fetch(fallbackUrl, { ...options, signal: AbortSignal.timeout(15000) });
+      usingFallback = true;
+      console.log(`✅ [API] Now using fallback backend`);
+      
+      // Reset fallback flag after 5 minutes to retry primary
+      setTimeout(() => {
+        usingFallback = false;
+        console.log(`🔄 [API] Will retry primary backend on next request`);
+      }, 5 * 60 * 1000);
+      
+      return fallbackResponse;
+    } catch (fallbackError) {
+      console.error(`❌ [API] Both primary and fallback failed`);
+      throw error; // Throw original error
+    }
+  }
+};
+
+/**
  * Construct a full API URL from a path
  * @param path - The API path (e.g., '/api/stations', '/api/pois/123')
  * @returns Full URL for the API endpoint
@@ -111,7 +163,7 @@ export const apiCall = async (
     const requestPromise = (async () => {
       try {
         console.log(`📤 [API] Making ${method} request to:`, url);
-        const response = await fetch(url, mergedOptions);
+        const response = await fetchWithFallback(url, mergedOptions);
         console.log(`📥 [API] Response received (${response.status}) from:`, url);
         return response;
       } catch (error) {
@@ -133,9 +185,9 @@ export const apiCall = async (
     return requestPromise;
   }
 
-  // For GET requests, proceed normally without deduplication
+  // For GET requests, proceed with fallback support
   try {
-    const response = await fetch(url, mergedOptions);
+    const response = await fetchWithFallback(url, mergedOptions);
     return response;
   } catch (error) {
     console.error("API call failed:", error);
