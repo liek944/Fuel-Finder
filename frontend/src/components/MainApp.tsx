@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   TileLayer,
@@ -54,6 +54,10 @@ import {
 // Create user location icon instance
 const DefaultIcon = createUserLocationIcon();
 
+// Minimum distance (in meters) user must move before refetching stations/POIs
+// This prevents excessive API calls while still allowing responsive location updates
+const MIN_FETCH_DISTANCE_METERS = 1000;
+
 const MainApp: React.FC = () => {
   // Toast notifications
   const { toasts, hideToast, warning, info } = useToast();
@@ -73,6 +77,9 @@ const MainApp: React.FC = () => {
     loading,
   } = useLocationTracking();
   const [speedUnit, setSpeedUnit] = useState<'kmh' | 'mph'>('kmh');
+
+  // Track last position where we fetched stations/POIs to implement distance-based throttling
+  const lastFetchPositionRef = useRef<[number, number] | null>(null);
 
   const {
     radiusMeters,
@@ -161,44 +168,50 @@ const MainApp: React.FC = () => {
     return `${hours}h ago`;
   };
 
-  // Fetch nearby stations
+  // Fetch nearby stations and POIs with distance-based throttling
+  // Only refetch when user moves MIN_FETCH_DISTANCE_METERS from last fetch position
   useEffect(() => {
     if (!position) return;
 
+    // Check if we should skip this fetch based on distance moved
+    if (lastFetchPositionRef.current) {
+      const distanceKm = calculateDistance(
+        lastFetchPositionRef.current[0],
+        lastFetchPositionRef.current[1],
+        position[0],
+        position[1]
+      );
+      const distanceMeters = distanceKm * 1000;
+
+      if (distanceMeters < MIN_FETCH_DISTANCE_METERS) {
+        // User hasn't moved enough, skip fetch
+        return;
+      }
+    }
+
+    // Update last fetch position
+    lastFetchPositionRef.current = position;
+
     let cancelled = false;
 
-    const fetchStations = async () => {
-      // No loading indicator for automatic background updates
+    const fetchData = async () => {
+      // Fetch stations
       try {
-        const data = await stationsApi.nearby(position[0], position[1], radiusMeters);
+        const stationsData = await stationsApi.nearby(position[0], position[1], radiusMeters);
         if (!cancelled) {
-          setStations(Array.isArray(data) ? data : []);
+          setStations(Array.isArray(stationsData) ? stationsData : []);
         }
       } catch (error: any) {
         if (!cancelled && error.name !== 'AbortError') {
           console.error("Failed to fetch stations:", error);
         }
       }
-    };
 
-    fetchStations();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [position, radiusMeters]);
-
-  // Fetch POIs
-  useEffect(() => {
-    if (!position) return;
-
-    let cancelled = false;
-
-    const fetchPOIs = async () => {
+      // Fetch POIs
       try {
-        const data = await poisApi.nearby(position[0], position[1], radiusMeters);
+        const poisData = await poisApi.nearby(position[0], position[1], radiusMeters);
         if (!cancelled) {
-          setPois(Array.isArray(data) ? data : []);
+          setPois(Array.isArray(poisData) ? poisData : []);
         }
       } catch (error: any) {
         if (!cancelled && error.name !== 'AbortError') {
@@ -207,7 +220,7 @@ const MainApp: React.FC = () => {
       }
     };
 
-    fetchPOIs();
+    fetchData();
 
     return () => {
       cancelled = true;
