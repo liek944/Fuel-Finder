@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   TileLayer,
   Marker,
@@ -100,9 +100,25 @@ const MainApp: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [showOfflineSettings, setShowOfflineSettings] = useState(false);
   const navigate = useNavigate();
+  const routerLocation = useLocation();
 
   // Bottom sheet selection (shared via context)
   const { selectedItem, setSelectedItem, sheetMode, setSheetMode, closeSheet, expandSheet, collapseSheet } = useMapSelection();
+
+  // Handle navigation from NearbyStations page - select and pan to station
+  useEffect(() => {
+    const state = routerLocation.state as { selectStationId?: number } | null;
+    if (state?.selectStationId && stations.length > 0) {
+      const station = stations.find((s) => s.id === state.selectStationId);
+      if (station) {
+        // Select the station and expand the sheet
+        setSelectedItem({ type: 'station', data: station });
+        setSheetMode('expanded');
+        // Clear the state to prevent re-triggering
+        navigate(routerLocation.pathname, { replace: true, state: {} });
+      }
+    }
+  }, [routerLocation.state, stations, setSelectedItem, setSheetMode, navigate, routerLocation.pathname]);
 
   const handleSheetClose = useCallback(() => {
     closeSheet();
@@ -794,6 +810,16 @@ const MainApp: React.FC = () => {
                 }}
               >
                 📞 Contact
+              </button>
+              <button
+                className="mobile-menu-link"
+                type="button"
+                onClick={() => {
+                  navigate("/nearby-stations");
+                  setIsMenuOpen(false);
+                }}
+              >
+                ⛽ Nearby Stations
               </button>
             </div>
             <div className="mobile-menu-section-title">Settings</div>

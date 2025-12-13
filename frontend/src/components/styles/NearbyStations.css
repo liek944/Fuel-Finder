@@ -1,0 +1,345 @@
+/* NearbyStations Page Styles */
+
+.nearby-stations-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f7fa;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Header */
+.nearby-stations-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.nearby-stations-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.back-button {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Sort Controls */
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.sort-controls label {
+  font-size: 0.9rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.sort-controls select {
+  flex: 1;
+  max-width: 200px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  font-size: 0.95rem;
+  color: #333;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+
+.sort-controls select:focus {
+  outline: none;
+  border-color: #1976d2;
+  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+}
+
+/* Stations List */
+.stations-list {
+  flex: 1;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+/* Station Card */
+.station-card {
+  background: white;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+}
+
+.station-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.station-card:active {
+  transform: translateY(0);
+}
+
+.station-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.station-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.station-name {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.station-brand {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #888;
+  font-weight: 500;
+}
+
+/* Status Badge */
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.status-badge.open {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.closed {
+  background: #ffebee;
+  color: #c62828;
+}
+
+/* Station Card Body */
+.station-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.station-distance {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.station-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.fuel-price-tag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #e3f2fd;
+  color: #1565c0;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.fuel-price-tag.no-price {
+  background: #f5f5f5;
+  color: #999;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #666;
+}
+
+.empty-state p {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.empty-hint {
+  color: #999;
+  font-size: 0.9rem;
+}
+
+/* Loading State */
+.loading-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #666;
+  font-size: 1rem;
+}
+
+/* Footer */
+.nearby-stations-footer {
+  padding: 12px 20px;
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.nearby-stations-footer p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+  .nearby-stations-page {
+    background: #121212;
+  }
+
+  .nearby-stations-header {
+    background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%);
+  }
+
+  .sort-controls {
+    background: #1e1e1e;
+    border-color: #333;
+  }
+
+  .sort-controls label {
+    color: #aaa;
+  }
+
+  .sort-controls select {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #eee;
+  }
+
+  .station-card {
+    background: #1e1e1e;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .station-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .station-name {
+    color: #f0f0f0;
+  }
+
+  .station-brand {
+    color: #999;
+  }
+
+  .station-distance {
+    color: #bbb;
+  }
+
+  .fuel-price-tag {
+    background: #1a3a5c;
+    color: #64b5f6;
+  }
+
+  .fuel-price-tag.no-price {
+    background: #2a2a2a;
+    color: #777;
+  }
+
+  .nearby-stations-footer {
+    background: #1e1e1e;
+    border-color: #333;
+  }
+
+  .nearby-stations-footer p {
+    color: #777;
+  }
+
+  .empty-state {
+    color: #999;
+  }
+
+  .empty-hint {
+    color: #666;
+  }
+}
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+  .nearby-stations-header {
+    padding: 14px 16px;
+  }
+
+  .nearby-stations-header h1 {
+    font-size: 1.1rem;
+  }
+
+  .back-button {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+  }
+
+  .sort-controls {
+    padding: 10px 16px;
+  }
+
+  .stations-list {
+    padding: 12px 16px;
+    gap: 10px;
+  }
+
+  .station-card {
+    padding: 14px;
+  }
+}

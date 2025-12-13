@@ -12,6 +12,7 @@ import OwnerLogin from "./components/owner/OwnerLogin";
 import OwnerDashboard from "./components/owner/OwnerDashboard";
 import About from "./components/About";
 import Contact from "./components/Contact";
+import NearbyStations from "./components/NearbyStations";
 import { OwnerThemeProvider } from "./contexts/OwnerThemeContext";
 import "./App.css";
 
@@ -125,6 +126,7 @@ function App() {
           <Route path="/" element={<MainApp />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/nearby-stations" element={<NearbyStations />} />
 
           {/* Admin portal */}
           <Route path="/admin" element={<AdminPortalContainer />} />
