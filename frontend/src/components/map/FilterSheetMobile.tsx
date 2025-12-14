@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { MapBottomSheet, SheetMode } from "./MapBottomSheet";
 import { useFilterContext } from "../../contexts/FilterContext";
+import "./FilterSheetMobile.css";
 
 interface FilterSheetMobileProps {
   open: boolean;
@@ -45,6 +46,10 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
     selectedRouteType,
     setSelectedRouteType,
   } = useFilterContext();
+
+  // Collapsible state for auto-refresh section (saves space on small screens)
+  const [isAutoRefreshExpanded, setIsAutoRefreshExpanded] = useState(false);
+
   if (!open) return null;
 
   return (
@@ -55,147 +60,120 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
       onExpand={onExpand}
       onCollapse={onCollapse}
       translucent={true}
-      header={<div style={{ fontWeight: 700 }}>
-        
-🔍 Filter
-      </div>}
+      header={<div className="filter-sheet-header">🔍 Filter & Search</div>}
     >
-      <div className="search-bar">
-        <input
-          type="text"
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
-
-      <div className="search-radius">
-        <label>Radius: {(radiusMeters / 1000).toFixed(1)} km</label>
-        <input
-          type="range"
-          min={500}
-          max={15000}
-          step={500}
-          value={radiusMeters}
-          onChange={(e) => setRadiusMeters(Number(e.target.value))}
-        />
-      </div>
-
-      <div className="brand-filter">
-        <label>Brand</label>
-        <select
-          value={selectedBrand}
-          onChange={(e) => setSelectedBrand(e.target.value)}
-        >
-          <option value="All">All Brands</option>
-          {uniqueBrands.map((brand) => (
-            <option key={brand} value={brand}>
-              {brand}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="price-filter">
-        <label>Max: ₱{maxPrice}/L</label>
-        <input
-          type="range"
-          min={50}
-          max={100}
-          step={1}
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(Number(e.target.value))}
-        />
-      </div>
-
-      <div className="results-summary" style={{ marginBottom: 12 }}>
-        <div className="results-summary-header">
-          
-📊 Results
+      <div className="filter-sheet-content">
+        {/* Search bar */}
+        <div className="filter-search-bar">
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-        <div>
-          ⛽ {filteredStationsCount} stations
-        </div>
-        <div>
-          📍 {poisCount} POIs
-        </div>
-      </div>
 
-      <div
-        className="auto-refresh-control"
-        style={{
-          marginTop: 12,
-          padding: "10px",
-          background: autoRefreshEnabled ? "#e8f5e9" : "#fafafa",
-          borderRadius: 8,
-          border: `1px solid ${autoRefreshEnabled ? "#4CAF50" : "#ddd"}`,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 6,
-          }}
-        >
-          <label
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: autoRefreshEnabled ? "#2e7d32" : "#666",
-            }}
-          >
-            
-🔄 Auto-refresh
-          </label>
+        {/* Compact filter row: Radius + Brand side by side */}
+        <div className="filter-row-compact">
+          <div className="filter-item filter-item--radius">
+            <label>📍 {(radiusMeters / 1000).toFixed(1)} km</label>
+            <input
+              type="range"
+              min={500}
+              max={15000}
+              step={500}
+              value={radiusMeters}
+              onChange={(e) => setRadiusMeters(Number(e.target.value))}
+            />
+          </div>
+          <div className="filter-item filter-item--brand">
+            <label>🏪 Brand</label>
+            <select
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+            >
+              <option value="All">All</option>
+              {uniqueBrands.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Price filter */}
+        <div className="filter-item filter-item--price">
+          <label>💰 Max: ₱{maxPrice}/L</label>
+          <input
+            type="range"
+            min={50}
+            max={100}
+            step={1}
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(Number(e.target.value))}
+          />
+        </div>
+
+        {/* Results summary - inline */}
+        <div className="filter-results-inline">
+          <span>📊 <strong>{filteredStationsCount}</strong> stations</span>
+          <span className="filter-results-divider">•</span>
+          <span><strong>{poisCount}</strong> POIs</span>
+        </div>
+
+        {/* Collapsible auto-refresh section */}
+        <div className={`filter-auto-refresh ${autoRefreshEnabled ? 'filter-auto-refresh--active' : ''}`}>
           <button
-            onClick={toggleAutoRefresh}
-            style={{
-              background: autoRefreshEnabled ? "#4CAF50" : "#9e9e9e",
-              color: "white",
-              border: "none",
-              padding: "4px 12px",
-              borderRadius: 12,
-              cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-            }}
+            className="filter-auto-refresh-toggle"
+            onClick={() => setIsAutoRefreshExpanded(!isAutoRefreshExpanded)}
+            type="button"
           >
-            {autoRefreshEnabled ? "ON" : "OFF"}
+            <span>🔄 Auto-refresh {autoRefreshEnabled ? 'ON' : 'OFF'}</span>
+            <span className="filter-toggle-arrow">{isAutoRefreshExpanded ? '▲' : '▼'}</span>
           </button>
-        </div>
-        <div style={{ fontSize: 10, color: "#666" }}>
-          {autoRefreshEnabled ? (
-            <>
-              Updates every {autoRefreshIntervalMs / 1000}s
-              <br />
-              Last: {getTimeAgo(lastDataRefresh)}
-            </>
-          ) : (
-            "Enable to auto-update prices"
+          {isAutoRefreshExpanded && (
+            <div className="filter-auto-refresh-content">
+              <button
+                className={`filter-auto-refresh-btn ${autoRefreshEnabled ? 'filter-auto-refresh-btn--on' : ''}`}
+                onClick={toggleAutoRefresh}
+                type="button"
+              >
+                {autoRefreshEnabled ? 'Disable' : 'Enable'}
+              </button>
+              {autoRefreshEnabled && (
+                <div className="filter-auto-refresh-info">
+                  Every {autoRefreshIntervalMs / 1000}s • Last: {getTimeAgo(lastDataRefresh)}
+                </div>
+              )}
+            </div>
           )}
         </div>
-      </div>
 
-      <div className="route-to-nearest">
-        <label>
-          
-🧭 Route To
-        </label>
-        <select
-          value={selectedRouteType}
-          onChange={(e) => setSelectedRouteType(e.target.value)}
-        >
-          <option value="gas">⛽ Gas Station</option>
-          <option value="convenience">🏪 Convenience Store</option>
-          <option value="repair">🔧 Repair Shop</option>
-          <option value="car_wash">🚗 Car Wash</option>
-          <option value="motor_shop">🏍️ Motor Shop</option>
-        </select>
-        <button onClick={onRouteToNearest} disabled={loading}>
-          🚗 Go to Nearest
-        </button>
+        {/* Route to nearest - compact layout */}
+        <div className="filter-route-section">
+          <div className="filter-route-header">🧭 Quick Route</div>
+          <div className="filter-route-controls">
+            <select
+              value={selectedRouteType}
+              onChange={(e) => setSelectedRouteType(e.target.value)}
+              className="filter-route-select"
+            >
+              <option value="gas">⛽ Gas</option>
+              <option value="convenience">🏪 Store</option>
+              <option value="repair">🔧 Repair</option>
+              <option value="car_wash">🚗 Wash</option>
+              <option value="motor_shop">🏍️ Motor</option>
+            </select>
+            <button 
+              className="filter-route-btn"
+              onClick={onRouteToNearest} 
+              disabled={loading}
+            >
+              {loading ? '...' : '🚗 Go'}
+            </button>
+          </div>
+        </div>
       </div>
     </MapBottomSheet>
   );
