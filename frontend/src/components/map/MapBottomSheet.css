@@ -209,26 +209,107 @@
   }
 }
 
+/* Very small screens (iPhone SE, iPhone 7, etc.) */
+@media (max-width: 375px) {
+  .map-bottom-sheet--expanded {
+    height: 90vh;
+  }
+
+  .map-bottom-sheet__content {
+    padding: 10px 8px;
+  }
+
+  .map-bottom-sheet__header {
+    padding: 0 12px 8px 12px;
+  }
+
+  .map-bottom-sheet__close {
+    width: 28px;
+    height: 28px;
+    font-size: 20px;
+    top: 12px;
+    right: 12px;
+  }
+}
+
+/* Small height screens (iPhone 7 portrait = 667px, iPhone SE = 568px) */
+@media (max-height: 667px) {
+  .map-bottom-sheet--expanded {
+    height: 88vh;
+    max-height: calc(100vh - 60px);
+  }
+
+  .map-bottom-sheet--collapsed {
+    height: 150px;
+  }
+
+  .map-bottom-sheet__content {
+    padding: 10px;
+  }
+}
+
+/* Very small height screens (iPhone SE portrait = 568px) */
 @media (max-height: 600px) {
   .map-bottom-sheet--expanded {
-    height: 85vh;
+    height: 90vh;
+    max-height: calc(100vh - 50px);
+  }
+
+  .map-bottom-sheet--collapsed {
+    height: 130px;
+  }
+
+  .map-bottom-sheet__content {
+    padding: 8px;
+  }
+
+  .map-bottom-sheet__header {
+    padding: 0 12px 6px 12px;
   }
 }
 
 /* Landscape mode on mobile */
 @media (max-height: 500px) and (orientation: landscape) {
   .map-bottom-sheet--collapsed {
-    height: 120px;
-    /* Reduced in landscape but still shows essential info */
+    height: 100px;
   }
 
   .map-bottom-sheet--expanded {
-    height: 90vh;
+    height: 92vh;
+    max-height: calc(100vh - 40px);
   }
 
   .map-bottom-sheet__content {
-    padding: 8px 12px;
+    padding: 6px 10px;
   }
+}
+
+/* Safe area insets for notched devices (iPhone X and later) */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .map-bottom-sheet {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .map-bottom-sheet__footer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Scroll fade indicator at bottom of content */
+.map-bottom-sheet__content::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: linear-gradient(to top, rgba(255,255,255,0.95), transparent);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.map-bottom-sheet--translucent .map-bottom-sheet__content::after {
+  background: linear-gradient(to top, rgba(255,255,255,0.72), transparent);
 }
 
 /* Prevent body scroll when sheet is open */
@@ -312,4 +393,13 @@ body.dark-mode .map-bottom-sheet--translucent {
   body.dark-mode .map-bottom-sheet--translucent .map-bottom-sheet__footer {
     background-color: rgba(44, 44, 44, 0.7);
   }
+}
+
+/* Dark mode scroll fade indicator */
+body.dark-mode .map-bottom-sheet__content::after {
+  background: linear-gradient(to top, rgba(30, 30, 30, 0.95), transparent);
+}
+
+body.dark-mode .map-bottom-sheet--translucent .map-bottom-sheet__content::after {
+  background: linear-gradient(to top, rgba(30, 30, 30, 0.72), transparent);
 }

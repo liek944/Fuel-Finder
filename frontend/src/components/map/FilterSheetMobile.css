@@ -1,0 +1,445 @@
+/* FilterSheetMobile.css - Compact, mobile-optimized filter sheet */
+
+.filter-sheet-header {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #333;
+}
+
+.filter-sheet-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Search bar */
+.filter-search-bar {
+  width: 100%;
+}
+
+.filter-search-bar input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  background: #fafafa;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.filter-search-bar input:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.15);
+  background: #fff;
+}
+
+/* Compact row for side-by-side filters */
+.filter-row-compact {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-item label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+.filter-item--radius {
+  flex: 1.2;
+}
+
+.filter-item--brand {
+  flex: 0.8;
+  min-width: 100px;
+}
+
+.filter-item--price {
+  width: 100%;
+}
+
+.filter-item input[type="range"] {
+  width: 100%;
+  height: 6px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: #e0e0e0;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.filter-item input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #2196F3;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.filter-item input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: #2196F3;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.filter-item select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+}
+
+/* Inline results display */
+.filter-results-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.filter-results-divider {
+  color: #bbb;
+}
+
+/* Collapsible auto-refresh section */
+.filter-auto-refresh {
+  background: #fafafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.filter-auto-refresh--active {
+  background: #e8f5e9;
+  border-color: #81c784;
+}
+
+.filter-auto-refresh-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+}
+
+.filter-auto-refresh--active .filter-auto-refresh-toggle {
+  color: #2e7d32;
+}
+
+.filter-toggle-arrow {
+  font-size: 10px;
+  color: #999;
+}
+
+.filter-auto-refresh-content {
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-auto-refresh-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #4CAF50;
+  color: white;
+  transition: background 0.2s;
+}
+
+.filter-auto-refresh-btn--on {
+  background: #9e9e9e;
+}
+
+.filter-auto-refresh-info {
+  font-size: 11px;
+  color: #666;
+  text-align: center;
+}
+
+/* Route section */
+.filter-route-section {
+  background: #e3f2fd;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.filter-route-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1565c0;
+  margin-bottom: 8px;
+}
+
+.filter-route-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-route-select {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #bbdefb;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.filter-route-btn {
+  padding: 10px 20px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.filter-route-btn:hover:not(:disabled) {
+  background: #43a047;
+}
+
+.filter-route-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.filter-route-btn:disabled {
+  background: #bdbdbd;
+  cursor: not-allowed;
+}
+
+/* Very small screens (iPhone SE, iPhone 7, etc.) */
+@media (max-width: 375px) {
+  .filter-sheet-content {
+    gap: 8px;
+  }
+
+  .filter-search-bar input {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .filter-row-compact {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .filter-item--radius,
+  .filter-item--brand {
+    flex: 1;
+    min-width: auto;
+  }
+
+  .filter-item label {
+    font-size: 11px;
+  }
+
+  .filter-results-inline {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .filter-auto-refresh-toggle {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .filter-route-section {
+    padding: 8px 10px;
+  }
+
+  .filter-route-header {
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .filter-route-select {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .filter-route-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}
+
+/* Small height screens */
+@media (max-height: 667px) {
+  .filter-sheet-content {
+    gap: 6px;
+  }
+
+  .filter-search-bar input {
+    padding: 8px 10px;
+  }
+
+  .filter-row-compact {
+    gap: 6px;
+  }
+
+  .filter-results-inline {
+    padding: 6px 10px;
+  }
+
+  .filter-auto-refresh-toggle {
+    padding: 8px 10px;
+  }
+
+  .filter-route-section {
+    padding: 8px 10px;
+  }
+}
+
+/* Very small height screens (iPhone SE portrait = 568px) */
+@media (max-height: 600px) {
+  .filter-sheet-content {
+    gap: 4px;
+  }
+
+  .filter-search-bar input {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+
+  .filter-item label {
+    font-size: 10px;
+  }
+
+  .filter-results-inline {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  /* Auto-refresh stays collapsed by default on very small screens
+     (no special styles needed - state handled in component) */
+
+  .filter-auto-refresh-toggle {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .filter-route-section {
+    padding: 6px 8px;
+  }
+
+  .filter-route-controls {
+    gap: 6px;
+  }
+
+  .filter-route-select {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+
+  .filter-route-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}
+
+/* Dark mode support */
+body.dark-mode .filter-sheet-header {
+  color: #e0e0e0;
+}
+
+body.dark-mode .filter-search-bar input {
+  background: #2c2c2c;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+body.dark-mode .filter-search-bar input:focus {
+  background: #333;
+}
+
+body.dark-mode .filter-item label {
+  color: #aaa;
+}
+
+body.dark-mode .filter-item select {
+  background: #2c2c2c;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+body.dark-mode .filter-item input[type="range"] {
+  background: #444;
+}
+
+body.dark-mode .filter-results-inline {
+  background: #2c2c2c;
+  color: #aaa;
+}
+
+body.dark-mode .filter-auto-refresh {
+  background: #2c2c2c;
+  border-color: #444;
+}
+
+body.dark-mode .filter-auto-refresh--active {
+  background: #1b3a1b;
+  border-color: #4caf50;
+}
+
+body.dark-mode .filter-auto-refresh-toggle {
+  color: #aaa;
+}
+
+body.dark-mode .filter-auto-refresh--active .filter-auto-refresh-toggle {
+  color: #81c784;
+}
+
+body.dark-mode .filter-auto-refresh-info {
+  color: #888;
+}
+
+body.dark-mode .filter-route-section {
+  background: #1a2a3a;
+}
+
+body.dark-mode .filter-route-header {
+  color: #64b5f6;
+}
+
+body.dark-mode .filter-route-select {
+  background: #2c2c2c;
+  border-color: #37474f;
+  color: #e0e0e0;
+}
