@@ -365,7 +365,14 @@ const OwnerDashboard: React.FC = () => {
 
     try {
       showToast('Saving changes...', 'info');
-      await ownerApi.updateStation(editingStation.id, updatedData, apiKey, subdomain);
+      
+      // Strip fuel_prices from station update data - prices are handled separately
+      const { fuel_prices, ...stationData } = updatedData as any;
+      
+      // Only call updateStation if there are non-price fields to update
+      if (Object.keys(stationData).length > 0) {
+        await ownerApi.updateStation(editingStation.id, stationData, apiKey, subdomain);
+      }
 
       if (updatedData.fuel_prices) {
         for (const fuelPrice of updatedData.fuel_prices) {
