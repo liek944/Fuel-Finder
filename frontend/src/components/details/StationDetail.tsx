@@ -1,5 +1,4 @@
 import React from "react";
-import PriceReportWidget from "../station/PriceReportWidget";
 import ReviewWidget from "../ReviewWidget";
 import ImageSlideshow from "../common/ImageSlideshow";
 
@@ -288,20 +287,6 @@ const StationDetail: React.FC<StationDetailProps> = React.memo(({
         </div>
       )}
 
-      {/* Community Price Reporting Widget */}
-      <PriceReportWidget
-        stationId={station.id}
-        stationName={station.name}
-        availableFuelTypes={
-          station.fuel_prices && station.fuel_prices.length > 0
-            ? Array.from(
-                new Set(
-                  station.fuel_prices.map((fp) => fp.fuel_type),
-                ),
-              )
-            : ["Regular", "Premium", "Diesel"]
-        }
-      />
 
       {/* Reviews Widget */}
       <ReviewWidget

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { apiGet } from "../../utils/api";
 import StationsTabContainer from "./stations/StationsTabContainer.tsx";
-import { PriceReportsManagement } from "../PriceReportsManagement.tsx";
 import { ReviewsManagement } from "../ReviewsManagement.tsx";
 import UserAnalytics from "../UserAnalytics.tsx";
 import "../../styles/AdminPortal.css";
@@ -11,7 +10,7 @@ const AdminPortalContainer: React.FC = () => {
   const [adminValidated, setAdminValidated] = useState<boolean>(false);
   const [adminValidating, setAdminValidating] = useState<boolean>(false);
   const [currentAdminView, setCurrentAdminView] = useState<
-    "map" | "price-reports" | "user-analytics" | "reviews"
+    "map" | "user-analytics" | "reviews"
   >("map");
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
 
@@ -109,15 +108,6 @@ const AdminPortalContainer: React.FC = () => {
             </button>
             <button
               onClick={() => {
-                setCurrentAdminView("price-reports");
-                setMobileMenuOpen(false);
-              }}
-              className={`view-switcher-button ${currentAdminView === "price-reports" ? "active" : ""}`}
-            >
-              💰 Price Reports
-            </button>
-            <button
-              onClick={() => {
                 setCurrentAdminView("user-analytics");
                 setMobileMenuOpen(false);
               }}
@@ -142,12 +132,7 @@ const AdminPortalContainer: React.FC = () => {
       </div>
 
       {/* Content */}
-      {currentAdminView === "price-reports" ? (
-        <div className="admin-content">
-          <div className="admin-content-offset" />
-          <PriceReportsManagement adminApiKey={adminApiKey} />
-        </div>
-      ) : currentAdminView === "user-analytics" ? (
+      {currentAdminView === "user-analytics" ? (
         <div className="user-analytics-container">
           <UserAnalytics />
         </div>
