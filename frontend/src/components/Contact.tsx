@@ -288,8 +288,8 @@ const Contact: React.FC = () => {
       <h2>Report Fuel Price Updates</h2>
       <p>
         Fuel prices change frequently. If you notice a price difference at any station,
-        please help keep our data accurate by reporting it through the app's price reporting
-        feature or by contacting us directly.
+        please help keep our data accurate by contacting us directly through the form above
+        or reaching out to the station owner.
       </p>
 
       <h2>Submit Station Information Corrections</h2>

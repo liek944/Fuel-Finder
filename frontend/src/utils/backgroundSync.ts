@@ -4,8 +4,6 @@
  */
 
 import { offlineStorage, SyncOperation } from './offlineStorage';
-import { apiPost } from './api';
-import { apiEndpoints } from '../constants/apiEndpoints';
 
 // Maximum retry attempts before giving up
 const MAX_RETRIES = 5;
@@ -172,9 +170,6 @@ class BackgroundSyncManager {
     }
 
     switch (op.type) {
-      case 'priceReport':
-        return this.syncPriceReport(op);
-      
       case 'review':
         return this.syncReview(op);
       
@@ -186,37 +181,6 @@ class BackgroundSyncManager {
         return false;
     }
   }
-
-  /**
-   * Sync a price report
-   */
-  private async syncPriceReport(op: SyncOperation): Promise<boolean> {
-    const { stationId, fuel_type, price, notes } = op.data as {
-      stationId: number;
-      fuel_type: string;
-      price: number;
-      notes?: string | null;
-    };
-
-    try {
-      const res = await apiPost(
-        apiEndpoints.stations.reportPrice(stationId),
-        { fuel_type, price, notes }
-      );
-
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json?.message || `HTTP ${res.status}`);
-      }
-
-      console.log(`[BackgroundSync] Synced price report for station ${stationId}`);
-      return true;
-    } catch (error) {
-      console.error('[BackgroundSync] Failed to sync price report:', error);
-      return false;
-    }
-  }
-
   /**
    * Sync a review (placeholder for future implementation)
    */
