@@ -22,6 +22,7 @@ const http = require('http');
 const OUTPUT_DIR = path.join(__dirname, '..', 'android_export');
 const DB_OUTPUT = path.join(OUTPUT_DIR, 'stations.db');
 const IMAGES_OUTPUT = path.join(OUTPUT_DIR, 'station_images');
+const POI_IMAGES_OUTPUT = path.join(OUTPUT_DIR, 'poi_images');
 
 // Postgres configuration
 const useSSL = process.env.DB_SSL === 'true' || process.env.DB_SSL === '1';
@@ -45,6 +46,10 @@ function ensureDirectories() {
   if (!fs.existsSync(IMAGES_OUTPUT)) {
     fs.mkdirSync(IMAGES_OUTPUT, { recursive: true });
     console.log(`✅ Created directory: ${IMAGES_OUTPUT}`);
+  }
+  if (!fs.existsSync(POI_IMAGES_OUTPUT)) {
+    fs.mkdirSync(POI_IMAGES_OUTPUT, { recursive: true });
+    console.log(`✅ Created directory: ${POI_IMAGES_OUTPUT}`);
   }
 }
 
@@ -101,6 +106,29 @@ function createSQLiteDatabase() {
     CREATE INDEX idx_stations_location ON stations(lat, lng);
     CREATE INDEX idx_fuel_prices_station ON fuel_prices(station_id);
     CREATE INDEX idx_fuel_prices_type ON fuel_prices(fuel_type);
+  `);
+
+  // Create pois table (Room Entity compatible)
+  db.exec(`
+    CREATE TABLE pois (
+      id INTEGER PRIMARY KEY,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      address TEXT,
+      phone TEXT,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      operating_hours TEXT,
+      image_path TEXT,
+      created_at TEXT,
+      updated_at TEXT
+    );
+  `);
+  
+  // Create indexes for pois
+  db.exec(`
+    CREATE INDEX idx_pois_type ON pois(type);
+    CREATE INDEX idx_pois_location ON pois(lat, lng);
   `);
   
   console.log('✅ Created SQLite database with Room-compatible schema');
@@ -177,6 +205,57 @@ async function fetchImages() {
   
   const result = await pool.query(query);
   console.log(`📊 Fetched ${result.rows.length} image records from Postgres`);
+  return result.rows;
+}
+
+/**
+ * Fetch all POIs from Postgres
+ */
+async function fetchPois() {
+  const query = `
+    SELECT
+      p.id,
+      p.name,
+      p.type,
+      p.address,
+      p.phone,
+      p.operating_hours,
+      ST_Y(p.geom) AS lat,
+      ST_X(p.geom) AS lng,
+      p.created_at,
+      p.updated_at,
+      (
+        SELECT i.filename
+        FROM images i
+        WHERE i.poi_id = p.id AND i.is_primary = true
+        LIMIT 1
+      ) AS primary_image
+    FROM pois p
+    ORDER BY p.id;
+  `;
+  
+  const result = await pool.query(query);
+  console.log(`📊 Fetched ${result.rows.length} POIs from Postgres`);
+  return result.rows;
+}
+
+/**
+ * Fetch all POI images from Postgres for download
+ */
+async function fetchPoiImages() {
+  const query = `
+    SELECT
+      id,
+      filename,
+      poi_id,
+      is_primary
+    FROM images
+    WHERE poi_id IS NOT NULL
+    ORDER BY poi_id, is_primary DESC, display_order;
+  `;
+  
+  const result = await pool.query(query);
+  console.log(`📊 Fetched ${result.rows.length} POI image records from Postgres`);
   return result.rows;
 }
 
@@ -266,6 +345,46 @@ async function downloadStationImages(images) {
 }
 
 /**
+ * Download POI images from Supabase storage
+ * @param {Array} images - Image records from database
+ */
+async function downloadPoiImages(images) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  
+  if (!supabaseUrl) return; // Already logged warning in station images download
+  
+  console.log('\n📥 Downloading POI images...');
+  
+  let downloaded = 0;
+  let failed = 0;
+  
+  for (const img of images) {
+    const imageUrl = `${supabaseUrl}/storage/v1/object/public/station-images/pois/${img.filename}`;
+    const destPath = path.join(POI_IMAGES_OUTPUT, `${img.poi_id}.jpg`);
+    
+    // Only download primary images (one per POI)
+    if (!img.is_primary) continue;
+    
+    // Skip if already downloaded
+    if (fs.existsSync(destPath)) {
+      downloaded++;
+      continue;
+    }
+    
+    const success = await downloadImage(imageUrl, destPath);
+    if (success) {
+      downloaded++;
+      console.log(`  ✓ POI ${img.poi_id}`);
+    } else {
+      failed++;
+      console.log(`  ✗ POI ${img.poi_id} (failed)`);
+    }
+  }
+  
+  console.log(`\n📊 POI Images: ${downloaded} downloaded, ${failed} failed`);
+}
+
+/**
  * Insert stations into SQLite
  */
 function insertStations(db, stations) {
@@ -334,22 +453,66 @@ function insertFuelPrices(db, fuelPrices) {
 }
 
 /**
+ * Insert POIs into SQLite
+ */
+function insertPois(db, pois) {
+  const stmt = db.prepare(`
+    INSERT INTO pois (id, name, type, address, phone, lat, lng, operating_hours, image_path, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  
+  const insertMany = db.transaction((poiList) => {
+    for (const p of poiList) {
+      // Convert operating_hours JSON to string
+      const operatingHours = p.operating_hours ? JSON.stringify(p.operating_hours) : null;
+      
+      // Set image path for Android assets
+      const imagePath = p.primary_image 
+        ? `file:///android_asset/poi_images/${p.id}.jpg`
+        : null;
+      
+      stmt.run(
+        p.id,
+        p.name,
+        p.type,
+        p.address,
+        p.phone,
+        p.lat,
+        p.lng,
+        operatingHours,
+        imagePath,
+        p.created_at?.toISOString() || null,
+        p.updated_at?.toISOString() || null
+      );
+    }
+  });
+  
+  insertMany(pois);
+  console.log(`✅ Inserted ${pois.length} POIs into SQLite`);
+}
+
+/**
  * Generate summary statistics
  */
 function generateSummary(db) {
   const stationCount = db.prepare('SELECT COUNT(*) as count FROM stations').get();
   const priceCount = db.prepare('SELECT COUNT(*) as count FROM fuel_prices').get();
+  const poiCount = db.prepare('SELECT COUNT(*) as count FROM pois').get();
   const brandStats = db.prepare('SELECT brand, COUNT(*) as count FROM stations GROUP BY brand ORDER BY count DESC').all();
   const fuelTypeStats = db.prepare('SELECT fuel_type, COUNT(*) as count FROM fuel_prices GROUP BY fuel_type ORDER BY count DESC').all();
+  const poiTypeStats = db.prepare('SELECT type, COUNT(*) as count FROM pois GROUP BY type ORDER BY count DESC').all();
   
   console.log('\n📊 Export Summary:');
   console.log('─'.repeat(40));
   console.log(`Total Stations: ${stationCount.count}`);
   console.log(`Total Fuel Prices: ${priceCount.count}`);
+  console.log(`Total POIs: ${poiCount.count}`);
   console.log('\nStations by Brand:');
   brandStats.forEach(b => console.log(`  ${b.brand}: ${b.count}`));
   console.log('\nPrices by Fuel Type:');
   fuelTypeStats.forEach(f => console.log(`  ${f.fuel_type}: ${f.count}`));
+  console.log('\nPOIs by Type:');
+  poiTypeStats.forEach(p => console.log(`  ${p.type}: ${p.count}`));
   console.log('─'.repeat(40));
   
   // Get file size
@@ -382,16 +545,19 @@ async function main() {
     
     // Fetch data from Postgres
     console.log('\n📡 Fetching data from Postgres...');
-    const [stations, fuelPrices, images] = await Promise.all([
+    const [stations, fuelPrices, stationImages, pois, poiImages] = await Promise.all([
       fetchStations(),
       fetchFuelPrices(),
-      fetchImages()
+      fetchImages(),
+      fetchPois(),
+      fetchPoiImages()
     ]);
     
     // Insert into SQLite
     console.log('\n💾 Writing to SQLite...');
     insertStations(db, stations);
     insertFuelPrices(db, fuelPrices);
+    insertPois(db, pois);
     
     // Vacuum to optimize
     db.exec('VACUUM');
@@ -400,7 +566,8 @@ async function main() {
     db.close();
     
     // Download images (optional, based on SUPABASE_URL)
-    await downloadStationImages(images);
+    await downloadStationImages(stationImages);
+    await downloadPoiImages(poiImages);
     
     // Generate summary
     const reopenedDb = new Database(DB_OUTPUT);
@@ -411,6 +578,7 @@ async function main() {
     console.log('\n📋 Next Steps:');
     console.log('   1. Copy android_export/stations.db to APK assets/db/');
     console.log('   2. Copy android_export/station_images/ to APK assets/station_images/');
+    console.log('   3. Copy android_export/poi_images/ to APK assets/poi_images/');
     
   } catch (err) {
     console.error('\n❌ Export failed:', err.message);
