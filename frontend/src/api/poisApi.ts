@@ -2,10 +2,12 @@ import { apiGet } from '../utils/api';
 import { apiEndpoints } from '../constants/apiEndpoints';
 import { offlineStorage } from '../utils/offlineStorage';
 import type { POI } from '../types/station.types';
+import { shouldActOffline } from '../utils/offlineModeState';
 
 /**
  * POI API with offline support
  * Falls back to cached POIs when offline
+ * Respects forced offline mode setting
  */
 export const poisApi = {
   /**
@@ -16,6 +18,23 @@ export const poisApi = {
     lng: number,
     radiusMeters: number,
   ): Promise<POI[]> => {
+    // Check if we should act offline (forced or actual offline)
+    if (shouldActOffline()) {
+      console.log('[poisApi] Offline mode active, using cached data');
+      const cachedPOIs = await offlineStorage.getOfflinePOIs({
+        lat,
+        lng,
+        radiusMeters,
+      });
+      
+      if (cachedPOIs.length > 0) {
+        console.log(`[poisApi] Found ${cachedPOIs.length} cached POIs`);
+        return cachedPOIs;
+      }
+      // If no cached data, fall through to network attempt
+      console.log('[poisApi] No cached POIs, falling through to network attempt');
+    }
+
     try {
       // Try network first
       const res = await apiGet(apiEndpoints.pois.nearby(lat, lng, radiusMeters));

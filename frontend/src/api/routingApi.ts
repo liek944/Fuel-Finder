@@ -2,6 +2,7 @@ import { apiGet } from '../utils/api';
 import { apiEndpoints } from '../constants/apiEndpoints';
 import { offlineStorage } from '../utils/offlineStorage';
 import { offlineRouter, isOfflineRoute, getOfflineRouteWarning, type OfflineRouteResult } from '../utils/offlineRouting';
+import { shouldActOffline } from '../utils/offlineModeState';
 
 export interface RouteData {
   coordinates: [number, number][];
@@ -14,6 +15,7 @@ export interface RouteData {
 /**
  * Routing API with comprehensive offline support
  * Falls back to offlineRouter for cached routes or simplified routing
+ * Respects forced offline mode setting
  */
 export const routingApi = {
   /**
@@ -27,6 +29,25 @@ export const routingApi = {
     endLng: number,
   ): Promise<RouteData> => {
     const cacheKey = offlineStorage.createRouteKey(startLat, startLng, endLat, endLng);
+
+    // Check if we should act offline (forced or actual offline)
+    if (shouldActOffline()) {
+      console.log('[routingApi] Offline mode active, using offline router');
+      
+      // Use the offline router (cached + simplified fallback)
+      const offlineRoute = await offlineRouter.route(startLat, startLng, endLat, endLng);
+      
+      console.log(`[routingApi] Offline route method: ${offlineRoute.routingMethod}`);
+      
+      // Convert to standard RouteData format
+      return {
+        coordinates: offlineRoute.coordinates,
+        distance: offlineRoute.distance,
+        duration: offlineRoute.duration,
+        isSimplified: offlineRoute.routingMethod === 'simplified',
+        cachedAt: offlineRoute.routingMethod === 'cached' ? Date.now() : undefined,
+      };
+    }
 
     try {
       // Try network first
