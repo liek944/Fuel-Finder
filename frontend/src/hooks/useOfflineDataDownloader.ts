@@ -6,16 +6,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { apiEndpoints } from '../constants/apiEndpoints';
 import { offlineStorage } from '../utils/offlineStorage';
+import { apiGet } from '../utils/api';
 import type { Station, POI } from '../types/station.types';
-
-// Get API base URL for fetch calls
-const getApiUrl = () => {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  // In production, use relative URL
-  return '';
-};
 
 export type DownloadPhase = 'idle' | 'stations' | 'pois' | 'complete' | 'error';
 
@@ -59,15 +51,12 @@ export function useOfflineDataDownloader(): UseOfflineDataDownloaderReturn {
   const [error, setError] = useState<Error | null>(null);
 
   const isCancelledRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   const downloadAllData = useCallback(async () => {
     setIsDownloading(true);
     setError(null);
     isCancelledRef.current = false;
-    abortControllerRef.current = new AbortController();
 
-    const baseUrl = getApiUrl();
     console.log('[OfflineDataDownloader] Starting bulk data download');
 
     try {
@@ -84,9 +73,7 @@ export function useOfflineDataDownloader(): UseOfflineDataDownloaderReturn {
       if (isCancelledRef.current) return;
 
       console.log('[OfflineDataDownloader] Fetching all stations...');
-      const stationsRes = await fetch(`${baseUrl}${apiEndpoints.stations.all()}`, {
-        signal: abortControllerRef.current.signal,
-      });
+      const stationsRes = await apiGet(apiEndpoints.stations.all());
 
       if (!stationsRes.ok) {
         throw new Error(`Failed to fetch stations: HTTP ${stationsRes.status}`);
@@ -113,9 +100,7 @@ export function useOfflineDataDownloader(): UseOfflineDataDownloaderReturn {
       if (isCancelledRef.current) return;
 
       console.log('[OfflineDataDownloader] Fetching all POIs...');
-      const poisRes = await fetch(`${baseUrl}${apiEndpoints.pois.all()}`, {
-        signal: abortControllerRef.current.signal,
-      });
+      const poisRes = await apiGet(apiEndpoints.pois.all());
 
       if (!poisRes.ok) {
         throw new Error(`Failed to fetch POIs: HTTP ${poisRes.status}`);
@@ -153,14 +138,12 @@ export function useOfflineDataDownloader(): UseOfflineDataDownloaderReturn {
       console.error('[OfflineDataDownloader] Download failed:', err);
     } finally {
       setIsDownloading(false);
-      abortControllerRef.current = null;
     }
   }, []);
 
   const cancel = useCallback(() => {
     console.log('[OfflineDataDownloader] Cancelling download');
     isCancelledRef.current = true;
-    abortControllerRef.current?.abort();
     setIsDownloading(false);
     setProgress(prev => ({ ...prev, phase: 'idle' }));
   }, []);
