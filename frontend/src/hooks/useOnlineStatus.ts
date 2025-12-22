@@ -1,9 +1,12 @@
 /**
  * useOnlineStatus Hook
  * React hook for tracking online/offline status with event listeners
+ * 
+ * Uses shared offlineModeState for persistence and synchronization with API layer.
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { offlineModeState } from '../utils/offlineModeState';
 
 export interface OnlineStatus {
   /** Whether the browser is online */
@@ -26,7 +29,10 @@ export function useOnlineStatus(): OnlineStatus {
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
-  const [isOfflineMode, setIsOfflineMode] = useState<boolean>(false);
+  // Initialize from shared state (persisted in localStorage)
+  const [isForceOffline, setIsForceOffline] = useState<boolean>(
+    offlineModeState.isForceOffline()
+  );
   const [lastOnlineAt, setLastOnlineAt] = useState<number | null>(
     typeof navigator !== 'undefined' && navigator.onLine ? Date.now() : null
   );
@@ -44,9 +50,18 @@ export function useOnlineStatus(): OnlineStatus {
     setLastOfflineAt(Date.now());
   }, []);
 
+  // Set offline mode in both React state and shared state manager
   const setOfflineMode = useCallback((offline: boolean) => {
-    console.log(`[useOnlineStatus] ${offline ? 'Enabling' : 'Disabling'} offline mode`);
-    setIsOfflineMode(offline);
+    offlineModeState.setForceOffline(offline);
+    setIsForceOffline(offline);
+  }, []);
+
+  // Subscribe to shared state changes (e.g., from other tabs)
+  useEffect(() => {
+    const unsubscribe = offlineModeState.subscribe((isOffline) => {
+      setIsForceOffline(isOffline);
+    });
+    return unsubscribe;
   }, []);
 
   useEffect(() => {
@@ -61,7 +76,7 @@ export function useOnlineStatus(): OnlineStatus {
 
   return {
     isOnline,
-    isOfflineMode: isOfflineMode || !isOnline, // Offline if forced OR actually offline
+    isOfflineMode: isForceOffline || !isOnline, // Offline if forced OR actually offline
     lastOnlineAt,
     lastOfflineAt,
     setOfflineMode,
