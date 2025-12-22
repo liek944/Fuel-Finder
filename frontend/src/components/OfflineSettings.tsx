@@ -8,6 +8,7 @@ import { offlineStorage, StorageEstimate } from '../utils/offlineStorage';
 import { backgroundSync } from '../utils/backgroundSync';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { OfflineMapDownloader } from './OfflineMapDownloader';
+import { OfflineDataDownloader } from './OfflineDataDownloader';
 import { formatRelativeTime } from '../utils/dataFreshness';
 import './OfflineSettings.css';
 
@@ -169,6 +170,10 @@ export const OfflineSettings: React.FC<OfflineSettingsProps> = ({ isOpen, onClos
                   <span>{storageUsage.stations.count} items ({formatBytes(storageUsage.stations.sizeBytes)})</span>
                 </div>
                 <div className="storage-row">
+                  <span>POIs:</span>
+                  <span>{storageUsage.pois.count} items ({formatBytes(storageUsage.pois.sizeBytes)})</span>
+                </div>
+                <div className="storage-row">
                   <span>Routes:</span>
                   <span>{storageUsage.routes.count} cached</span>
                 </div>
@@ -201,6 +206,18 @@ export const OfflineSettings: React.FC<OfflineSettingsProps> = ({ isOpen, onClos
                 {isClearing ? 'Clearing...' : 'Clear All'}
               </button>
             </div>
+          </div>
+
+          {/* Data Download Card */}
+          <div className="settings-card">
+            <div className="card-header">
+              <span className="card-icon">📥</span>
+              <span className="card-title">Offline Data</span>
+            </div>
+            <p className="card-description">
+              Download all stations and POIs for offline use
+            </p>
+            <OfflineDataDownloader onComplete={loadData} />
           </div>
 
           {/* Map Download Card */}
