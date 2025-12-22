@@ -2,12 +2,14 @@ export const apiEndpoints = {
   stations: {
     nearby: (lat: number, lng: number, radiusMeters: number) =>
       `/api/stations/nearby?lat=${lat}&lng=${lng}&radiusMeters=${radiusMeters}`,
+    all: () => `/api/stations/`,
     byId: (id: number) => `/api/stations/${id}`,
     averagePrice: (id: number) => `/api/stations/${id}/average-price`,
   },
   pois: {
     nearby: (lat: number, lng: number, radiusMeters: number) =>
       `/api/pois/nearby?lat=${lat}&lng=${lng}&radiusMeters=${radiusMeters}`,
+    all: () => `/api/pois/`,
     byId: (id: number) => `/api/pois/${id}`,
   },
   routing: {
