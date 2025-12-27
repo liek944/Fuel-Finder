@@ -45,7 +45,7 @@ export const API_BASE_URL = getApiBaseUrl();
 /**
  * Fallback API URL (Render) used when primary (EC2) fails
  */
-const FALLBACK_API_BASE_URL = "https://fuel-finder-backend-iw23.onrender.com";
+const FALLBACK_API_BASE_URL = "https://fuel-finder-six.vercel.app";
 
 /**
  * Track which backend is currently being used
