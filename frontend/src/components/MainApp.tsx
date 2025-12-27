@@ -56,7 +56,7 @@ const DefaultIcon = createUserLocationIcon();
 
 // Minimum distance (in meters) user must move before refetching stations/POIs
 // This prevents excessive API calls while still allowing responsive location updates
-const MIN_FETCH_DISTANCE_METERS = 500;
+const MIN_FETCH_DISTANCE_METERS = 100;
 
 const MainApp: React.FC = () => {
   // Toast notifications
