@@ -101,16 +101,8 @@ async function processAndSaveImage(
       mainImageUrl = mainUpload.url;
       thumbnailUrl = thumbnailUpload.url;
     } else {
-      // Fallback to local storage
-      console.log(`💾 Saving ${filename} to local storage (Supabase not available)`);
-      const imagePath = path.join("uploads/images", `${targetType}s`, filename);
-      const thumbnailPath = path.join("uploads/images/thumbnails", thumbnailFilename);
-      
-      await fs.writeFile(imagePath, mainImageBuffer);
-      await fs.writeFile(thumbnailPath, thumbnailBuffer);
-      
-      mainImageUrl = `/api/images/${targetType}s/${filename}`;
-      thumbnailUrl = `/api/images/thumbnails/${thumbnailFilename}`;
+      // No local fallback on serverless - Supabase is required
+      throw new Error('Supabase Storage not configured - required for serverless deployment');
     }
 
     // Get processed metadata
