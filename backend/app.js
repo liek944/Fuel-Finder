@@ -49,10 +49,7 @@ app.use(cors({
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Serve static files for uploads (if needed for local development)
-app.use("/uploads/stations", express.static(path.join(__dirname, "uploads/stations")));
-app.use("/uploads/pois", express.static(path.join(__dirname, "uploads/pois")));
-app.use("/uploads/images", express.static(path.join(__dirname, "uploads/images")));
+// Note: No static file serving for /uploads on Vercel - all images served from Supabase Storage
 
 // Log requests in development
 app.use((req, res, next) => {

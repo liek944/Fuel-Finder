@@ -34,8 +34,9 @@ console.log(`🔑 ADMIN_API_KEY configured: ${config.adminApiKey ? `"${config.ad
   }
 })();
 
-// Start server
-app.listen(port, () => {
+// Start server (skip on Vercel - serverless doesn't need app.listen)
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log(`📍 API base URL: http://localhost:${port}/api`);
   console.log(`🔧 Environment: ${config.nodeEnv}`);
@@ -52,6 +53,7 @@ app.listen(port, () => {
   console.log("   • /api/pois - Points of Interest");
   console.log("   • /api/owner - Owner portal (multi-tenant)");
   console.log("   • /api/health - Health check & stats\n");
-});
+  });
+}
 
 module.exports = app;
