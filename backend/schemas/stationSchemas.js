@@ -39,18 +39,38 @@ const getStationByIdSchema = {
   })
 };
 
+// Operating hours schema - can be object with open/close or null
+const operatingHoursSchema = z.object({
+  open: z.string(),
+  close: z.string()
+}).nullable().optional();
+
+// Fuel price entry schema
+const fuelPriceEntrySchema = z.object({
+  fuel_type: z.string().min(1),
+  price: z.number().min(0)
+});
+
 // Create station
 const createStationSchema = {
   body: z.object({
     name: z.string().min(1, 'Station name is required'),
     brand: z.string().min(1, 'Brand is required'),
     location: locationSchema,
+    // Frontend sends these field names
+    fuel_price: z.number().optional(),
+    services: z.array(z.string()).optional(),
+    address: z.string().optional(),
+    phone: z.string().nullable().optional(),
+    operating_hours: operatingHoursSchema,
+    fuel_prices: z.array(fuelPriceEntrySchema).optional(),
+    // Legacy field names for backward compatibility  
     contact: z.string().optional(),
     amenities: z.array(z.string()).optional(),
-    operating_hours: z.string().optional(),
     image_url: z.string().url().optional().or(z.literal(''))
   })
 };
+
 
 // Update station
 const updateStationSchema = {
@@ -60,10 +80,19 @@ const updateStationSchema = {
   body: z.object({
     name: z.string().min(1).optional(),
     brand: z.string().min(1).optional(),
+    // Support both nested location object and flat lat/lng
     location: locationSchema.optional(),
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+    // Frontend sends these field names
+    fuel_price: z.number().optional(),
+    services: z.array(z.string()).optional(),
+    address: z.string().optional(),
+    phone: z.string().nullable().optional(),
+    operating_hours: operatingHoursSchema,
+    // Legacy field names for backward compatibility
     contact: z.string().optional(),
     amenities: z.array(z.string()).optional(),
-    operating_hours: z.string().optional(),
     image_url: z.string().url().optional().or(z.literal(''))
   })
 };

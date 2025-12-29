@@ -35,6 +35,12 @@ const getPoiByIdSchema = {
   })
 };
 
+// Operating hours schema - can be object with open/close or null
+const operatingHoursSchema = z.object({
+  open: z.string(),
+  close: z.string()
+}).nullable().optional();
+
 // Create POI
 const createPoiSchema = {
   body: z.object({
@@ -44,8 +50,12 @@ const createPoiSchema = {
     }),
     location: locationSchema,
     description: z.string().optional(),
+    // Frontend sends these field names
+    address: z.string().optional(),
+    phone: z.string().nullable().optional(),
+    operating_hours: operatingHoursSchema,
+    // Legacy field names for backward compatibility
     contact: z.string().optional(),
-    operating_hours: z.string().optional(),
     image_url: z.string().url().optional().or(z.literal(''))
   })
 };
@@ -62,8 +72,12 @@ const updatePoiSchema = {
     }).optional(),
     location: locationSchema.optional(),
     description: z.string().optional(),
+    // Frontend sends these field names
+    address: z.string().optional(),
+    phone: z.string().nullable().optional(),
+    operating_hours: operatingHoursSchema,
+    // Legacy field names for backward compatibility
     contact: z.string().optional(),
-    operating_hours: z.string().optional(),
     image_url: z.string().url().optional().or(z.literal(''))
   })
 };
