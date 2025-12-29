@@ -1185,16 +1185,36 @@ const EditStationModal: React.FC<EditStationModalProps> = ({ station, onClose, o
         price: parseFloat(fp.price),
       }));
 
-    const updateData: any = {
-      name: formData.name,
-      brand: formData.brand || null,
-      address: formData.address,
-      phone: formData.phone || null,
-      operating_hours: formData.operating_hours.open && formData.operating_hours.close 
-        ? formData.operating_hours 
-        : null,
-      services: formData.services,
-    };
+    // Build update data, only including fields with valid values
+    // The backend schema requires name and address to have min 1 character if provided
+    const updateData: any = {};
+    
+    // Required fields - only include if they have a value
+    if (formData.name && formData.name.trim()) {
+      updateData.name = formData.name.trim();
+    }
+    if (formData.address && formData.address.trim()) {
+      updateData.address = formData.address.trim();
+    }
+    
+    // Optional fields - can be null
+    updateData.brand = formData.brand?.trim() || null;
+    updateData.phone = formData.phone?.trim() || null;
+    
+    // Operating hours - only include if both open and close are set
+    if (formData.operating_hours?.open && formData.operating_hours?.close) {
+      updateData.operating_hours = {
+        open: formData.operating_hours.open,
+        close: formData.operating_hours.close,
+      };
+    } else {
+      updateData.operating_hours = null;
+    }
+    
+    // Services - include as array (can be empty)
+    if (Array.isArray(formData.services)) {
+      updateData.services = formData.services;
+    }
 
     if (validFuelPrices.length > 0) {
       updateData.fuel_prices = validFuelPrices;

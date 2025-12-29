@@ -154,10 +154,52 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
   const submitEditStation = async (stationId: number) => {
     setEditSubmitting(true);
     try {
-      const { fuel_prices, _originalFuelTypes, unknownTime: u, ...general } = editFormData || {};
-      if (u) general.operating_hours = null;
+      const { fuel_prices, _originalFuelTypes, unknownTime: u, lat, lng, fuel_price, ...rest } = editFormData || {};
+      
+      // Build sanitized payload - backend schema requires min(1) for name/brand/address if provided
+      // Empty strings will cause validation errors, so we need to handle them properly
+      const sanitized: Record<string, any> = {};
+      
+      // Only include name if it has a non-empty value
+      if (rest.name && typeof rest.name === 'string' && rest.name.trim()) {
+        sanitized.name = rest.name.trim();
+      }
+      
+      // Brand can be null but not empty string (min(1) validation)
+      if (rest.brand && typeof rest.brand === 'string' && rest.brand.trim()) {
+        sanitized.brand = rest.brand.trim();
+      } else {
+        sanitized.brand = null;
+      }
+      
+      // Address: only include if non-empty
+      if (rest.address && typeof rest.address === 'string' && rest.address.trim()) {
+        sanitized.address = rest.address.trim();
+      }
+      
+      // Phone can be null
+      if (rest.phone && typeof rest.phone === 'string' && rest.phone.trim()) {
+        sanitized.phone = rest.phone.trim();
+      } else {
+        sanitized.phone = null;
+      }
+      
+      // Operating hours
+      if (u) {
+        sanitized.operating_hours = null;
+      } else if (rest.operating_hours?.open && rest.operating_hours?.close) {
+        sanitized.operating_hours = {
+          open: rest.operating_hours.open,
+          close: rest.operating_hours.close,
+        };
+      }
+      
+      // Services array
+      if (Array.isArray(rest.services)) {
+        sanitized.services = rest.services;
+      }
 
-      const res = await apiPut(`/api/stations/${stationId}`, general, adminApiKey.trim());
+      const res = await apiPut(`/api/stations/${stationId}`, sanitized, adminApiKey.trim());
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
         alert(`Failed to update station: ${errorData.message || "Unknown error"}`);
