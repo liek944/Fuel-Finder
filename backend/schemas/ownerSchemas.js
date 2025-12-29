@@ -18,9 +18,14 @@ const updateOwnerStationSchema = {
   }),
   body: z.object({
     name: z.string().min(1).optional(),
-    contact: z.string().optional(),
-    operating_hours: z.string().optional(),
-    amenities: z.array(z.string()).optional(),
+    brand: z.string().nullable().optional(),
+    address: z.string().min(1).optional(),
+    phone: z.string().nullable().optional(),
+    operating_hours: z.object({
+      open: z.string(),
+      close: z.string()
+    }).nullable().optional(),
+    services: z.array(z.string()).optional(),
     image_url: z.string().url().optional().or(z.literal(''))
   })
 };
