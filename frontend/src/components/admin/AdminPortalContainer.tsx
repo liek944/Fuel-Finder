@@ -3,6 +3,8 @@ import { apiGet } from "../../utils/api";
 import StationsTabContainer from "./stations/StationsTabContainer.tsx";
 import { ReviewsManagement } from "../ReviewsManagement.tsx";
 import UserAnalytics from "../UserAnalytics.tsx";
+import { useToast } from "../../hooks/useToast";
+import Toast from "../Toast";
 import "../../styles/AdminPortal.css";
 
 const AdminPortalContainer: React.FC = () => {
@@ -13,6 +15,9 @@ const AdminPortalContainer: React.FC = () => {
     "map" | "user-analytics" | "reviews"
   >("map");
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  
+  // Toast notifications
+  const { toasts, hideToast, error: toastError } = useToast();
 
   useEffect(() => {
     try {
@@ -52,7 +57,7 @@ const AdminPortalContainer: React.FC = () => {
       } catch {}
       setAdminValidated(true);
     } else {
-      alert("Invalid API key. Please check your key and try again.");
+      toastError("Invalid API key. Please check your key and try again.");
     }
   };
 
@@ -151,6 +156,18 @@ const AdminPortalContainer: React.FC = () => {
           onDisableAdmin={handleDisable}
         />
       )}
+      
+      {/* Toast Notifications */}
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => hideToast(toast.id)}
+          />
+        ))}
+      </div>
     </div>
   );
 };

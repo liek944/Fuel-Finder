@@ -5,6 +5,8 @@ import { useAdminStations } from "../../../hooks/admin/useAdminStations";
 import { useAdminPois } from "../../../hooks/admin/useAdminPois";
 import type { Station, POI, CustomMarker } from "../../../types/station.types";
 import { apiDelete, apiPost, apiPostBase64Images, apiPut } from "../../../utils/api";
+import { useToast } from "../../../hooks/useToast";
+import Toast from "../../Toast";
 
 interface StationsTabContainerProps {
   adminApiKey: string;
@@ -41,6 +43,9 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
   // Data hooks
   const { stations, refresh: refreshStations } = useAdminStations();
   const { pois, refresh: refreshPois } = useAdminPois();
+
+  // Toast notifications
+  const { toasts, hideToast, success: toastSuccess, error: toastError, warning: toastWarning, info: toastInfo } = useToast();
 
   const refreshAll = () => {
     refreshStations();
@@ -202,7 +207,7 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
       const res = await apiPut(`/api/stations/${stationId}`, sanitized, adminApiKey.trim());
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        alert(`Failed to update station: ${errorData.message || "Unknown error"}`);
+        toastError(`Failed to update station: ${errorData.message || "Unknown error"}`);
         setEditSubmitting(false);
         return;
       }
@@ -252,13 +257,13 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
         }
       }
 
-      alert("Station updated successfully!");
+      toastSuccess("Station updated successfully!");
       setEditingStationId(null);
       setEditFormData({});
       refreshAll();
     } catch (err) {
       console.error("Error updating station:", err);
-      alert("Network error. Please try again.");
+      toastError("Network error. Please try again.");
     } finally {
       setEditSubmitting(false);
     }
@@ -271,17 +276,17 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
       if (u) (rest as any).operating_hours = null;
       const res = await apiPut(`/api/pois/${poiId}`, rest, adminApiKey.trim());
       if (res.ok) {
-        alert("POI updated successfully!");
+        toastSuccess("POI updated successfully!");
         setEditingPoiId(null);
         setEditFormData({});
         refreshAll();
       } else {
         const errorData = await res.json().catch(() => ({}));
-        alert(`Failed to update POI: ${errorData.message || "Unknown error"}`);
+        toastError(`Failed to update POI: ${errorData.message || "Unknown error"}`);
       }
     } catch (err) {
       console.error("Error updating POI:", err);
-      alert("Network error. Please try again.");
+      toastError("Network error. Please try again.");
     } finally {
       setEditSubmitting(false);
     }
@@ -293,13 +298,13 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
       const res = await apiDelete(`/api/stations/${station.id}`, adminApiKey.trim());
       if (res.ok) {
         refreshAll();
-        alert("Station deleted successfully!");
+        toastSuccess("Station deleted successfully!");
       } else {
-        alert("Failed to delete station");
+        toastError("Failed to delete station");
       }
     } catch (err) {
       console.error("Delete failed:", err);
-      alert("Error deleting station");
+      toastError("Error deleting station");
     }
   };
 
@@ -309,13 +314,13 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
       const res = await apiDelete(`/api/pois/${poi.id}`, adminApiKey.trim());
       if (res.ok) {
         refreshAll();
-        alert("POI deleted successfully!");
+        toastSuccess("POI deleted successfully!");
       } else {
-        alert("Failed to delete POI");
+        toastError("Failed to delete POI");
       }
     } catch (err) {
       console.error("Delete failed:", err);
-      alert("Error deleting POI");
+      toastError("Error deleting POI");
     }
   };
 
@@ -324,18 +329,18 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
     if (!files || files.length === 0) return;
     const maxImages = 5;
     if (files.length > maxImages) {
-      alert(`You can only upload up to ${maxImages} images at once.`);
+      toastWarning(`You can only upload up to ${maxImages} images at once.`);
       return;
     }
     const fileArray = Array.from(files);
     const urls: string[] = [];
     for (const file of fileArray) {
       if (file.size > 10 * 1024 * 1024) {
-        alert(`File ${file.name} is too large. Max size is 10MB.`);
+        toastWarning(`File ${file.name} is too large. Max size is 10MB.`);
         continue;
       }
       if (!file.type.startsWith("image/")) {
-        alert(`File ${file.name} is not an image.`);
+        toastWarning(`File ${file.name} is not an image.`);
         continue;
       }
       urls.push(URL.createObjectURL(file));
@@ -352,7 +357,7 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
     const key = entityId.toString();
     const images = stationImageUploads[key];
     if (!images || images.length === 0) {
-      alert("Please select images to upload first.");
+      toastInfo("Please select images to upload first.");
       return;
     }
     if (uploadLocksRef.current.has(key) || uploadingStationImages[key]) return;
@@ -361,7 +366,7 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
     try {
       const imageRes = await apiPostBase64Images(`/api/stations/${entityId}/images`, images, adminApiKey.trim());
       if (imageRes.ok) {
-        alert(`Successfully uploaded ${images.length} image(s)!`);
+        toastSuccess(`Successfully uploaded ${images.length} image(s)!`);
         setStationImageUploads((prev) => {
           const u = { ...prev };
           delete u[key];
@@ -376,11 +381,11 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
         refreshAll();
       } else {
         const errorData = await imageRes.json().catch(() => ({ error: "Upload failed" }));
-        alert(`Image upload failed: ${errorData.message || errorData.error || "Unknown error"}`);
+        toastError(`Image upload failed: ${errorData.message || errorData.error || "Unknown error"}`);
       }
     } catch (e) {
       console.error("Error uploading images:", e);
-      alert("Error uploading images. Please try again.");
+      toastError("Error uploading images. Please try again.");
     } finally {
       uploadLocksRef.current.delete(key);
       setUploadingStationImages((prev) => ({ ...prev, [key]: false }));
@@ -407,7 +412,7 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
     const files = Array.from(event.target.files || []);
     const maxImages = 5;
     if (files.length > maxImages) {
-      alert(`You can only upload up to ${maxImages} images at once.`);
+      toastWarning(`You can only upload up to ${maxImages} images at once.`);
       return;
     }
     const validFiles: File[] = [];
@@ -415,11 +420,11 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
     const allowed = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     for (const f of files) {
       if (!allowed.includes(f.type)) {
-        alert(`Invalid file type: ${f.name}. Please use JPG, PNG, or WebP images.`);
+        toastWarning(`Invalid file type: ${f.name}. Please use JPG, PNG, or WebP images.`);
         continue;
       }
       if (f.size > maxSize) {
-        alert(`File too large: ${f.name}. Maximum size is 10MB.`);
+        toastWarning(`File too large: ${f.name}. Maximum size is 10MB.`);
         continue;
       }
       validFiles.push(f);
@@ -443,7 +448,7 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
     if (manualCoords.trim()) {
       const coords = manualCoords.trim().replace(/\s+/g, "").split(",");
       if (coords.length !== 2) {
-        alert("Please enter coordinates in format: latitude, longitude (e.g., 12.5966, 121.5258)");
+        toastWarning("Please enter coordinates in format: latitude, longitude (e.g., 12.5966, 121.5258)");
         return;
       }
       lat = parseFloat(coords[0]);
@@ -452,15 +457,15 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
       lat = parseFloat(manualLat);
       lng = parseFloat(manualLng);
     } else {
-      alert("Please enter coordinates either in the single field or both latitude and longitude fields.");
+      toastWarning("Please enter coordinates either in the single field or both latitude and longitude fields.");
       return;
     }
     if (!isFinite(lat) || Math.abs(lat) > 90) {
-      alert("Please enter a valid latitude between -90 and 90.");
+      toastWarning("Please enter a valid latitude between -90 and 90.");
       return;
     }
     if (!isFinite(lng) || Math.abs(lng) > 180) {
-      alert("Please enter a valid longitude between -180 and 180.");
+      toastWarning("Please enter a valid longitude between -180 and 180.");
       return;
     }
     const isValidPhilippinesLat = lat >= 4 && lat <= 22;
@@ -1060,6 +1065,18 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
           </div>
         </div>
       )}
+
+      {/* Toast Notifications */}
+      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {toasts.map((toast) => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => hideToast(toast.id)}
+          />
+        ))}
+      </div>
     </>
   );
 };
