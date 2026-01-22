@@ -68,7 +68,7 @@ const fetchWithFallback = async (
 
   try {
     // Try primary (EC2) with timeout
-    const response = await fetch(url, { ...options, signal: AbortSignal.timeout(10000) });
+    const response = await fetch(url, { ...options, signal: AbortSignal.timeout(3000) });
     return response;
   } catch (error) {
     // Network error - try fallback
