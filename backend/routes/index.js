@@ -15,6 +15,7 @@ const adminRoutes = require("./adminRoutes");
 const userRoutes = require("./userRoutes");
 const routeRoutes = require("./routeRoutes");
 const reviewRoutes = require("./reviewRoutes");
+const authRoutes = require("./authRoutes");
 
 // Register routes
 router.use("/stations", stationRoutes);
@@ -24,6 +25,7 @@ router.use("/admin", adminRoutes);
 router.use("/user", userRoutes);
 router.use("/route", routeRoutes);
 router.use("/reviews", reviewRoutes);
+router.use("/auth", authRoutes);
 
 // Health and stats routes
 router.use("/", healthRoutes);
