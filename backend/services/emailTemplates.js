@@ -52,7 +52,6 @@ function getWelcomeEmailTemplate(displayName) {
               
               <ul style="margin: 0 0 30px 0; padding-left: 20px; color: #4b5563; font-size: 16px; line-height: 1.8;">
                 <li>🔍 Find the nearest fuel stations</li>
-                <li>💰 Compare fuel prices in real-time</li>
                 <li>⭐ Save your favorite stations</li>
                 <li>🗺️ Get directions with one tap</li>
               </ul>
