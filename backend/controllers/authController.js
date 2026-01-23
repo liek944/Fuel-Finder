@@ -6,6 +6,7 @@
 const bcrypt = require("bcrypt");
 const { pool } = require("../config/database");
 const { generateToken } = require("../middleware/jwtAuth");
+const { sendWelcomeEmail } = require("../services/emailService");
 
 const BCRYPT_ROUNDS = 12;
 
@@ -45,6 +46,11 @@ async function register(req, res, next) {
     const token = generateToken(user);
 
     console.log(`✅ New user registered: ${user.email}`);
+
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail(user.email, user.display_name).catch((err) => {
+      console.error(`⚠️ Failed to send welcome email to ${user.email}:`, err.message);
+    });
 
     res.status(201).json({
       success: true,
