@@ -53,4 +53,11 @@ export const apiEndpoints = {
     usersStats: () => `/api/admin/users/stats`,
     usersActive: () => `/api/admin/users/active`,
   },
+  savedStations: {
+    list: () => `/api/saved-stations`,
+    ids: () => `/api/saved-stations/ids`,
+    check: (stationId: number) => `/api/saved-stations/${stationId}`,
+    save: (stationId: number) => `/api/saved-stations/${stationId}`,
+    unsave: (stationId: number) => `/api/saved-stations/${stationId}`,
+  },
 };
