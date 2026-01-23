@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   TileLayer,
@@ -61,6 +62,7 @@ const MIN_FETCH_DISTANCE_METERS = 100;
 const MainApp: React.FC = () => {
   // Toast notifications
   const { toasts, hideToast, warning, info } = useToast();
+  const { user, isAuthenticated, logout } = useAuth();
 
   // Mobile detection for bottom sheet vs popups
   const isMobile = useIsMobile();
@@ -449,6 +451,37 @@ const MainApp: React.FC = () => {
             />
             <h1 className="main-header-title">Fuel Finder</h1>
           </div>
+          <div className="main-header-auth">
+            {isAuthenticated ? (
+              <>
+                <span className="header-user-email">{user?.email}</span>
+                <button
+                  className="header-auth-button header-logout"
+                  onClick={logout}
+                  type="button"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className="header-auth-button"
+                  onClick={() => navigate('/login')}
+                  type="button"
+                >
+                  Sign In
+                </button>
+                <button
+                  className="header-auth-button header-register"
+                  onClick={() => navigate('/register')}
+                  type="button"
+                >
+                  Create Account
+                </button>
+              </>
+            )}
+          </div>
         </div>
       ) : (
         <FilterChipMobile
@@ -822,6 +855,51 @@ const MainApp: React.FC = () => {
                 ⛽ Nearby Stations
               </button>
             </div>
+            
+            <div className="mobile-menu-section-title">Account</div>
+            <div className="mobile-menu-links">
+              {isAuthenticated ? (
+                <>
+                  <div className="mobile-menu-user-info">
+                    👤 {user?.display_name || user?.email}
+                  </div>
+                  <button
+                    className="mobile-menu-link"
+                    type="button"
+                    onClick={() => {
+                      logout();
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    🚪 Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="mobile-menu-link"
+                    type="button"
+                    onClick={() => {
+                      navigate('/login');
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    🔑 Sign In
+                  </button>
+                  <button
+                    className="mobile-menu-link"
+                    type="button"
+                    onClick={() => {
+                      navigate('/register');
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    ✨ Create Account
+                  </button>
+                </>
+              )}
+            </div>
+
             <div className="mobile-menu-section-title">Settings</div>
             <div className="mobile-menu-settings">
               <div className="mobile-menu-setting-row">
