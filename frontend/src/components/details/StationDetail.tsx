@@ -1,6 +1,7 @@
 import React from "react";
 import ReviewWidget from "../ReviewWidget";
 import ImageSlideshow from "../common/ImageSlideshow";
+import SaveButton from "../common/SaveButton";
 
 interface FuelPrice {
   fuel_type: string;
@@ -68,9 +69,11 @@ const StationDetail: React.FC<StationDetailProps> = React.memo(({
           alignItems: "center",
           gap: 8,
           marginBottom: 8,
+          flexWrap: "wrap",
         }}
       >
         <b style={{ fontSize: 16 }}>⛽ {station.name}</b>
+        <SaveButton stationId={station.id} size="small" />
         {isRoutingTo && (
           <span
             style={{

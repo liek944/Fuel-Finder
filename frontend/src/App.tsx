@@ -17,6 +17,7 @@ import Login from "./components/auth/Login";
 import Register from "./components/auth/Register";
 import { OwnerThemeProvider } from "./contexts/OwnerThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
+import { SavedStationsProvider } from "./contexts/SavedStationsContext";
 import "./App.css";
 
 /**
@@ -124,30 +125,32 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="App">
-          <Routes>
-            {/* Main user-facing app */}
-            <Route path="/" element={<MainApp />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/nearby-stations" element={<NearbyStations />} />
+        <SavedStationsProvider>
+          <div className="App">
+            <Routes>
+              {/* Main user-facing app */}
+              <Route path="/" element={<MainApp />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/nearby-stations" element={<NearbyStations />} />
 
-            {/* Authentication routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+              {/* Authentication routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            {/* Admin portal */}
-            <Route path="/admin" element={<AdminPortalContainer />} />
+              {/* Admin portal */}
+              <Route path="/admin" element={<AdminPortalContainer />} />
 
-            {/* Redirect any unknown routes to main app */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-          <footer style={{ textAlign: "center", padding: "8px 0", fontSize: 12 }}>
-            <Link to="/about" style={{ color: "#1976D2", textDecoration: "none", fontWeight: 600 }}>
-              About
-            </Link>
-          </footer>
-        </div>
+              {/* Redirect any unknown routes to main app */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+            <footer style={{ textAlign: "center", padding: "8px 0", fontSize: 12 }}>
+              <Link to="/about" style={{ color: "#1976D2", textDecoration: "none", fontWeight: 600 }}>
+                About
+              </Link>
+            </footer>
+          </div>
+        </SavedStationsProvider>
       </AuthProvider>
     </Router>
   );
