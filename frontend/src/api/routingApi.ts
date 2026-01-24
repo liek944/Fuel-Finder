@@ -1,8 +1,12 @@
-import { apiGet } from '../utils/api';
+import { getApiUrl, getCommonHeaders } from '../utils/api';
 import { apiEndpoints } from '../constants/apiEndpoints';
 import { offlineStorage } from '../utils/offlineStorage';
 import { offlineRouter, isOfflineRoute, getOfflineRouteWarning, type OfflineRouteResult } from '../utils/offlineRouting';
 import { shouldActOffline } from '../utils/offlineModeState';
+
+// Routing requests need a longer timeout since they involve an extra network hop to OSRM
+// Backend may need up to 15s for each OSRM attempt (primary EC2 + fallback public OSRM)
+const ROUTING_TIMEOUT_MS = 20000;
 
 export interface RouteData {
   coordinates: [number, number][];
@@ -50,8 +54,13 @@ export const routingApi = {
     }
 
     try {
-      // Try network first
-      const res = await apiGet(apiEndpoints.routing.route(startLat, startLng, endLat, endLng));
+      // Try network first with extended timeout for routing
+      const url = getApiUrl(apiEndpoints.routing.route(startLat, startLng, endLat, endLng));
+      const res = await fetch(url, {
+        method: 'GET',
+        headers: getCommonHeaders(),
+        signal: AbortSignal.timeout(ROUTING_TIMEOUT_MS),
+      });
       const json = await res.json().catch(() => ({}));
       
       if (!res.ok) {
