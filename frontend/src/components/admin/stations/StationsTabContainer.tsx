@@ -88,7 +88,9 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
   const [formPhone, setFormPhone] = useState("");
   const [formOpenTime, setFormOpenTime] = useState("08:00");
   const [formCloseTime, setFormCloseTime] = useState("20:00");
-  const [unknownTime] = useState(false);
+  const [unknownTime, setUnknownTime] = useState(false);
+  const formPrevOpenRef = useRef("08:00");
+  const formPrevCloseRef = useRef("20:00");
 
   // New entity image uploads
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
@@ -720,6 +722,7 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
                   ]);
                   setFormOpenTime("08:00");
                   setFormCloseTime("20:00");
+                  setUnknownTime(false);
                   imagePreviewUrls.forEach((url) => URL.revokeObjectURL(url));
                   setSelectedImages([]);
                   setImagePreviewUrls([]);
@@ -984,10 +987,43 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
                 ))}
                 <button
                   onClick={() => setFormFuelPrices([...formFuelPrices, { fuel_type: "", price: "" }])}
-                  style={{ background: "#2196F3", color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12, padding: "6px 10px" }}
+                  style={{ background: "#2196F3", color: "white", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12, padding: "6px 10px", marginRight: 8 }}
                 >
                   ➕ Add fuel type
                 </button>
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 11,
+                    marginTop: 8,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={
+                      formFuelPrices.length > 0 &&
+                      formFuelPrices.every((p) => {
+                        const v = Number(p.price);
+                        return !Number.isFinite(v) || v <= 0;
+                      })
+                    }
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      if (!checked) {
+                        return;
+                      }
+                      setFormFuelPrices(
+                        formFuelPrices.map((p) => ({
+                          ...p,
+                          price: "0",
+                        }))
+                      );
+                    }}
+                  />
+                  Set all fuel prices to Unknown (0.00)
+                </label>
               </div>
             )}
 
@@ -1021,10 +1057,108 @@ const StationsTabContainer: React.FC<StationsTabContainerProps> = ({
             )}
 
             <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Operating Hours</div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
-              <input type="time" step="60" value={formOpenTime} onChange={(e) => setFormOpenTime(e.target.value)} style={{ flex: 1, padding: 6, fontSize: 12 }} />
-              <input type="time" step="60" value={formCloseTime} onChange={(e) => setFormCloseTime(e.target.value)} style={{ flex: 1, padding: 6, fontSize: 12 }} />
+            <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+              <input
+                type="time"
+                step="60"
+                value={formOpenTime}
+                onChange={(e) => setFormOpenTime(e.target.value)}
+                disabled={
+                  unknownTime ||
+                  (formOpenTime === "00:00" && formCloseTime === "23:59")
+                }
+                style={{
+                  flex: 1,
+                  padding: 6,
+                  fontSize: 12,
+                  backgroundColor:
+                    unknownTime ||
+                    (formOpenTime === "00:00" && formCloseTime === "23:59")
+                      ? "#f5f5f5"
+                      : undefined,
+                }}
+              />
+              <input
+                type="time"
+                step="60"
+                value={formCloseTime}
+                onChange={(e) => setFormCloseTime(e.target.value)}
+                disabled={
+                  unknownTime ||
+                  (formOpenTime === "00:00" && formCloseTime === "23:59")
+                }
+                style={{
+                  flex: 1,
+                  padding: 6,
+                  fontSize: 12,
+                  backgroundColor:
+                    unknownTime ||
+                    (formOpenTime === "00:00" && formCloseTime === "23:59")
+                      ? "#f5f5f5"
+                      : undefined,
+                }}
+              />
             </div>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                marginBottom: 4,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={
+                  !unknownTime &&
+                  formOpenTime === "00:00" &&
+                  formCloseTime === "23:59"
+                }
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  if (checked) {
+                    formPrevOpenRef.current = formOpenTime || "08:00";
+                    formPrevCloseRef.current = formCloseTime || "20:00";
+                    setFormOpenTime("00:00");
+                    setFormCloseTime("23:59");
+                    setUnknownTime(false);
+                  } else {
+                    setFormOpenTime(formPrevOpenRef.current || "08:00");
+                    setFormCloseTime(formPrevCloseRef.current || "20:00");
+                  }
+                }}
+                disabled={unknownTime}
+              />
+              Open 24 hours
+            </label>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                marginBottom: 12,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={unknownTime}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  if (checked) {
+                    formPrevOpenRef.current = formOpenTime || "08:00";
+                    formPrevCloseRef.current = formCloseTime || "20:00";
+                  }
+                  setUnknownTime(checked);
+                  if (!checked) {
+                    setFormOpenTime(formPrevOpenRef.current || "08:00");
+                    setFormCloseTime(formPrevCloseRef.current || "20:00");
+                  }
+                }}
+              />
+              Unknown time
+            </label>
 
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Images (optional)</div>
