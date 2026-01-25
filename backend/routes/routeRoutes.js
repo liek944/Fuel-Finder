@@ -112,15 +112,16 @@ router.get("/", async (req, res) => {
       return res.json(cachedRoute);
     }
 
-    // Call OSRM API - PRIMARY is EC2, FALLBACK is public OSRM
-    const OSRM_BASE_URL = process.env.OSRM_BASE_URL || "http://52.64.226.94:5000";
-    const FALLBACK_OSRM_URL = "https://router.project-osrm.org";
+    // Call OSRM API
+    // NOTE: EC2 OSRM temporarily disabled - using public OSRM directly
+    // To re-enable EC2, uncomment the OSRM_BASE_URL line and the try/catch block below
+    // const OSRM_BASE_URL = process.env.OSRM_BASE_URL || "http://52.64.226.94:5000";
+    const OSRM_BASE_URL = "https://router.project-osrm.org"; // Public OSRM (temporary)
     const queryParams = "overview=full&geometries=geojson&alternatives=false";
     
-    const primaryOsrmUrl = `${OSRM_BASE_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
-    const fallbackOsrmUrl = `${FALLBACK_OSRM_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
+    const osrmUrl = `${OSRM_BASE_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
     
-    console.log(`➡️  Primary OSRM URL: ${primaryOsrmUrl}`);
+    console.log(`➡️  OSRM URL: ${osrmUrl}`);
 
     // Prefer IPv4 for DNS resolution (workaround for some networks)
     try {
@@ -147,23 +148,10 @@ router.get("/", async (req, res) => {
 
     let osrmResponse;
     
-    // Try primary (EC2) first, then fallback to public OSRM
-    try {
-      console.log(`🔄 Trying primary OSRM (EC2)...`);
-      osrmResponse = await tryGet(primaryOsrmUrl);
-      console.log(`✅ Primary OSRM succeeded`);
-    } catch (primaryError) {
-      console.warn(`⚠️ Primary OSRM failed: ${primaryError?.message || primaryError}`);
-      console.log(`↩️ Trying fallback OSRM (public): ${fallbackOsrmUrl}`);
-      
-      try {
-        osrmResponse = await tryGet(fallbackOsrmUrl);
-        console.log(`✅ Fallback OSRM succeeded`);
-      } catch (fallbackError) {
-        console.error(`❌ Both primary and fallback OSRM failed`);
-        throw primaryError; // Throw original error for better diagnostics
-      }
-    }
+    // Single OSRM request (EC2 fallback logic disabled temporarily)
+    console.log(`🔄 Calling OSRM...`);
+    osrmResponse = await tryGet(osrmUrl);
+    console.log(`✅ OSRM request succeeded`);
 
     if (
       !osrmResponse.data ||
