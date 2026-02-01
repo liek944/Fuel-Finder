@@ -383,6 +383,115 @@ async function getMarketInsights(req, res) {
   }
 }
 
+/**
+ * Request a magic link for passwordless login
+ * Public endpoint - only requires owner subdomain detection
+ */
+async function requestMagicLink(req, res) {
+  try {
+    const { email } = req.validated.body;
+    const magicLinkService = require("../services/magicLinkService");
+    const { sendEmail } = require("../services/emailService");
+    const { getMagicLinkEmailTemplate } = require("../services/emailTemplates");
+
+    // Find owner by email (must match subdomain)
+    const owner = await magicLinkService.findOwnerByEmail(email, req.ownerData?.domain);
+
+    if (!owner) {
+      // Don't reveal whether email exists - just show generic success
+      // This prevents email enumeration attacks
+      logger.warn(`Magic link requested for unknown email: ${email} (domain: ${req.ownerData?.domain})`);
+      return res.json({
+        success: true,
+        message: "If an account exists with this email, you will receive a login link shortly."
+      });
+    }
+
+    if (!owner.is_active) {
+      return res.status(403).json({
+        error: "Account deactivated",
+        message: "Your account has been deactivated. Please contact support."
+      });
+    }
+
+    // Build the base URL for the magic link
+    const protocol = req.protocol || 'https';
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
+
+    // Generate magic link
+    const { url, expiresAt } = await magicLinkService.generateMagicLink(owner.id, baseUrl);
+
+    // Send email
+    const { subject, html } = getMagicLinkEmailTemplate(
+      owner.name,
+      url,
+      magicLinkService.TOKEN_EXPIRY_MINUTES
+    );
+
+    const emailResult = await sendEmail({ to: owner.email, subject, html });
+
+    if (!emailResult.success) {
+      logger.error(`Failed to send magic link email to ${owner.email}:`, emailResult.error);
+      return res.status(500).json({
+        error: "Email failed",
+        message: "Failed to send login email. Please try again or use your API key."
+      });
+    }
+
+    logger.info(`Magic link sent to ${owner.email} for owner ${owner.name}`);
+
+    res.json({
+      success: true,
+      message: "If an account exists with this email, you will receive a login link shortly.",
+      // Only include expiry for debugging in dev - remove in production
+      ...(process.env.NODE_ENV === 'development' && { expiresAt })
+    });
+
+  } catch (error) {
+    logger.error("Error in requestMagicLink:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
+  }
+}
+
+/**
+ * Verify magic link token and return API key for session
+ * Public endpoint - validates token from URL
+ */
+async function verifyMagicLinkToken(req, res) {
+  try {
+    const { token } = req.validated.params;
+    const magicLinkService = require("../services/magicLinkService");
+
+    const result = await magicLinkService.verifyMagicLink(token);
+
+    if (!result.valid) {
+      return res.status(401).json({
+        error: "Invalid link",
+        message: result.error
+      });
+    }
+
+    logger.info(`Magic link verified for owner: ${result.owner.name}`);
+
+    // Return owner data including API key for frontend to store
+    res.json({
+      success: true,
+      message: "Login successful!",
+      owner: {
+        name: result.owner.name,
+        domain: result.owner.domain,
+        email: result.owner.email
+      },
+      api_key: result.owner.api_key
+    });
+
+  } catch (error) {
+    logger.error("Error in verifyMagicLinkToken:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
+  }
+}
+
 module.exports = {
   getOwnerInfo,
   getDashboard,
@@ -396,5 +505,8 @@ module.exports = {
   rejectPriceReport,
   getActivityLogs,
   getAnalytics,
-  getMarketInsights
+  getMarketInsights,
+  requestMagicLink,
+  verifyMagicLinkToken
 };
+

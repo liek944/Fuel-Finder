@@ -46,6 +46,9 @@ export const apiEndpoints = {
     updateFuelPrice: (stationId: number) => `/api/owner/stations/${stationId}/fuel-price`,
     deleteFuelPrice: (stationId: number, fuelType: string) =>
       `/api/owner/stations/${stationId}/fuel-price/${encodeURIComponent(fuelType)}`,
+    // Magic link auth endpoints
+    requestMagicLink: () => `/api/owner/auth/request-link`,
+    verifyMagicLink: (token: string) => `/api/owner/auth/verify/${token}`,
   },
   admin: {
     reviews: () => `/api/admin/reviews`,

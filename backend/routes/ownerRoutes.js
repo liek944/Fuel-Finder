@@ -37,6 +37,26 @@ router.get(
   asyncHandler(ownerController.getOwnerInfo)
 );
 
+/**
+ * POST /api/owner/auth/request-link
+ * Request a magic link email for passwordless login (public)
+ */
+router.post(
+  "/auth/request-link",
+  validate(schemas.requestMagicLinkSchema),
+  asyncHandler(ownerController.requestMagicLink)
+);
+
+/**
+ * GET /api/owner/auth/verify/:token
+ * Verify magic link token and get API key for session (public)
+ */
+router.get(
+  "/auth/verify/:token",
+  validate(schemas.verifyMagicLinkSchema),
+  asyncHandler(ownerController.verifyMagicLinkToken)
+);
+
 // =====================================================
 // Protected owner routes (API key required)
 // =====================================================
