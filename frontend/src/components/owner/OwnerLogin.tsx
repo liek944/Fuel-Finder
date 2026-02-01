@@ -18,10 +18,21 @@ interface OwnerInfo {
 }
 
 const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
+  // Login method state
+  const [loginMethod, setLoginMethod] = useState<'magic' | 'apikey'>('magic');
+  
+  // Magic link state
+  const [email, setEmail] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+  
+  // API key state
   const [apiKey, setApiKey] = useState('');
+  
+  // Common state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ownerInfo, setOwnerInfo] = useState<OwnerInfo | null>(null);
+  
   const navigate = useNavigate();
   const { applyTheme } = useOwnerTheme();
 
@@ -43,29 +54,46 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  // Handle magic link request
+  const handleMagicLinkRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      // Trim API key to remove accidental whitespace
+      await ownerApi.requestMagicLink(email.trim(), subdomain);
+      setEmailSent(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send login link');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle API key login
+  const handleApiKeyLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
       const trimmedApiKey = apiKey.trim();
-
-      // Verify API key by fetching dashboard via ownerApi
       await ownerApi.getDashboard(trimmedApiKey, subdomain);
-
-      // Store trimmed API key securely
       localStorage.setItem('owner_api_key', trimmedApiKey);
       localStorage.setItem('owner_subdomain', subdomain);
-      
-      // Redirect to dashboard
       navigate('/owner/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your API key.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Reset to try again
+  const handleTryAgain = () => {
+    setEmailSent(false);
+    setEmail('');
+    setError(null);
   };
 
   return (
@@ -86,55 +114,168 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
           )}
         </div>
 
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="form-group">
-            <label htmlFor="apiKey">API Key</label>
-            <input
-              id="apiKey"
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your API key"
-              required
-              autoComplete="off"
-              className="api-key-input"
-            />
-            <small className="form-hint">
-              Your API key was provided by the administrator
-            </small>
+        {/* Email sent success state */}
+        {emailSent ? (
+          <div style={{ padding: '30px', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>📧</div>
+            <h3 style={{ margin: '0 0 15px', color: '#059669' }}>Check Your Email!</h3>
+            <p style={{ color: '#4b5563', marginBottom: '20px', lineHeight: '1.6' }}>
+              We've sent a login link to <strong>{email}</strong>.
+              <br />
+              Click the link in the email to sign in.
+            </p>
+            <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '20px' }}>
+              ⏱️ Link expires in 15 minutes
+            </p>
+            <button
+              onClick={handleTryAgain}
+              className="login-button"
+              style={{ background: '#6b7280', maxWidth: '200px' }}
+            >
+              Send Another Link
+            </button>
           </div>
-
-          {error && (
-            <div className="error-message">
-              <span className="error-icon">⚠️</span>
-              {error}
+        ) : (
+          <>
+            {/* Login method toggle */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '20px' }}>
+              <button
+                type="button"
+                onClick={() => { setLoginMethod('magic'); setError(null); }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: 'none',
+                  background: loginMethod === 'magic' ? '#f0fdf4' : 'transparent',
+                  borderBottom: loginMethod === 'magic' ? '2px solid #059669' : '2px solid transparent',
+                  color: loginMethod === 'magic' ? '#059669' : '#6b7280',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+              >
+                📧 Email Link
+              </button>
+              <button
+                type="button"
+                onClick={() => { setLoginMethod('apikey'); setError(null); }}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  border: 'none',
+                  background: loginMethod === 'apikey' ? '#f0fdf4' : 'transparent',
+                  borderBottom: loginMethod === 'apikey' ? '2px solid #059669' : '2px solid transparent',
+                  color: loginMethod === 'apikey' ? '#059669' : '#6b7280',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  transition: 'all 0.2s'
+                }}
+              >
+                🔑 API Key
+              </button>
             </div>
-          )}
 
-          <button 
-            type="submit" 
-            disabled={loading || !apiKey.trim()}
-            className="login-button"
-          >
-            {loading ? (
-              <>
-                <span className="spinner"></span>
-                Logging in...
-              </>
-            ) : (
-              <>
-                <span>🔐</span>
-                Login to Dashboard
-              </>
+            {/* Magic Link Form */}
+            {loginMethod === 'magic' && (
+              <form onSubmit={handleMagicLinkRequest} className="login-form">
+                <div className="form-group">
+                  <label htmlFor="email">Email Address</label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter your registered email"
+                    required
+                    autoComplete="email"
+                    className="api-key-input"
+                  />
+                  <small className="form-hint">
+                    We'll send you a secure login link
+                  </small>
+                </div>
+
+                {error && (
+                  <div className="error-message">
+                    <span className="error-icon">⚠️</span>
+                    {error}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  disabled={loading || !email.trim()}
+                  className="login-button"
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner"></span>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <span>📧</span>
+                      Send Login Link
+                    </>
+                  )}
+                </button>
+              </form>
             )}
-          </button>
-        </form>
+
+            {/* API Key Form */}
+            {loginMethod === 'apikey' && (
+              <form onSubmit={handleApiKeyLogin} className="login-form">
+                <div className="form-group">
+                  <label htmlFor="apiKey">API Key</label>
+                  <input
+                    id="apiKey"
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="Enter your API key"
+                    required
+                    autoComplete="off"
+                    className="api-key-input"
+                  />
+                  <small className="form-hint">
+                    Your API key was provided by the administrator
+                  </small>
+                </div>
+
+                {error && (
+                  <div className="error-message">
+                    <span className="error-icon">⚠️</span>
+                    {error}
+                  </div>
+                )}
+
+                <button 
+                  type="submit" 
+                  disabled={loading || !apiKey.trim()}
+                  className="login-button"
+                >
+                  {loading ? (
+                    <>
+                      <span className="spinner"></span>
+                      Logging in...
+                    </>
+                  ) : (
+                    <>
+                      <span>🔐</span>
+                      Login to Dashboard
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+          </>
+        )}
 
         <div className="help-section">
           <hr />
           <p className="help-text">
             <strong>Need help?</strong><br />
-            Contact the administrator if you don't have your API key or need assistance.
+            Contact the administrator if you need assistance.
           </p>
           {ownerInfo && ownerInfo.email && (
             <p className="contact-info">
@@ -147,7 +288,7 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
       <footer className="login-footer">
         <p>Fuel Finder Owner Management System</p>
         <p className="security-note">
-          🔒 Secure connection • Your API key is never stored on our servers
+          🔒 Secure connection • Your credentials are protected
         </p>
       </footer>
     </div>

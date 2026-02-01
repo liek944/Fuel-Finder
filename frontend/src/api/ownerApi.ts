@@ -163,4 +163,28 @@ export const ownerApi = {
     }
     return true;
   },
+
+  // Magic link authentication
+  requestMagicLink: async (email: string, subdomain: string) => {
+    const url = getApiUrl(apiEndpoints.owner.requestMagicLink());
+    const res = await apiCall(url, {
+      method: 'POST',
+      headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+    return json;
+  },
+
+  verifyMagicLink: async (token: string, subdomain: string) => {
+    const url = getApiUrl(apiEndpoints.owner.verifyMagicLink(token));
+    const res = await apiCall(url, {
+      method: 'GET',
+      headers: { 'x-owner-domain': subdomain },
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+    return json;
+  },
 };

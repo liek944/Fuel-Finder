@@ -92,6 +92,20 @@ const getMarketInsightsSchema = {
   })
 };
 
+// Request magic link (passwordless login)
+const requestMagicLinkSchema = {
+  body: z.object({
+    email: z.string().email('Valid email is required')
+  })
+};
+
+// Verify magic link token
+const verifyMagicLinkSchema = {
+  params: z.object({
+    token: z.string().length(64, 'Invalid token format')
+  })
+};
+
 module.exports = {
   getOwnerStationSchema,
   updateOwnerStationSchema,
@@ -101,5 +115,8 @@ module.exports = {
   verifyPriceReportSchema,
   rejectPriceReportSchema,
   getActivityLogsSchema,
-  getMarketInsightsSchema
+  getMarketInsightsSchema,
+  requestMagicLinkSchema,
+  verifyMagicLinkSchema
 };
+

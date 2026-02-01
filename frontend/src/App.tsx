@@ -10,6 +10,7 @@ import MainApp from "./components/MainApp";
 import AdminPortalContainer from "./components/admin/AdminPortalContainer";
 import OwnerLogin from "./components/owner/OwnerLogin";
 import OwnerDashboard from "./components/owner/OwnerDashboard";
+import OwnerMagicLinkVerify from "./components/owner/OwnerMagicLinkVerify";
 import About from "./components/About";
 import Contact from "./components/Contact";
 import NearbyStations from "./components/NearbyStations";
@@ -112,6 +113,7 @@ function App() {
           <div className="App">
             <Routes>
               <Route path="/owner/login" element={<OwnerLogin subdomain={subdomain} />} />
+              <Route path="/owner/verify/:token" element={<OwnerMagicLinkVerify subdomain={subdomain} />} />
               <Route path="/owner/dashboard" element={<OwnerDashboard />} />
               <Route path="*" element={<Navigate to="/owner/login" replace />} />
             </Routes>
