@@ -231,6 +231,77 @@ async function unassignStations(req, res) {
   }
 }
 
+/**
+ * POST /api/admin/owners/:id/logo
+ * Upload logo for an owner
+ */
+async function uploadOwnerLogo(req, res) {
+  try {
+    const { id } = req.params;
+    const { logo } = req.body; // { base64: string, filename: string }
+    
+    if (!logo || !logo.base64) {
+      return res.status(400).json({
+        success: false,
+        message: 'Logo base64 data is required'
+      });
+    }
+    
+    // Verify owner exists
+    const owner = await ownerManagementService.getOwnerById(id);
+    if (!owner) {
+      return res.status(404).json({
+        success: false,
+        message: 'Owner not found'
+      });
+    }
+    
+    // Import imageService dynamically to avoid circular deps
+    const imageService = require('../services/imageService');
+    
+    // Validate base64 data
+    if (!imageService.validateBase64Image(logo.base64)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid base64 image data'
+      });
+    }
+    
+    // Process and upload image
+    const imageResult = await imageService.processBase64Image(
+      logo.base64,
+      logo.filename || 'logo.jpg',
+      'owner'  // targetType for folder organization
+    );
+    
+    // Update owner's theme_config with logo URL
+    const themeConfig = owner.theme_config || {};
+    themeConfig.logoUrl = imageResult.imageUrl;
+    
+    const updatedOwner = await ownerManagementService.updateOwner(id, {
+      theme_config: themeConfig
+    });
+    
+    logger.info(`Uploaded logo for owner ${owner.name}: ${imageResult.imageUrl}`);
+    
+    res.json({
+      success: true,
+      message: 'Logo uploaded successfully',
+      data: {
+        logoUrl: imageResult.imageUrl,
+        thumbnailUrl: imageResult.thumbnailUrl,
+        owner: updatedOwner
+      }
+    });
+  } catch (error) {
+    logger.error('Error uploading owner logo:', error);
+    res.status(400).json({
+      success: false,
+      message: error.message || 'Failed to upload logo'
+    });
+  }
+}
+
 module.exports = {
   getAllOwners,
   getOwnerById,
@@ -238,5 +309,7 @@ module.exports = {
   updateOwner,
   getUnassignedStations,
   assignStations,
-  unassignStations
+  unassignStations,
+  uploadOwnerLogo
 };
+
