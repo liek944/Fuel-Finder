@@ -9,6 +9,7 @@ import {
   createOwner, 
   updateOwner, 
   getUnassignedStations,
+  uploadOwnerLogo,
   Owner, 
   UnassignedStation,
   CreateOwnerInput,
@@ -51,9 +52,23 @@ const OwnerManagement: React.FC<OwnerManagementProps> = ({ adminApiKey }) => {
     fetchData();
   }, [fetchData]);
 
-  const handleCreate = async (data: CreateOwnerInput) => {
+  const handleCreate = async (data: CreateOwnerInput & { logo?: { base64: string; filename: string } }) => {
     try {
-      const newOwner = await createOwner(data, adminApiKey);
+      // Extract logo from data before creating owner
+      const { logo, ...ownerData } = data;
+      
+      const newOwner = await createOwner(ownerData, adminApiKey);
+      
+      // Upload logo if provided
+      if (logo) {
+        try {
+          await uploadOwnerLogo(newOwner.id, logo.base64, logo.filename, adminApiKey);
+        } catch (logoErr: any) {
+          console.warn('Logo upload failed:', logoErr.message);
+          // Continue even if logo upload fails
+        }
+      }
+      
       setSuccessMessage(`Owner "${newOwner.name}" created successfully! API Key: ${newOwner.api_key}`);
       setShowForm(false);
       fetchData();

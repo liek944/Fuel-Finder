@@ -141,3 +141,22 @@ export async function unassignStationsFromOwner(ownerId: string, stationIds: num
   if (!response.ok) throw new Error(data.message || 'Failed to unassign stations');
   return data.data;
 }
+
+/**
+ * Upload logo for an owner
+ */
+export async function uploadOwnerLogo(
+  ownerId: string, 
+  base64Data: string, 
+  filename: string, 
+  adminApiKey: string
+): Promise<{ logoUrl: string; thumbnailUrl: string; owner: Owner }> {
+  const response = await apiPost(
+    `${BASE_PATH}/owners/${ownerId}/logo`, 
+    { logo: { base64: base64Data, filename } }, 
+    adminApiKey
+  );
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || 'Failed to upload logo');
+  return data.data;
+}

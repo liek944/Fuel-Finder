@@ -23,6 +23,9 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ owner, unassignedStations, onSubm
   const [primaryColor, setPrimaryColor] = useState(owner?.theme_config?.colors?.primary || '#3B82F6');
   const [secondaryColor, setSecondaryColor] = useState(owner?.theme_config?.colors?.secondary || '#10B981');
   const [accentColor, setAccentColor] = useState(owner?.theme_config?.colors?.accent || '#F59E0B');
+  const [logoUrl, setLogoUrl] = useState(owner?.theme_config?.logoUrl || '');
+  const [logoPreview, setLogoPreview] = useState<string | null>(owner?.theme_config?.logoUrl || null);
+  const [logoFile, setLogoFile] = useState<{ base64: string; filename: string } | null>(null);
   const [selectedStations, setSelectedStations] = useState<number[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -64,7 +67,8 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ owner, unassignedStations, onSubm
         primary: primaryColor,
         secondary: secondaryColor,
         accent: accentColor
-      }
+      },
+      logoUrl: logoUrl || undefined
     };
 
     if (owner) {
@@ -88,10 +92,47 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ owner, unassignedStations, onSubm
         contact_person: contactPerson || undefined,
         phone: phone || undefined,
         theme_config: themeConfig,
-        station_ids: selectedStations.length > 0 ? selectedStations : undefined
-      };
+        station_ids: selectedStations.length > 0 ? selectedStations : undefined,
+        logo: logoFile || undefined
+      } as CreateOwnerInput & { logo?: { base64: string; filename: string } };
       onSubmit(data);
     }
+  };
+
+  const handleLogoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setErrors(prev => ({ ...prev, logo: 'Please select an image file' }));
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, logo: 'Image must be smaller than 5MB' }));
+      return;
+    }
+
+    setErrors(prev => { const { logo, ...rest } = prev; return rest; });
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setLogoPreview(base64);
+      // Extract just the base64 part (remove data:image/...;base64, prefix)
+      const base64Data = base64.split(',')[1];
+      setLogoFile({ base64: base64Data, filename: file.name });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoPreview(null);
+    setLogoFile(null);
+    setLogoUrl('');
   };
 
   const toggleStation = (stationId: number) => {
@@ -224,6 +265,37 @@ const OwnerForm: React.FC<OwnerFormProps> = ({ owner, unassignedStations, onSubm
             />
             <span className="color-value">{accentColor}</span>
           </div>
+        </div>
+      </div>
+
+      {/* Logo Upload */}
+      <div className="form-section">
+        <h4>Company Logo</h4>
+        <div className="logo-upload-section">
+          {logoPreview ? (
+            <div className="logo-preview-container">
+              <img src={logoPreview} alt="Logo preview" className="logo-preview" />
+              <button type="button" className="btn-remove-logo" onClick={handleRemoveLogo}>
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="logo-upload-input">
+              <label htmlFor="logoFile" className="logo-upload-label">
+                <span className="upload-icon">📷</span>
+                <span>Click to upload logo</span>
+                <span className="upload-hint">PNG, JPG, max 5MB</span>
+              </label>
+              <input
+                id="logoFile"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoFileChange}
+                className="hidden-file-input"
+              />
+            </div>
+          )}
+          {errors.logo && <span className="error-text">{errors.logo}</span>}
         </div>
       </div>
 

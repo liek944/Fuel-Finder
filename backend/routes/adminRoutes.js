@@ -43,5 +43,6 @@ router.put("/owners/:id", asyncHandler(ownerManagementController.updateOwner));
 router.post("/owners/:id/stations", asyncHandler(ownerManagementController.assignStations));
 router.delete("/owners/:id/stations", asyncHandler(ownerManagementController.unassignStations));
 router.get("/stations/unassigned", asyncHandler(ownerManagementController.getUnassignedStations));
+router.post("/owners/:id/logo", asyncHandler(ownerManagementController.uploadOwnerLogo));
 
 module.exports = router;
