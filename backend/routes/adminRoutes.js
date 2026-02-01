@@ -34,4 +34,14 @@ router.get("/reviews", asyncHandler(reviewController.getAllReviewsForAdmin));
 router.patch("/reviews/:id", asyncHandler(reviewController.updateReviewStatus));
 router.delete("/reviews/:id", asyncHandler(reviewController.deleteReview));
 
+// Owner management routes
+const ownerManagementController = require("../controllers/ownerManagementController");
+router.get("/owners", asyncHandler(ownerManagementController.getAllOwners));
+router.get("/owners/:id", asyncHandler(ownerManagementController.getOwnerById));
+router.post("/owners", asyncHandler(ownerManagementController.createOwner));
+router.put("/owners/:id", asyncHandler(ownerManagementController.updateOwner));
+router.post("/owners/:id/stations", asyncHandler(ownerManagementController.assignStations));
+router.delete("/owners/:id/stations", asyncHandler(ownerManagementController.unassignStations));
+router.get("/stations/unassigned", asyncHandler(ownerManagementController.getUnassignedStations));
+
 module.exports = router;
