@@ -3,6 +3,7 @@ import { apiGet } from "../../utils/api";
 import StationsTabContainer from "./stations/StationsTabContainer.tsx";
 import { ReviewsManagement } from "../ReviewsManagement.tsx";
 import UserAnalytics from "../UserAnalytics.tsx";
+import OwnerManagement from "./owners/OwnerManagement";
 import { useToast } from "../../hooks/useToast";
 import Toast from "../Toast";
 import "../../styles/AdminPortal.css";
@@ -12,7 +13,7 @@ const AdminPortalContainer: React.FC = () => {
   const [adminValidated, setAdminValidated] = useState<boolean>(false);
   const [adminValidating, setAdminValidating] = useState<boolean>(false);
   const [currentAdminView, setCurrentAdminView] = useState<
-    "map" | "user-analytics" | "reviews"
+    "map" | "user-analytics" | "reviews" | "owners"
   >("map");
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   
@@ -129,6 +130,15 @@ const AdminPortalContainer: React.FC = () => {
             >
               📝 Reviews
             </button>
+            <button
+              onClick={() => {
+                setCurrentAdminView("owners");
+                setMobileMenuOpen(false);
+              }}
+              className={`view-switcher-button ${currentAdminView === "owners" ? "active" : ""}`}
+            >
+              🏢 Owners
+            </button>
           </div>
         )}
         <div className={`admin-status ${isAdminEnabled ? "enabled" : "disabled"}`}>
@@ -145,6 +155,11 @@ const AdminPortalContainer: React.FC = () => {
         <div className="admin-content">
           <div className="admin-content-offset" />
           <ReviewsManagement adminApiKey={adminApiKey} />
+        </div>
+      ) : currentAdminView === "owners" ? (
+        <div className="admin-content">
+          <div className="admin-content-offset" />
+          <OwnerManagement adminApiKey={adminApiKey} />
         </div>
       ) : (
         <StationsTabContainer
