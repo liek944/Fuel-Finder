@@ -260,10 +260,16 @@
 
 .form-group label {
   display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
-  color: var(--text-primary, #333);
-  font-size: 0.9rem;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #1a1a2e !important;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+}
+
+/* Ensure labels inside owner-form modal are always visible (dark on light) */
+.owner-form .form-group label {
+  color: #1a1a2e !important;
 }
 
 .form-group input[type="text"],
