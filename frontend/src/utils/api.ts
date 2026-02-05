@@ -13,7 +13,7 @@ function createRequestKey(url: string, method: string, body?: any): string {
 
 /**
  * Get the API base URL from environment variables
- * Falls back to localhost for development if not set
+ * Falls back to localhost for development, Vercel for production
  */
 const getApiBaseUrl = (): string => {
   // First try to get from environment variable
@@ -29,12 +29,8 @@ const getApiBaseUrl = (): string => {
     return "http://localhost:3001";
   }
 
-  // In production, we should always have the env var set
-  // This will help catch configuration issues early
-  throw new Error(
-    "VITE_API_BASE_URL environment variable is not set. " +
-      "Please configure your backend URL in your hosting platform environment variables.",
-  );
+  // Production default: Vercel backend
+  return "https://fuel-finder-six.vercel.app";
 };
 
 /**
@@ -43,55 +39,13 @@ const getApiBaseUrl = (): string => {
 export const API_BASE_URL = getApiBaseUrl();
 
 /**
- * Fallback API URL (Render) used when primary (EC2) fails
+ * Fetch with timeout support
  */
-const FALLBACK_API_BASE_URL = "https://fuel-finder-six.vercel.app";
-
-/**
- * Track which backend is currently being used
- */
-let usingFallback = false;
-
-/**
- * Fetch with automatic fallback from EC2 to Render
- * Tries primary URL first, falls back on network errors
- */
-const fetchWithFallback = async (
+const fetchWithTimeout = async (
   url: string,
   options: RequestInit,
 ): Promise<Response> => {
-  // If already using fallback, go directly to fallback
-  if (usingFallback) {
-    const fallbackUrl = url.replace(API_BASE_URL, FALLBACK_API_BASE_URL);
-    return fetch(fallbackUrl, { ...options, signal: AbortSignal.timeout(15000) });
-  }
-
-  try {
-    // Try primary (EC2) with timeout
-    const response = await fetch(url, { ...options, signal: AbortSignal.timeout(3000) });
-    return response;
-  } catch (error) {
-    // Network error - try fallback
-    const fallbackUrl = url.replace(API_BASE_URL, FALLBACK_API_BASE_URL);
-    console.warn(`⚠️ [API] Primary backend failed, trying fallback: ${FALLBACK_API_BASE_URL}`);
-    
-    try {
-      const fallbackResponse = await fetch(fallbackUrl, { ...options, signal: AbortSignal.timeout(15000) });
-      usingFallback = true;
-      console.log(`✅ [API] Now using fallback backend`);
-      
-      // Reset fallback flag after 5 minutes to retry primary
-      setTimeout(() => {
-        usingFallback = false;
-        console.log(`🔄 [API] Will retry primary backend on next request`);
-      }, 5 * 60 * 1000);
-      
-      return fallbackResponse;
-    } catch (fallbackError) {
-      console.error(`❌ [API] Both primary and fallback failed`);
-      throw error; // Throw original error
-    }
-  }
+  return fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
 };
 
 /**
@@ -163,7 +117,7 @@ export const apiCall = async (
     const requestPromise = (async () => {
       try {
         console.log(`📤 [API] Making ${method} request to:`, url);
-        const response = await fetchWithFallback(url, mergedOptions);
+        const response = await fetchWithTimeout(url, mergedOptions);
         console.log(`📥 [API] Response received (${response.status}) from:`, url);
         return response;
       } catch (error) {
@@ -187,7 +141,7 @@ export const apiCall = async (
 
   // For GET requests, proceed with fallback support
   try {
-    const response = await fetchWithFallback(url, mergedOptions);
+    const response = await fetchWithTimeout(url, mergedOptions);
     return response;
   } catch (error) {
     console.error("API call failed:", error);
