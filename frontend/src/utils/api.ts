@@ -19,7 +19,7 @@ const getApiBaseUrl = (): string => {
   // First try to get from environment variable
   const envUrl = import.meta.env.VITE_API_BASE_URL;
 
-  if (envUrl) {
+  if (envUrl && !envUrl.includes('duckdns.org')) {
     // Remove trailing slash if present
     return envUrl.replace(/\/$/, "");
   }
