@@ -17,17 +17,18 @@ const TOKEN_EXPIRY_MINUTES = 15;
  * @returns {Promise<{token: string, url: string, expiresAt: Date}>}
  */
 async function generateMagicLink(ownerId, baseUrl) {
-  // Generate cryptographically secure token
+  // Generate cryptographically secure tokens
   const token = crypto.randomBytes(TOKEN_BYTES).toString('hex');
+  const sessionToken = crypto.randomBytes(TOKEN_BYTES).toString('hex');
   
   // Calculate expiration time
   const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000);
   
-  // Store in database
+  // Store in database with session token for cross-device polling
   await pool.query(
-    `INSERT INTO owner_magic_links (owner_id, token, expires_at)
-     VALUES ($1, $2, $3)`,
-    [ownerId, token, expiresAt]
+    `INSERT INTO owner_magic_links (owner_id, token, session_token, expires_at)
+     VALUES ($1, $2, $3, $4)`,
+    [ownerId, token, sessionToken, expiresAt]
   );
   
   // Build full URL - must match the backend route in ownerRoutes.js
@@ -35,7 +36,7 @@ async function generateMagicLink(ownerId, baseUrl) {
   
   console.log(`🔗 Magic link generated for owner ${ownerId}, expires at ${expiresAt.toISOString()}`);
   
-  return { token, url, expiresAt };
+  return { token, sessionToken, url, expiresAt };
 }
 
 /**
@@ -79,10 +80,10 @@ async function verifyMagicLink(token) {
     return { valid: false, error: 'Your account has been deactivated. Please contact support.' };
   }
   
-  // Mark as used
+  // Mark as used and store API key for cross-device polling
   await pool.query(
-    `UPDATE owner_magic_links SET used_at = NOW() WHERE id = $1`,
-    [link.id]
+    `UPDATE owner_magic_links SET used_at = NOW(), verified_api_key = $2 WHERE id = $1`,
+    [link.id, link.api_key]
   );
   
   console.log(`✅ Magic link verified for owner: ${link.name} (${link.domain})`);
@@ -97,6 +98,50 @@ async function verifyMagicLink(token) {
       api_key: link.api_key
     }
   };
+}
+
+/**
+ * Check magic link session status (for cross-device polling)
+ * PC polls this after requesting a magic link to detect when phone verifies
+ * @param {string} sessionToken - The session token returned when requesting the magic link
+ * @returns {Promise<{status: 'pending'|'verified'|'expired'|'not_found', apiKey?: string, owner?: object}>}
+ */
+async function checkMagicLinkStatus(sessionToken) {
+  const result = await pool.query(
+    `SELECT ml.id, ml.expires_at, ml.used_at, ml.verified_api_key,
+            o.name, o.domain, o.email
+     FROM owner_magic_links ml
+     JOIN owners o ON o.id = ml.owner_id
+     WHERE ml.session_token = $1`,
+    [sessionToken]
+  );
+  
+  if (result.rows.length === 0) {
+    return { status: 'not_found' };
+  }
+  
+  const link = result.rows[0];
+  
+  // Check if expired
+  if (new Date(link.expires_at) < new Date()) {
+    return { status: 'expired' };
+  }
+  
+  // Check if verified (phone clicked the link)
+  if (link.used_at && link.verified_api_key) {
+    return {
+      status: 'verified',
+      apiKey: link.verified_api_key,
+      owner: {
+        name: link.name,
+        domain: link.domain,
+        email: link.email
+      }
+    };
+  }
+  
+  // Still waiting for phone to click the link
+  return { status: 'pending' };
 }
 
 /**
@@ -144,6 +189,7 @@ async function cleanupExpiredTokens() {
 module.exports = {
   generateMagicLink,
   verifyMagicLink,
+  checkMagicLinkStatus,
   findOwnerByEmail,
   cleanupExpiredTokens,
   TOKEN_EXPIRY_MINUTES
