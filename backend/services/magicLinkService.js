@@ -30,8 +30,8 @@ async function generateMagicLink(ownerId, baseUrl) {
     [ownerId, token, expiresAt]
   );
   
-  // Build full URL
-  const url = `${baseUrl}/owner/verify/${token}`;
+  // Build full URL - must match the backend route in ownerRoutes.js
+  const url = `${baseUrl}/api/owner/auth/verify/${token}`;
   
   console.log(`🔗 Magic link generated for owner ${ownerId}, expires at ${expiresAt.toISOString()}`);
   
