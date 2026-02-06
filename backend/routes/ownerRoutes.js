@@ -57,6 +57,16 @@ router.get(
   asyncHandler(ownerController.verifyMagicLinkToken)
 );
 
+/**
+ * GET /api/owner/auth/status/:sessionToken
+ * Check magic link session status for cross-device polling (public)
+ */
+router.get(
+  "/auth/status/:sessionToken",
+  validate(schemas.checkMagicLinkStatusSchema),
+  asyncHandler(ownerController.checkMagicLinkStatus)
+);
+
 // =====================================================
 // Protected owner routes (API key required)
 // =====================================================

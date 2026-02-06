@@ -49,6 +49,7 @@ export const apiEndpoints = {
     // Magic link auth endpoints
     requestMagicLink: () => `/api/owner/auth/request-link`,
     verifyMagicLink: (token: string) => `/api/owner/auth/verify/${token}`,
+    magicLinkStatus: (sessionToken: string) => `/api/owner/auth/status/${sessionToken}`,
   },
   admin: {
     reviews: () => `/api/admin/reviews`,

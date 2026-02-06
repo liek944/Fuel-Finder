@@ -419,8 +419,8 @@ async function requestMagicLink(req, res) {
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}`;
 
-    // Generate magic link
-    const { url, expiresAt } = await magicLinkService.generateMagicLink(owner.id, baseUrl);
+    // Generate magic link with session token for cross-device polling
+    const { url, sessionToken, expiresAt } = await magicLinkService.generateMagicLink(owner.id, baseUrl);
 
     // Send email
     const { subject, html } = getMagicLinkEmailTemplate(
@@ -444,6 +444,8 @@ async function requestMagicLink(req, res) {
     res.json({
       success: true,
       message: "If an account exists with this email, you will receive a login link shortly.",
+      // Session token for cross-device polling (PC uses this to check login status)
+      sessionToken,
       // Only include expiry for debugging in dev - remove in production
       ...(process.env.NODE_ENV === 'development' && { expiresAt })
     });
@@ -492,6 +494,53 @@ async function verifyMagicLinkToken(req, res) {
   }
 }
 
+/**
+ * Check magic link session status (for cross-device polling)
+ * PC polls this to detect when phone clicks the magic link
+ */
+async function checkMagicLinkStatus(req, res) {
+  try {
+    const { sessionToken } = req.validated.params;
+    const magicLinkService = require("../services/magicLinkService");
+
+    const result = await magicLinkService.checkMagicLinkStatus(sessionToken);
+
+    if (result.status === 'not_found') {
+      return res.status(404).json({
+        status: 'not_found',
+        message: 'Session not found'
+      });
+    }
+
+    if (result.status === 'expired') {
+      return res.json({
+        status: 'expired',
+        message: 'Magic link has expired. Please request a new one.'
+      });
+    }
+
+    if (result.status === 'verified') {
+      logger.info(`Cross-device login detected for owner: ${result.owner.name}`);
+      return res.json({
+        status: 'verified',
+        message: 'Login successful!',
+        owner: result.owner,
+        api_key: result.apiKey
+      });
+    }
+
+    // status === 'pending'
+    res.json({
+      status: 'pending',
+      message: 'Waiting for magic link to be clicked'
+    });
+
+  } catch (error) {
+    logger.error("Error in checkMagicLinkStatus:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
+  }
+}
+
 module.exports = {
   getOwnerInfo,
   getDashboard,
@@ -507,6 +556,7 @@ module.exports = {
   getAnalytics,
   getMarketInsights,
   requestMagicLink,
-  verifyMagicLinkToken
+  verifyMagicLinkToken,
+  checkMagicLinkStatus
 };
 

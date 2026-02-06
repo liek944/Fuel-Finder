@@ -187,4 +187,22 @@ export const ownerApi = {
     if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
     return json;
   },
+
+  // Check magic link session status (for cross-device polling)
+  checkMagicLinkStatus: async (sessionToken: string, subdomain: string): Promise<{
+    status: 'pending' | 'verified' | 'expired' | 'not_found';
+    message: string;
+    owner?: { name: string; domain: string; email: string };
+    api_key?: string;
+  }> => {
+    const url = getApiUrl(apiEndpoints.owner.magicLinkStatus(sessionToken));
+    const res = await apiCall(url, {
+      method: 'GET',
+      headers: { 'x-owner-domain': subdomain },
+    });
+    const json = await res.json().catch(() => ({}));
+    // Don't throw on 404 - that's a valid "not_found" status
+    if (!res.ok && res.status !== 404) throw new Error(json?.message || `HTTP ${res.status}`);
+    return json;
+  },
 };

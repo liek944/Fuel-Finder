@@ -106,6 +106,13 @@ const verifyMagicLinkSchema = {
   })
 };
 
+// Check magic link session status (for cross-device polling)
+const checkMagicLinkStatusSchema = {
+  params: z.object({
+    sessionToken: z.string().length(64, 'Invalid session token format')
+  })
+};
+
 module.exports = {
   getOwnerStationSchema,
   updateOwnerStationSchema,
@@ -117,6 +124,7 @@ module.exports = {
   getActivityLogsSchema,
   getMarketInsightsSchema,
   requestMagicLinkSchema,
-  verifyMagicLinkSchema
+  verifyMagicLinkSchema,
+  checkMagicLinkStatusSchema
 };
 

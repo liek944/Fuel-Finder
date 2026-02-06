@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useOwnerTheme, ThemeConfig } from '../../contexts/OwnerThemeContext';
 import './OwnerLogin.css';
@@ -24,6 +24,8 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
   // Magic link state
   const [email, setEmail] = useState('');
   const [emailSent, setEmailSent] = useState(false);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // API key state
   const [apiKey, setApiKey] = useState('');
@@ -61,7 +63,11 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
     setError(null);
 
     try {
-      await ownerApi.requestMagicLink(email.trim(), subdomain);
+      const result = await ownerApi.requestMagicLink(email.trim(), subdomain);
+      // Store session token for cross-device polling
+      if (result.sessionToken) {
+        setSessionToken(result.sessionToken);
+      }
       setEmailSent(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send login link');
@@ -69,6 +75,71 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
       setLoading(false);
     }
   };
+
+  // Poll for magic link status (cross-device login)
+  useEffect(() => {
+    if (!emailSent || !sessionToken) return;
+
+    const POLL_INTERVAL_MS = 3000; // 3 seconds
+    const MAX_POLL_TIME_MS = 15 * 60 * 1000; // 15 minutes (token expiry)
+    const startTime = Date.now();
+
+    const pollStatus = async () => {
+      try {
+        const result = await ownerApi.checkMagicLinkStatus(sessionToken, subdomain);
+        
+        if (result.status === 'verified' && result.api_key) {
+          // Success! Phone clicked the link - auto-login on PC
+          console.log('🎉 Cross-device login detected!');
+          localStorage.setItem('owner_api_key', result.api_key);
+          localStorage.setItem('owner_subdomain', subdomain);
+          
+          // Clear polling
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          
+          navigate('/owner/dashboard');
+          return;
+        }
+        
+        if (result.status === 'expired' || result.status === 'not_found') {
+          // Token expired or not found - stop polling
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          setError('Magic link expired. Please request a new one.');
+          setEmailSent(false);
+          setSessionToken(null);
+          return;
+        }
+        
+        // Check if we've exceeded max poll time
+        if (Date.now() - startTime > MAX_POLL_TIME_MS) {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+        }
+      } catch (err) {
+        // Silently ignore poll errors - we'll retry
+        console.warn('Polling error:', err);
+      }
+    };
+
+    // Start polling
+    pollingIntervalRef.current = setInterval(pollStatus, POLL_INTERVAL_MS);
+    
+    // Cleanup on unmount or when deps change
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [emailSent, sessionToken, subdomain, navigate]);
 
   // Handle API key login
   const handleApiKeyLogin = async (e: React.FormEvent) => {
@@ -91,7 +162,13 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
 
   // Reset to try again
   const handleTryAgain = () => {
+    // Clear polling
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
     setEmailSent(false);
+    setSessionToken(null);
     setEmail('');
     setError(null);
   };
