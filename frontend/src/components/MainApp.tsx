@@ -86,6 +86,7 @@ const MainApp: React.FC = () => {
   const {
     radiusMeters,
     setRadiusMeters: _setRadiusMeters,
+    debouncedRadiusMeters,
     selectedRouteType,
     setSelectedRouteType: _setSelectedRouteType,
     autoRefreshEnabled,
@@ -215,7 +216,7 @@ const MainApp: React.FC = () => {
     const fetchData = async () => {
       // Fetch stations
       try {
-        const stationsData = await stationsApi.nearby(position[0], position[1], radiusMeters);
+        const stationsData = await stationsApi.nearby(position[0], position[1], debouncedRadiusMeters);
         if (!cancelled) {
           setStations(Array.isArray(stationsData) ? stationsData : []);
         }
@@ -227,7 +228,7 @@ const MainApp: React.FC = () => {
 
       // Fetch POIs
       try {
-        const poisData = await poisApi.nearby(position[0], position[1], radiusMeters);
+        const poisData = await poisApi.nearby(position[0], position[1], debouncedRadiusMeters);
         if (!cancelled) {
           setPois(Array.isArray(poisData) ? poisData : []);
         }
@@ -243,7 +244,7 @@ const MainApp: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [position, radiusMeters]);
+  }, [position, debouncedRadiusMeters]);
 
   // Auto-refresh timer - periodically refetch stations and POIs
   useEffect(() => {
