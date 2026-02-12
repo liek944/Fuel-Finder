@@ -1,10 +1,11 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 interface FilterContextValue {
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   radiusMeters: number;
   setRadiusMeters: (v: number) => void;
+  debouncedRadiusMeters: number;
   selectedBrand: string;
   setSelectedBrand: (v: string) => void;
   maxPrice: number;
@@ -27,6 +28,19 @@ const FilterContext = createContext<FilterContextValue | undefined>(undefined);
 export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [radiusMeters, setRadiusMeters] = useState<number>(5000);
+  const [debouncedRadiusMeters, setDebouncedRadiusMeters] = useState<number>(5000);
+  const radiusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounce radiusMeters so API fetches only fire after user stops dragging
+  useEffect(() => {
+    if (radiusTimerRef.current) clearTimeout(radiusTimerRef.current);
+    radiusTimerRef.current = setTimeout(() => {
+      setDebouncedRadiusMeters(radiusMeters);
+    }, 400);
+    return () => {
+      if (radiusTimerRef.current) clearTimeout(radiusTimerRef.current);
+    };
+  }, [radiusMeters]);
   const [selectedBrand, setSelectedBrand] = useState<string>("All");
   const [maxPrice, setMaxPrice] = useState<number>(100);
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
@@ -50,6 +64,7 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setSearchQuery,
     radiusMeters,
     setRadiusMeters,
+    debouncedRadiusMeters,
     selectedBrand,
     setSelectedBrand,
     maxPrice,
@@ -65,7 +80,7 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     isSearchPanelCollapsed,
     setIsSearchPanelCollapsed,
     toggleSearchPanelCollapsed,
-  }), [searchQuery, radiusMeters, selectedBrand, maxPrice, selectedRouteType, autoRefreshEnabled, lastDataRefresh, isSearchPanelCollapsed]);
+  }), [searchQuery, radiusMeters, debouncedRadiusMeters, selectedBrand, maxPrice, selectedRouteType, autoRefreshEnabled, lastDataRefresh, isSearchPanelCollapsed]);
 
   return (
     <FilterContext.Provider value={value}>{children}</FilterContext.Provider>
