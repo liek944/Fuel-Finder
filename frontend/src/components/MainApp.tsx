@@ -55,9 +55,6 @@ import {
 // Create user location icon instance
 const DefaultIcon = createUserLocationIcon();
 
-// Minimum distance (in meters) user must move before refetching stations/POIs
-// This prevents excessive API calls while still allowing responsive location updates
-const MIN_FETCH_DISTANCE_METERS = 100;
 
 const MainApp: React.FC = () => {
   // Toast notifications
@@ -80,8 +77,7 @@ const MainApp: React.FC = () => {
   } = useLocationTracking();
   const [speedUnit, setSpeedUnit] = useState<'kmh' | 'mph'>('kmh');
 
-  // Track last position where we fetched stations/POIs to implement distance-based throttling
-  const lastFetchPositionRef = useRef<[number, number] | null>(null);
+
 
   const {
     radiusMeters,
@@ -187,29 +183,9 @@ const MainApp: React.FC = () => {
     return `${hours}h ago`;
   };
 
-  // Fetch nearby stations and POIs with distance-based throttling
-  // Only refetch when user moves MIN_FETCH_DISTANCE_METERS from last fetch position
+  // Fetch nearby stations and POIs when position or radius changes
   useEffect(() => {
     if (!position) return;
-
-    // Check if we should skip this fetch based on distance moved
-    if (lastFetchPositionRef.current) {
-      const distanceKm = calculateDistance(
-        lastFetchPositionRef.current[0],
-        lastFetchPositionRef.current[1],
-        position[0],
-        position[1]
-      );
-      const distanceMeters = distanceKm * 1000;
-
-      if (distanceMeters < MIN_FETCH_DISTANCE_METERS) {
-        // User hasn't moved enough, skip fetch
-        return;
-      }
-    }
-
-    // Update last fetch position
-    lastFetchPositionRef.current = position;
 
     let cancelled = false;
 
