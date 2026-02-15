@@ -541,6 +541,69 @@ async function checkMagicLinkStatus(req, res) {
   }
 }
 
+/**
+ * Request an SMS OTP code for login
+ * Public endpoint - only requires owner subdomain detection
+ */
+async function requestSmsOtp(req, res) {
+  try {
+    const { phone } = req.validated.body;
+    const smsService = require("../services/smsService");
+
+    const result = await smsService.sendOtp(phone, req.ownerData?.domain);
+
+    if (!result.success) {
+      return res.status(500).json({
+        error: "SMS failed",
+        message: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      message: result.message,
+      sessionToken: result.sessionToken || undefined,
+    });
+
+  } catch (error) {
+    logger.error("Error in requestSmsOtp:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
+  }
+}
+
+/**
+ * Verify an SMS OTP code and return API key
+ * Public endpoint
+ */
+async function verifySmsOtp(req, res) {
+  try {
+    const { phone, code } = req.validated.body;
+    const smsService = require("../services/smsService");
+
+    const result = await smsService.verifyOtp(phone, code, req.ownerData?.domain);
+
+    if (!result.valid) {
+      return res.status(401).json({
+        error: "Invalid code",
+        message: result.error
+      });
+    }
+
+    logger.info(`SMS OTP login successful for owner: ${result.owner.name}`);
+
+    res.json({
+      success: true,
+      message: "Login successful!",
+      owner: result.owner,
+      api_key: result.api_key,
+    });
+
+  } catch (error) {
+    logger.error("Error in verifySmsOtp:", error);
+    res.status(500).json({ error: "Internal Server Error", message: error.message });
+  }
+}
+
 module.exports = {
   getOwnerInfo,
   getDashboard,
@@ -557,6 +620,8 @@ module.exports = {
   getMarketInsights,
   requestMagicLink,
   verifyMagicLinkToken,
-  checkMagicLinkStatus
+  checkMagicLinkStatus,
+  requestSmsOtp,
+  verifySmsOtp
 };
 
