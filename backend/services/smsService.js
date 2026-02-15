@@ -45,6 +45,31 @@ function generateOtpCode() {
 }
 
 /**
+ * Normalize Philippine phone numbers to international E.164 format
+ * 09XXXXXXXXX  → +639XXXXXXXXX
+ * 639XXXXXXXXX → +639XXXXXXXXX
+ * +639XXXXXXXXX → +639XXXXXXXXX (unchanged)
+ * @param {string} phone - Raw phone string (already stripped of spaces/dashes)
+ * @returns {string}
+ */
+function normalizePhPhone(phone) {
+  // Already international with +
+  if (phone.startsWith('+')) return phone;
+
+  // Local PH mobile: 09XXXXXXXXX → +639XXXXXXXXX
+  if (phone.startsWith('09') && phone.length === 11) {
+    return '+63' + phone.slice(1);
+  }
+
+  // Missing + prefix: 639XXXXXXXXX → +639XXXXXXXXX
+  if (phone.startsWith('63') && phone.length === 12) {
+    return '+' + phone;
+  }
+
+  return phone;
+}
+
+/**
  * Find owner by phone number within a subdomain context
  * @param {string} phone - Owner's phone number
  * @param {string} domain - Owner's subdomain (optional)
@@ -52,7 +77,9 @@ function generateOtpCode() {
  */
 async function findOwnerByPhone(phone, domain = null) {
   // Normalize: strip spaces, dashes, parens — keep only digits and leading +
-  const normalized = phone.replace(/[\s\-\(\)]/g, '');
+  let normalized = phone.replace(/[\s\-\(\)]/g, '');
+  // Convert PH local format to international
+  normalized = normalizePhPhone(normalized);
 
   let query = `SELECT id, name, domain, email, phone, is_active FROM owners WHERE phone = $1`;
   const params = [normalized];
@@ -78,7 +105,9 @@ async function findOwnerByPhone(phone, domain = null) {
  * @returns {Promise<{success: boolean, sessionToken?: string, error?: string}>}
  */
 async function sendOtp(phone, ownerDomain) {
-  const owner = await findOwnerByPhone(phone, ownerDomain);
+  // Normalize phone to E.164 before lookup and Twilio send
+  const normalizedPhone = normalizePhPhone(phone.replace(/[\s\-\(\)]/g, ''));
+  const owner = await findOwnerByPhone(normalizedPhone, ownerDomain);
 
   if (!owner) {
     // Don't reveal whether phone exists — return generic success
@@ -99,7 +128,7 @@ async function sendOtp(phone, ownerDomain) {
   await pool.query(
     `INSERT INTO owner_magic_links (owner_id, token, session_token, otp_code, otp_phone, expires_at)
      VALUES ($1, $2, $3, $4, $5, $6)`,
-    [owner.id, crypto.randomBytes(32).toString('hex'), sessionToken, otpCode, phone, expiresAt]
+    [owner.id, crypto.randomBytes(32).toString('hex'), sessionToken, otpCode, normalizedPhone, expiresAt]
   );
 
   // Send SMS via Twilio
@@ -114,12 +143,12 @@ async function sendOtp(phone, ownerDomain) {
     await client.messages.create({
       body: `Your Fuel Finder login code is: ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
       from: fromNumber,
-      to: phone,
+      to: normalizedPhone,
     });
 
-    logger.info(`📱 SMS OTP sent to ${phone} for owner ${owner.name}`);
+    logger.info(`📱 SMS OTP sent to ${normalizedPhone} for owner ${owner.name}`);
   } catch (err) {
-    logger.error(`Failed to send SMS to ${phone}:`, err.message);
+    logger.error(`Failed to send SMS to ${normalizedPhone}:`, err.message);
     return {
       success: false,
       error: 'Failed to send SMS. Please try another login method.',
@@ -141,7 +170,7 @@ async function sendOtp(phone, ownerDomain) {
  * @returns {Promise<{valid: boolean, api_key?: string, error?: string}>}
  */
 async function verifyOtp(phone, code, ownerDomain) {
-  const normalized = phone.replace(/[\s\-\(\)]/g, '');
+  const normalized = normalizePhPhone(phone.replace(/[\s\-\(\)]/g, ''));
 
   // Find the most recent unexpired, unused OTP for this phone
   const result = await pool.query(
