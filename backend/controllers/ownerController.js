@@ -459,38 +459,55 @@ async function requestMagicLink(req, res) {
 /**
  * Verify magic link token and return API key for session
  * Public endpoint - validates token from URL
+ * 
+ * Returns HTML pages for browser requests, JSON for API callers
  */
 async function verifyMagicLinkToken(req, res) {
+  const wantJson = req.headers.accept && req.headers.accept.includes('application/json');
+
   try {
     const { token } = req.validated.params;
     const magicLinkService = require("../services/magicLinkService");
+    const templates = require("../services/magicLinkTemplates");
 
     const result = await magicLinkService.verifyMagicLink(token);
 
     if (!result.valid) {
-      return res.status(401).json({
-        error: "Invalid link",
-        message: result.error
-      });
+      if (wantJson) {
+        return res.status(401).json({
+          error: "Invalid link",
+          message: result.error
+        });
+      }
+      return res.status(401).type('html').send(templates.getErrorPage(result.error));
     }
 
     logger.info(`Magic link verified for owner: ${result.owner.name}`);
 
-    // Return owner data including API key for frontend to store
-    res.json({
-      success: true,
-      message: "Login successful!",
-      owner: {
-        name: result.owner.name,
-        domain: result.owner.domain,
-        email: result.owner.email
-      },
-      api_key: result.owner.api_key
-    });
+    if (wantJson) {
+      // Return JSON for programmatic API callers (e.g. frontend component)
+      return res.json({
+        success: true,
+        message: "Login successful!",
+        owner: {
+          name: result.owner.name,
+          domain: result.owner.domain,
+          email: result.owner.email
+        },
+        api_key: result.owner.api_key
+      });
+    }
+
+    // Return styled HTML page for browser clicks from email
+    res.type('html').send(templates.getSuccessPage(result.owner.name));
 
   } catch (error) {
     logger.error("Error in verifyMagicLinkToken:", error);
-    res.status(500).json({ error: "Internal Server Error", message: error.message });
+    if (wantJson) {
+      return res.status(500).json({ error: "Internal Server Error", message: error.message });
+    }
+    const templates = require("../services/magicLinkTemplates");
+    res.status(500).type('html').send(templates.getServerErrorPage());
   }
 }
 
