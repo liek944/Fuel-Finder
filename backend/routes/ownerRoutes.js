@@ -17,39 +17,15 @@ const ownerRateLimit = require("../middleware/ownerRateLimiter");
 const { validate } = require("../middleware/validate");
 const schemas = require("../schemas").owner;
 
-// Apply owner detection to all routes
-router.use(detectOwner);
-router.use(requireOwner);
-
-// Apply per-owner rate limiting (must be after owner detection)
-router.use(ownerRateLimit);
-
 // =====================================================
-// Public owner routes (no API key required)
+// Auth routes - NO owner detection required
+// These work regardless of hostname (e.g., Vercel deploys)
 // =====================================================
-
-/**
- * GET /api/owner/info
- * Get basic owner information (public)
- */
-router.get(
-  "/info",
-  asyncHandler(ownerController.getOwnerInfo)
-);
-
-/**
- * POST /api/owner/auth/request-link
- * Request a magic link email for passwordless login (public)
- */
-router.post(
-  "/auth/request-link",
-  validate(schemas.requestMagicLinkSchema),
-  asyncHandler(ownerController.requestMagicLink)
-);
 
 /**
  * GET /api/owner/auth/verify/:token
  * Verify magic link token and get API key for session (public)
+ * No owner detection needed — pure token lookup
  */
 router.get(
   "/auth/verify/:token",
@@ -60,11 +36,29 @@ router.get(
 /**
  * GET /api/owner/auth/status/:sessionToken
  * Check magic link session status for cross-device polling (public)
+ * No owner detection needed — pure session token lookup
  */
 router.get(
   "/auth/status/:sessionToken",
   validate(schemas.checkMagicLinkStatusSchema),
   asyncHandler(ownerController.checkMagicLinkStatus)
+);
+
+// =====================================================
+// Auth routes that need optional owner context
+// detectOwner is applied inline (not requireOwner)
+// =====================================================
+
+/**
+ * POST /api/owner/auth/request-link
+ * Request a magic link email for passwordless login (public)
+ * Needs detectOwner so findOwnerByEmail can scope by domain
+ */
+router.post(
+  "/auth/request-link",
+  detectOwner,
+  validate(schemas.requestMagicLinkSchema),
+  asyncHandler(ownerController.requestMagicLink)
 );
 
 /**
@@ -73,6 +67,7 @@ router.get(
  */
 router.post(
   "/auth/request-sms",
+  detectOwner,
   validate(schemas.requestSmsOtpSchema),
   asyncHandler(ownerController.requestSmsOtp)
 );
@@ -83,8 +78,27 @@ router.post(
  */
 router.post(
   "/auth/verify-sms",
+  detectOwner,
   validate(schemas.verifySmsOtpSchema),
   asyncHandler(ownerController.verifySmsOtp)
+);
+
+// =====================================================
+// Owner-detected routes (require subdomain)
+// =====================================================
+
+// Apply owner detection + requirement to all remaining routes
+router.use(detectOwner);
+router.use(requireOwner);
+router.use(ownerRateLimit);
+
+/**
+ * GET /api/owner/info
+ * Get basic owner information (requires owner subdomain)
+ */
+router.get(
+  "/info",
+  asyncHandler(ownerController.getOwnerInfo)
 );
 
 // =====================================================

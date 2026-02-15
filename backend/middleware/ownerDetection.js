@@ -48,7 +48,7 @@ function extractSubdomain(hostname) {
     const subdomain = parts[0];
 
     // Ignore common prefixes that aren't owner subdomains
-    if (subdomain === 'www' || subdomain === 'api' || subdomain === 'admin') {
+    if (['www', 'api', 'admin', 'fuel-finder-six'].includes(subdomain)) {
       return null;
     }
 
