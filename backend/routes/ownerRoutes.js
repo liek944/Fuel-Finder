@@ -67,6 +67,26 @@ router.get(
   asyncHandler(ownerController.checkMagicLinkStatus)
 );
 
+/**
+ * POST /api/owner/auth/request-sms
+ * Request an SMS OTP code for login (public)
+ */
+router.post(
+  "/auth/request-sms",
+  validate(schemas.requestSmsOtpSchema),
+  asyncHandler(ownerController.requestSmsOtp)
+);
+
+/**
+ * POST /api/owner/auth/verify-sms
+ * Verify SMS OTP code and get API key (public)
+ */
+router.post(
+  "/auth/verify-sms",
+  validate(schemas.verifySmsOtpSchema),
+  asyncHandler(ownerController.verifySmsOtp)
+);
+
 // =====================================================
 // Protected owner routes (API key required)
 // =====================================================

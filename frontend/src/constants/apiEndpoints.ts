@@ -50,6 +50,9 @@ export const apiEndpoints = {
     requestMagicLink: () => `/api/owner/auth/request-link`,
     verifyMagicLink: (token: string) => `/api/owner/auth/verify/${token}`,
     magicLinkStatus: (sessionToken: string) => `/api/owner/auth/status/${sessionToken}`,
+    // SMS OTP auth endpoints
+    requestSmsOtp: () => `/api/owner/auth/request-sms`,
+    verifySmsOtp: () => `/api/owner/auth/verify-sms`,
   },
   admin: {
     reviews: () => `/api/admin/reviews`,
