@@ -33,11 +33,6 @@ const OwnerMagicLinkVerify: React.FC<{ subdomain: string }> = ({ subdomain }) =>
         localStorage.setItem('owner_subdomain', subdomain);
 
         setStatus('success');
-
-        // Redirect to dashboard after brief delay
-        setTimeout(() => {
-          navigate('/owner/dashboard');
-        }, 1500);
       } else {
         setStatus('error');
         setError(result.message || 'Verification failed');
@@ -67,8 +62,19 @@ const OwnerMagicLinkVerify: React.FC<{ subdomain: string }> = ({ subdomain }) =>
           {status === 'success' && (
             <>
               <div style={{ fontSize: '48px', marginBottom: '20px' }}>✅</div>
-              <h2 style={{ margin: '0 0 10px', color: '#059669' }}>Login Successful!</h2>
-              <p style={{ color: '#6b7280' }}>Redirecting to your dashboard...</p>
+              <h2 style={{ margin: '0 0 10px', color: '#059669' }}>You Have Been Signed In!</h2>
+              <p style={{ color: '#6b7280', marginBottom: '8px' }}>Your login has been verified successfully.</p>
+              <p style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '24px' }}>
+                You can safely close this page now.<br />
+                If you have the dashboard open on another device, it will update automatically.
+              </p>
+              <button
+                onClick={() => navigate('/owner/dashboard')}
+                className="login-button"
+                style={{ maxWidth: '300px', margin: '0 auto' }}
+              >
+                📊 Go to Dashboard
+              </button>
             </>
           )}
 
