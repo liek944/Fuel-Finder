@@ -124,7 +124,7 @@ const requestSmsOtpSchema = {
 const verifySmsOtpSchema = {
   body: z.object({
     phone: z.string().min(7, 'Valid phone number is required').max(20),
-    code: z.string().length(6, 'Code must be 6 digits')
+    code: z.string().min(4, 'Code too short').max(8, 'Code too long')
   })
 };
 

@@ -580,7 +580,6 @@ async function requestSmsOtp(req, res) {
     res.json({
       success: true,
       message: result.message,
-      sessionToken: result.sessionToken || undefined,
     });
 
   } catch (error) {
