@@ -19,7 +19,7 @@ interface OwnerInfo {
 
 const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
   // Login method state
-  const [loginMethod, setLoginMethod] = useState<'magic' | 'apikey' | 'sms'>('magic');
+  const [loginMethod, setLoginMethod] = useState<'magic' | 'apikey'>('magic');
   
   // Magic link state
   const [email, setEmail] = useState('');
@@ -29,11 +29,6 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
   
   // API key state
   const [apiKey, setApiKey] = useState('');
-
-  // SMS OTP state
-  const [phone, setPhone] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
   
   // Common state
   const [loading, setLoading] = useState(false);
@@ -178,50 +173,7 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
     setError(null);
   };
 
-  // Handle SMS OTP request
-  const handleSmsOtpRequest = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
 
-    try {
-      await ownerApi.requestSmsOtp(phone.trim(), subdomain);
-      setOtpSent(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send SMS code');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle SMS OTP verification
-  const handleSmsOtpVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await ownerApi.verifySmsOtp(phone.trim(), otpCode.trim(), subdomain);
-      if (result.api_key) {
-        localStorage.setItem('owner_api_key', result.api_key);
-        localStorage.setItem('owner_subdomain', subdomain);
-        navigate('/owner/dashboard');
-      } else {
-        setError('Login failed. Please try again.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Verification failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Reset SMS OTP state
-  const handleSmsRetry = () => {
-    setOtpSent(false);
-    setOtpCode('');
-    setError(null);
-  };
 
   return (
     <div className="owner-login-container">
@@ -283,23 +235,7 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
               >
                 📧 Email Link
               </button>
-              <button
-                type="button"
-                onClick={() => { setLoginMethod('sms'); setError(null); }}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  border: 'none',
-                  background: loginMethod === 'sms' ? '#f0fdf4' : 'transparent',
-                  borderBottom: loginMethod === 'sms' ? '2px solid #059669' : '2px solid transparent',
-                  color: loginMethod === 'sms' ? '#059669' : '#6b7280',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  transition: 'all 0.2s'
-                }}
-              >
-                📱 SMS Code
-              </button>
+
               <button
                 type="button"
                 onClick={() => { setLoginMethod('apikey'); setError(null); }}
@@ -366,125 +302,6 @@ const OwnerLogin: React.FC<OwnerLoginProps> = ({ subdomain }) => {
               </form>
             )}
 
-            {/* SMS OTP Form */}
-            {loginMethod === 'sms' && (
-              !otpSent ? (
-                <form onSubmit={handleSmsOtpRequest} className="login-form">
-                  <div className="form-group">
-                    <label htmlFor="phone">Phone Number</label>
-                    <input
-                      id="phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+639XXXXXXXXX"
-                      required
-                      autoComplete="tel"
-                      className="api-key-input"
-                    />
-                    <small className="form-hint">
-                      We'll send a 6-digit code to your phone
-                    </small>
-                  </div>
-
-                  {error && (
-                    <div className="error-message">
-                      <span className="error-icon">⚠️</span>
-                      {error}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading || !phone.trim()}
-                    className="login-button"
-                  >
-                    {loading ? (
-                      <>
-                        <span className="spinner"></span>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <span>📱</span>
-                        Send Code
-                      </>
-                    )}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleSmsOtpVerify} className="login-form">
-                  <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                    <div style={{ fontSize: '36px', marginBottom: '10px' }}>📱</div>
-                    <p style={{ color: '#4b5563', fontSize: '14px' }}>
-                      Code sent to <strong>{phone}</strong>
-                    </p>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="otpCode">Enter 6-Digit Code</label>
-                    <input
-                      id="otpCode"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{6}"
-                      maxLength={6}
-                      value={otpCode}
-                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                      placeholder="000000"
-                      required
-                      autoComplete="one-time-code"
-                      className="api-key-input"
-                      style={{ textAlign: 'center', fontSize: '24px', letterSpacing: '8px' }}
-                    />
-                    <small className="form-hint">
-                      ⏱️ Code expires in 5 minutes
-                    </small>
-                  </div>
-
-                  {error && (
-                    <div className="error-message">
-                      <span className="error-icon">⚠️</span>
-                      {error}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading || otpCode.length !== 6}
-                    className="login-button"
-                  >
-                    {loading ? (
-                      <>
-                        <span className="spinner"></span>
-                        Verifying...
-                      </>
-                    ) : (
-                      <>
-                        <span>🔐</span>
-                        Verify & Login
-                      </>
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSmsRetry}
-                    style={{
-                      marginTop: '10px',
-                      background: 'none',
-                      border: 'none',
-                      color: '#6b7280',
-                      cursor: 'pointer',
-                      fontSize: '14px',
-                      textDecoration: 'underline',
-                    }}
-                  >
-                    Send a new code
-                  </button>
-                </form>
-              )
-            )}
 
             {/* API Key Form */}
             {loginMethod === 'apikey' && (
