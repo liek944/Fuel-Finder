@@ -570,7 +570,8 @@ async function requestSmsOtp(req, res) {
     const result = await smsService.sendOtp(phone, req.ownerData?.domain);
 
     if (!result.success) {
-      return res.status(500).json({
+      logger.error('SMS send failure details:', result.details || result.error);
+      return res.status(502).json({
         error: "SMS failed",
         message: result.error
       });
