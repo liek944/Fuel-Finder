@@ -1,15 +1,12 @@
 /**
- * SMS OTP Service
- * Handles Twilio SMS sending and OTP generation/verification for owner login
+ * SMS OTP Service — Twilio Verify API
+ * Uses Twilio's purpose-built Verify service instead of raw Programmable Messaging.
+ * Twilio generates, delivers, and validates OTP codes server-side.
  */
 
 const crypto = require('crypto');
 const { pool } = require('../config/database');
 const logger = require('../utils/logger');
-
-// OTP configuration
-const OTP_LENGTH = 6;
-const OTP_EXPIRY_MINUTES = 5;
 
 /**
  * Initialize Twilio client (lazy, so missing env vars don't crash on boot)
@@ -33,15 +30,16 @@ function getTwilioClient() {
 }
 
 /**
- * Generate a random numeric OTP code
- * @returns {string} e.g. "482917"
+ * Get the Verify Service SID from env
  */
-function generateOtpCode() {
-  // Generate cryptographically secure random digits
-  const min = Math.pow(10, OTP_LENGTH - 1); // 100000
-  const max = Math.pow(10, OTP_LENGTH) - 1;  // 999999
-  const code = crypto.randomInt(min, max + 1);
-  return code.toString();
+function getVerifyServiceSid() {
+  const sid = process.env.TWILIO_VERIFY_SERVICE_SID;
+  if (!sid) {
+    throw new Error(
+      'TWILIO_VERIFY_SERVICE_SID not configured. Create a Verify Service at https://www.twilio.com/console/verify/services'
+    );
+  }
+  return sid;
 }
 
 /**
@@ -81,7 +79,7 @@ async function findOwnerByPhone(phone, domain = null) {
   // Convert PH local format to international
   normalized = normalizePhPhone(normalized);
 
-  let query = `SELECT id, name, domain, email, phone, is_active FROM owners WHERE phone = $1`;
+  let query = `SELECT id, name, domain, email, phone, api_key, is_active FROM owners WHERE phone = $1`;
   const params = [normalized];
 
   if (domain) {
@@ -99,10 +97,10 @@ async function findOwnerByPhone(phone, domain = null) {
 }
 
 /**
- * Send an OTP code via SMS to the owner's phone
+ * Send a verification code via Twilio Verify API
  * @param {string} phone - Phone number to send to
  * @param {string} ownerDomain - Owner's subdomain
- * @returns {Promise<{success: boolean, sessionToken?: string, error?: string}>}
+ * @returns {Promise<{success: boolean, message?: string, error?: string}>}
  */
 async function sendOtp(phone, ownerDomain) {
   // Normalize phone to E.164 before lookup and Twilio send
@@ -119,36 +117,21 @@ async function sendOtp(phone, ownerDomain) {
     return { success: false, error: 'Account deactivated. Please contact support.' };
   }
 
-  // Generate OTP and session token
-  const otpCode = generateOtpCode();
-  const sessionToken = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-
-  // Store in owner_magic_links table (reusing table with otp fields)
-  await pool.query(
-    `INSERT INTO owner_magic_links (owner_id, token, session_token, otp_code, otp_phone, expires_at)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [owner.id, crypto.randomBytes(32).toString('hex'), sessionToken, otpCode, normalizedPhone, expiresAt]
-  );
-
-  // Send SMS via Twilio
+  // Send verification via Twilio Verify API
   try {
     const client = getTwilioClient();
-    const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+    const serviceSid = getVerifyServiceSid();
 
-    if (!fromNumber) {
-      throw new Error('TWILIO_PHONE_NUMBER not configured in .env');
-    }
+    const verification = await client.verify.v2
+      .services(serviceSid)
+      .verifications.create({
+        to: normalizedPhone,
+        channel: 'sms',
+      });
 
-    await client.messages.create({
-      body: `Your Fuel Finder login code is: ${otpCode}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
-      from: fromNumber,
-      to: normalizedPhone,
-    });
-
-    logger.info(`📱 SMS OTP sent to ${normalizedPhone} for owner ${owner.name}`);
+    logger.info(`📱 Twilio Verify sent to ${normalizedPhone} for owner ${owner.name} (status: ${verification.status})`);
   } catch (err) {
-    logger.error(`Failed to send SMS to ${normalizedPhone}:`, err.message, `Code: ${err.code || 'N/A'}`);
+    logger.error(`Failed to send Verify SMS to ${normalizedPhone}:`, err.message, `Code: ${err.code || 'N/A'}`);
     return {
       success: false,
       error: 'Failed to send SMS. Please try another login method.',
@@ -159,74 +142,74 @@ async function sendOtp(phone, ownerDomain) {
   return {
     success: true,
     message: 'If an account exists with this phone, you will receive a code.',
-    sessionToken,
   };
 }
 
 /**
- * Verify an OTP code submitted by the user
+ * Verify an OTP code via Twilio Verify API and return owner credentials
  * @param {string} phone - The phone number that received the OTP
- * @param {string} code - The 6-digit OTP code entered by the user
+ * @param {string} code - The OTP code entered by the user
  * @param {string} ownerDomain - Owner's subdomain
  * @returns {Promise<{valid: boolean, api_key?: string, error?: string}>}
  */
 async function verifyOtp(phone, code, ownerDomain) {
-  const normalized = normalizePhPhone(phone.replace(/[\s\-\(\)]/g, ''));
+  const normalizedPhone = normalizePhPhone(phone.replace(/[\s\-\(\)]/g, ''));
 
-  // Find the most recent unexpired, unused OTP for this phone
-  const result = await pool.query(
-    `SELECT ml.id, ml.otp_code, ml.expires_at, ml.used_at,
-            o.id as owner_id, o.name, o.domain, o.api_key, o.email, o.is_active
-     FROM owner_magic_links ml
-     JOIN owners o ON o.id = ml.owner_id
-     WHERE ml.otp_phone = $1
-       AND ml.otp_code IS NOT NULL
-       AND ml.used_at IS NULL
-       AND ml.expires_at > NOW()
-     ORDER BY ml.expires_at DESC
-     LIMIT 1`,
-    [normalized]
-  );
+  // Check the code via Twilio Verify API
+  let verificationCheck;
+  try {
+    const client = getTwilioClient();
+    const serviceSid = getVerifyServiceSid();
 
-  if (result.rows.length === 0) {
-    logger.warn(`SMS OTP verification failed: no valid OTP for ${normalized}`);
-    return { valid: false, error: 'Invalid or expired code. Please request a new one.' };
+    verificationCheck = await client.verify.v2
+      .services(serviceSid)
+      .verificationChecks.create({
+        to: normalizedPhone,
+        code: code,
+      });
+  } catch (err) {
+    logger.error(`Twilio Verify check failed for ${normalizedPhone}:`, err.message);
+    return { valid: false, error: 'Verification failed. Please request a new code.' };
   }
 
-  const row = result.rows[0];
-
-  // Verify domain matches
-  if (ownerDomain && row.domain !== ownerDomain) {
-    return { valid: false, error: 'Invalid or expired code.' };
-  }
-
-  // Constant-time comparison to prevent timing attacks
-  const codeBuffer = Buffer.from(code);
-  const storedBuffer = Buffer.from(row.otp_code);
-  if (codeBuffer.length !== storedBuffer.length || !crypto.timingSafeEqual(codeBuffer, storedBuffer)) {
-    logger.warn(`SMS OTP verification failed: wrong code for ${normalized}`);
+  if (verificationCheck.status !== 'approved') {
+    logger.warn(`SMS OTP verification failed: status=${verificationCheck.status} for ${normalizedPhone}`);
     return { valid: false, error: 'Incorrect code. Please try again.' };
   }
 
-  if (!row.is_active) {
+  // Code is valid — look up the owner
+  const owner = await findOwnerByPhone(normalizedPhone, ownerDomain);
+
+  if (!owner) {
+    logger.warn(`SMS OTP verified but no owner found for ${normalizedPhone}`);
+    return { valid: false, error: 'Invalid or expired code.' };
+  }
+
+  if (!owner.is_active) {
     return { valid: false, error: 'Account deactivated. Please contact support.' };
   }
 
-  // Mark as used
-  await pool.query(
-    `UPDATE owner_magic_links SET used_at = NOW(), verified_api_key = $2 WHERE id = $1`,
-    [row.id, row.api_key]
-  );
+  // Record the login in owner_magic_links for audit trail
+  try {
+    await pool.query(
+      `INSERT INTO owner_magic_links (owner_id, token, otp_phone, used_at, verified_api_key, expires_at)
+       VALUES ($1, $2, $3, NOW(), $4, NOW() + INTERVAL '5 minutes')`,
+      [owner.id, crypto.randomBytes(32).toString('hex'), normalizedPhone, owner.api_key]
+    );
+  } catch (auditErr) {
+    // Non-fatal — don't block login if audit insert fails
+    logger.error('Failed to write OTP audit log:', auditErr.message);
+  }
 
-  logger.info(`✅ SMS OTP verified for owner: ${row.name} (${row.domain})`);
+  logger.info(`✅ SMS OTP verified via Twilio Verify for owner: ${owner.name} (${owner.domain})`);
 
   return {
     valid: true,
-    api_key: row.api_key,
+    api_key: owner.api_key,
     owner: {
-      name: row.name,
-      domain: row.domain,
-      email: row.email,
+      name: owner.name,
+      domain: owner.domain,
+      email: owner.email,
     },
   };
 }
@@ -235,5 +218,4 @@ module.exports = {
   sendOtp,
   verifyOtp,
   findOwnerByPhone,
-  OTP_EXPIRY_MINUTES,
 };
