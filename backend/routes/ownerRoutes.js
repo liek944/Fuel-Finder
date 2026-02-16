@@ -61,28 +61,6 @@ router.post(
   asyncHandler(ownerController.requestMagicLink)
 );
 
-/**
- * POST /api/owner/auth/request-sms
- * Request an SMS OTP code for login (public)
- */
-router.post(
-  "/auth/request-sms",
-  detectOwner,
-  validate(schemas.requestSmsOtpSchema),
-  asyncHandler(ownerController.requestSmsOtp)
-);
-
-/**
- * POST /api/owner/auth/verify-sms
- * Verify SMS OTP code and get API key (public)
- */
-router.post(
-  "/auth/verify-sms",
-  detectOwner,
-  validate(schemas.verifySmsOtpSchema),
-  asyncHandler(ownerController.verifySmsOtp)
-);
-
 // =====================================================
 // Owner-detected routes (require subdomain)
 // =====================================================

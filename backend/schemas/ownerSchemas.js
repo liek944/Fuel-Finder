@@ -113,21 +113,6 @@ const checkMagicLinkStatusSchema = {
   })
 };
 
-// Request SMS OTP
-const requestSmsOtpSchema = {
-  body: z.object({
-    phone: z.string().min(7, 'Valid phone number is required').max(20)
-  })
-};
-
-// Verify SMS OTP
-const verifySmsOtpSchema = {
-  body: z.object({
-    phone: z.string().min(7, 'Valid phone number is required').max(20),
-    code: z.string().min(4, 'Code too short').max(8, 'Code too long')
-  })
-};
-
 module.exports = {
   getOwnerStationSchema,
   updateOwnerStationSchema,
@@ -140,8 +125,6 @@ module.exports = {
   getMarketInsightsSchema,
   requestMagicLinkSchema,
   verifyMagicLinkSchema,
-  checkMagicLinkStatusSchema,
-  requestSmsOtpSchema,
-  verifySmsOtpSchema
+  checkMagicLinkStatusSchema
 };
 

@@ -205,34 +205,4 @@ export const ownerApi = {
     if (!res.ok && res.status !== 404) throw new Error(json?.message || `HTTP ${res.status}`);
     return json;
   },
-
-  // SMS OTP authentication
-  requestSmsOtp: async (phone: string, subdomain: string) => {
-    const url = getApiUrl(apiEndpoints.owner.requestSmsOtp());
-    const res = await apiCall(url, {
-      method: 'POST',
-      headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
-    return json;
-  },
-
-  verifySmsOtp: async (phone: string, code: string, subdomain: string): Promise<{
-    success: boolean;
-    message: string;
-    owner?: { name: string; domain: string; email: string };
-    api_key?: string;
-  }> => {
-    const url = getApiUrl(apiEndpoints.owner.verifySmsOtp());
-    const res = await apiCall(url, {
-      method: 'POST',
-      headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, code }),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
-    return json;
-  },
 };
