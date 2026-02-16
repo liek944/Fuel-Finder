@@ -148,10 +148,11 @@ async function sendOtp(phone, ownerDomain) {
 
     logger.info(`📱 SMS OTP sent to ${normalizedPhone} for owner ${owner.name}`);
   } catch (err) {
-    logger.error(`Failed to send SMS to ${normalizedPhone}:`, err.message);
+    logger.error(`Failed to send SMS to ${normalizedPhone}:`, err.message, `Code: ${err.code || 'N/A'}`);
     return {
       success: false,
       error: 'Failed to send SMS. Please try another login method.',
+      details: err.code ? `Twilio error ${err.code}: ${err.message}` : err.message,
     };
   }
 
