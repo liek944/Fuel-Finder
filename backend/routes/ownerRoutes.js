@@ -18,6 +18,26 @@ const { validate } = require("../middleware/validate");
 const schemas = require("../schemas").owner;
 
 // =====================================================
+// Public routes - NO auth or owner detection required
+// =====================================================
+
+/**
+ * GET /api/owner/domains
+ * List all active owner domains (public, for mobile app login dropdown)
+ * Returns only name and domain — no sensitive data
+ */
+router.get(
+  "/domains",
+  asyncHandler(async (req, res) => {
+    const { pool } = require("../config/database");
+    const result = await pool.query(
+      `SELECT name, domain FROM owners WHERE is_active = TRUE ORDER BY name ASC`
+    );
+    res.json(result.rows);
+  })
+);
+
+// =====================================================
 // Auth routes - NO owner detection required
 // These work regardless of hostname (e.g., Vercel deploys)
 // =====================================================
