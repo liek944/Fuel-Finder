@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fuel Finder — Find the Cheapest Fuel Near You</title>
+  <meta name="description" content="Stop overpaying for fuel. Fuel Finder helps you locate nearby stations, compare real-time prices, and navigate there — all in one free app.">
+  <meta name="keywords" content="fuel finder, gas station, fuel prices, cheap fuel, Philippines, petrol, diesel">
+  <meta name="theme-color" content="#0F1923">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Fuel Finder — Find the Cheapest Fuel Near You">
+  <meta property="og:description" content="Compare fuel prices, find nearby stations, and navigate with turn-by-turn directions.">
+  <meta property="og:image" content="assets/hero-mockup.png">
+  <meta property="og:type" content="website">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpeg" href="assets/logo.jpeg">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  NAVIGATION                                 -->
+  <!-- ═══════════════════════════════════════════ -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-logo" aria-label="Fuel Finder Home">
+        <img src="assets/logo.jpeg" alt="Fuel Finder" width="36" height="36">
+        <span>Fuel Finder</span>
+      </a>
+      <ul class="nav-links" id="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#demo">Screenshots</a></li>
+      </ul>
+      <div class="download-dropdown" id="nav-dropdown">
+        <button class="nav-cta dropdown-trigger" aria-expanded="false" aria-haspopup="true">
+          Download APK
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dropdown-menu dropdown-menu-nav">
+          <a href="#" class="dropdown-item" id="nav-download-driver">
+            <div class="dropdown-item-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div class="dropdown-item-text">
+              <strong>Main App</strong>
+              <span>Are you a driver? Download this</span>
+            </div>
+          </a>
+          <a href="#" class="dropdown-item" id="nav-download-owner">
+            <div class="dropdown-item-icon icon-owner">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            </div>
+            <div class="dropdown-item-text">
+              <strong>Owner App</strong>
+              <span>Are you an owner? Download this</span>
+            </div>
+          </a>
+        </div>
+      </div>
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Menu Overlay -->
+  <div class="mobile-menu" id="mobile-menu">
+    <ul>
+      <li><a href="#features" class="mobile-link">Features</a></li>
+      <li><a href="#how-it-works" class="mobile-link">How It Works</a></li>
+      <li><a href="#demo" class="mobile-link">Screenshots</a></li>
+      <li class="mobile-download-group">
+        <p class="mobile-download-label">Download</p>
+        <a href="#" class="mobile-link cta" id="mobile-download-driver">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Main App (Drivers)
+        </a>
+        <a href="#" class="mobile-link cta cta-owner" id="mobile-download-owner">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Owner App
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  HERO SECTION                               -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="hero" id="hero">
+    <div class="hero-bg-grid"></div>
+    <div class="hero-container">
+      <div class="hero-content" data-animate="fade-up">
+        <h1 class="hero-headline">
+          Stop Overpaying<br>for <span class="text-gradient">Fuel.</span>
+        </h1>
+        <p class="hero-subheadline">
+          Find the cheapest stations near you, get real-time prices, and navigate there — all in one app.
+        </p>
+        <div class="hero-actions">
+          <div class="download-dropdown" id="hero-dropdown">
+            <button class="btn btn-primary btn-lg dropdown-trigger" id="hero-download-btn" aria-expanded="false" aria-haspopup="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download APK
+              <svg class="chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="dropdown-menu">
+              <a href="#" class="dropdown-item" id="hero-download-driver">
+                <div class="dropdown-item-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </div>
+                <div class="dropdown-item-text">
+                  <strong>Main App</strong>
+                  <span>Are you a driver? Download this</span>
+                </div>
+              </a>
+              <a href="#" class="dropdown-item" id="hero-download-owner">
+                <div class="dropdown-item-icon icon-owner">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </div>
+                <div class="dropdown-item-text">
+                  <strong>Owner App</strong>
+                  <span>Are you an owner? Download this</span>
+                </div>
+              </a>
+            </div>
+          </div>
+          <a href="#how-it-works" class="btn btn-ghost btn-lg" id="hero-learn-btn">
+            See How It Works
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          </a>
+        </div>
+        <div class="hero-trust">
+          <span class="trust-dot"></span>
+          Free &nbsp;·&nbsp; No Account Required &nbsp;·&nbsp; Works Offline
+        </div>
+      </div>
+      <div class="hero-visual" data-animate="fade-left">
+        <div class="phone-mockup-wrapper">
+          <img src="assets/hero-mockup.png" alt="Fuel Finder app showing nearby fuel stations on a map with real-time prices" class="hero-phone" loading="eager">
+          <!-- Floating cards -->
+          <div class="floating-card fc-price" data-animate="float-in" style="--delay: 0.6s">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F5A623" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            ₱48.50/L
+          </div>
+          <div class="floating-card fc-rating" data-animate="float-in" style="--delay: 0.9s">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#F5A623" stroke="#F5A623" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            4.8
+          </div>
+          <div class="floating-card fc-distance" data-animate="float-in" style="--delay: 1.2s">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1976D2" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            0.3 km
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-scroll-hint" aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  PROBLEM SECTION                            -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section-light" id="problem">
+    <div class="container">
+      <div class="section-header" data-animate="fade-up">
+        <span class="kicker">THE PROBLEM</span>
+        <h2>Fuel Prices Are Unpredictable.<br><span class="text-dark">Your Wallet Pays the Price.</span></h2>
+        <p class="section-subtitle">Every day, Filipino drivers waste time and money guessing which station has the best price. There's no reliable way to compare — you just drive in, hope for the best, and fill up.</p>
+      </div>
+      <div class="problem-cards">
+        <div class="problem-card" data-animate="fade-up" style="--delay: 0.1s">
+          <div class="problem-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+          </div>
+          <h3>No Price Visibility</h3>
+          <p>Fuel prices change weekly, but stations don't advertise them. You only find out when you're already at the pump.</p>
+        </div>
+        <div class="problem-card" data-animate="fade-up" style="--delay: 0.2s">
+          <div class="problem-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <h3>Wasted Time &amp; Fuel</h3>
+          <p>Driving to multiple stations to compare prices costs you the very thing you're trying to save — fuel.</p>
+        </div>
+        <div class="problem-card" data-animate="fade-up" style="--delay: 0.3s">
+          <div class="problem-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/>
+              <path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+              <path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/>
+              <path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/>
+              <path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/>
+              <path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/>
+              <path d="M10 9.5C10 10.33 9.33 11 8.5 11h-5C2.67 11 2 10.33 2 9.5S2.67 8 3.5 8h5c.83 0 1.5.67 1.5 1.5z"/>
+              <path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/>
+            </svg>
+          </div>
+          <h3>No Trusted Source</h3>
+          <p>Online fuel price lists are outdated, incomplete, or based in Manila. Nothing reflects your local market.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  SOLUTION SECTION                           -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section-white" id="solution">
+    <div class="container">
+      <div class="solution-grid">
+        <div class="solution-visual" data-animate="fade-right">
+          <img src="assets/screenshot-prices.png" alt="Fuel Finder price comparison view showing stations sorted by price" class="solution-img" loading="lazy">
+        </div>
+        <div class="solution-content" data-animate="fade-up">
+          <span class="kicker kicker-blue">THE SOLUTION</span>
+          <h2>One App. Every Station.<br><span class="text-gradient">Real Prices.</span></h2>
+          <p class="section-subtitle">Fuel Finder uses real-time, community-reported prices and smart geolocation to show you exactly where to fill up — and navigates you there.</p>
+          <ul class="check-list">
+            <li>
+              <div class="check-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span>See real fuel prices reported by drivers like you</span>
+            </li>
+            <li>
+              <div class="check-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span>Find the nearest and cheapest station in seconds</span>
+            </li>
+            <li>
+              <div class="check-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <span>Get turn-by-turn directions powered by OSRM</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  FEATURES SECTION                           -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section-dark" id="features">
+    <div class="container">
+      <div class="section-header" data-animate="fade-up">
+        <span class="kicker kicker-light">FEATURES</span>
+        <h2 class="text-white">Everything You Need to<br><span class="text-gradient">Fuel Smarter</span></h2>
+        <p class="section-subtitle text-muted-light">Built for the real world. Powered by PostGIS, OSRM, and a community of drivers.</p>
+      </div>
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="feature-card" data-animate="fade-up" style="--delay: 0.05s">
+          <div class="feature-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <h3>Nearby Stations, Instantly</h3>
+          <p>Geospatial search finds stations within your radius using PostGIS. See them pinned on a live map.</p>
+        </div>
+        <!-- Feature 2 -->
+        <div class="feature-card" data-animate="fade-up" style="--delay: 0.1s">
+          <div class="feature-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+          </div>
+          <h3>Turn-by-Turn Routing</h3>
+          <p>Get the fastest route to your chosen station with OSRM-powered A* navigation.</p>
+        </div>
+        <!-- Feature 3 -->
+        <div class="feature-card" data-animate="fade-up" style="--delay: 0.15s">
+          <div class="feature-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <h3>Compare Before You Fill</h3>
+          <p>View and filter by fuel type — Diesel, Premium, Regular — and price. Community-verified.</p>
+        </div>
+        <!-- Feature 4 -->
+        <div class="feature-card" data-animate="fade-up" style="--delay: 0.2s">
+          <div class="feature-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h3>Prices by Real Drivers</h3>
+          <p>Anyone can report current prices. Verified by the community for accuracy you can trust.</p>
+        </div>
+        <!-- Feature 5 -->
+        <div class="feature-card" data-animate="fade-up" style="--delay: 0.25s">
+          <div class="feature-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+            </svg>
+          </div>
+          <h3>Owner Portal</h3>
+          <p>Multi-tenant portal for station owners to manage listings, update prices, and view analytics.</p>
+        </div>
+        <!-- Feature 6 -->
+        <div class="feature-card" data-animate="fade-up" style="--delay: 0.3s">
+          <div class="feature-icon-wrap">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+          </div>
+          <h3>PWA-Ready</h3>
+          <p>Install on your home screen. Key features work even without internet connection.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  HOW IT WORKS                               -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section-light" id="how-it-works">
+    <div class="container">
+      <div class="section-header" data-animate="fade-up">
+        <span class="kicker">HOW IT WORKS</span>
+        <h2>Three Steps to<br><span class="text-gradient">Cheaper Fuel</span></h2>
+      </div>
+      <div class="steps">
+        <div class="step" data-animate="fade-up" style="--delay: 0.1s">
+          <div class="step-number">1</div>
+          <div class="step-visual">
+            <img src="assets/hero-mockup.png" alt="Opening Fuel Finder and seeing the map" loading="lazy">
+          </div>
+          <h3>Open the App</h3>
+          <p>Launch Fuel Finder on your phone or browser. It detects your location instantly.</p>
+        </div>
+        <div class="step-connector" data-animate="fade-up" style="--delay: 0.15s">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </div>
+        <div class="step" data-animate="fade-up" style="--delay: 0.2s">
+          <div class="step-number">2</div>
+          <div class="step-visual">
+            <img src="assets/screenshot-prices.png" alt="Comparing fuel prices across stations" loading="lazy">
+          </div>
+          <h3>Find Your Station</h3>
+          <p>Compare nearby stations by price, distance, and fuel type. Filter to find exactly what you need.</p>
+        </div>
+        <div class="step-connector" data-animate="fade-up" style="--delay: 0.25s">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </div>
+        <div class="step" data-animate="fade-up" style="--delay: 0.3s">
+          <div class="step-number">3</div>
+          <div class="step-visual">
+            <img src="assets/screenshot-nav.png" alt="Navigating to the chosen fuel station" loading="lazy">
+          </div>
+          <h3>Navigate &amp; Fill Up</h3>
+          <p>Tap to get turn-by-turn directions. Arrive at the best-priced station. Save money.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  DEMO / SCREENSHOTS                        -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section-white" id="demo">
+    <div class="container">
+      <div class="section-header" data-animate="fade-up">
+        <span class="kicker kicker-blue">SEE IT IN ACTION</span>
+        <h2>Built for Real Roads,<br><span class="text-gradient">Real Prices</span></h2>
+        <p class="section-subtitle">Explore the app interface — designed for speed, clarity, and everyday use.</p>
+      </div>
+      <div class="demo-showcase" data-animate="fade-up" style="--delay: 0.1s">
+        <div class="demo-tabs" role="tablist">
+          <button class="demo-tab active" role="tab" aria-selected="true" data-tab="0" id="tab-map">Map View</button>
+          <button class="demo-tab" role="tab" aria-selected="false" data-tab="1" id="tab-detail">Station Detail</button>
+          <button class="demo-tab" role="tab" aria-selected="false" data-tab="2" id="tab-nav">Navigation</button>
+          <button class="demo-tab" role="tab" aria-selected="false" data-tab="3" id="tab-prices">Price Compare</button>
+          <div class="tab-indicator" id="tab-indicator"></div>
+        </div>
+        <div class="demo-carousel" id="demo-carousel">
+          <div class="demo-slide active" data-slide="0">
+            <img src="assets/hero-mockup.png" alt="Map view showing fuel stations with live prices" loading="lazy">
+          </div>
+          <div class="demo-slide" data-slide="1">
+            <img src="assets/screenshot-detail.png" alt="Station detail page with prices, reviews, and directions" loading="lazy">
+          </div>
+          <div class="demo-slide" data-slide="2">
+            <img src="assets/screenshot-nav.png" alt="Turn-by-turn navigation to a fuel station" loading="lazy">
+          </div>
+          <div class="demo-slide" data-slide="3">
+            <img src="assets/screenshot-prices.png" alt="Price comparison list sorted by fuel cost" loading="lazy">
+          </div>
+        </div>
+        <div class="demo-dots" aria-hidden="true">
+          <button class="demo-dot active" data-dot="0"></button>
+          <button class="demo-dot" data-dot="1"></button>
+          <button class="demo-dot" data-dot="2"></button>
+          <button class="demo-dot" data-dot="3"></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  CTA SECTION                                -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section class="section section-cta" id="download">
+    <div class="cta-bg-mesh"></div>
+    <div class="container">
+      <div class="cta-content" data-animate="fade-up">
+        <h2 class="text-white">Ready to Start <span class="text-gradient">Saving?</span></h2>
+        <p class="cta-subtitle">Download Fuel Finder today. It's free, lightweight, and works right out of the box.</p>
+        <div class="cta-download-buttons">
+          <a href="#" class="btn btn-white btn-lg" id="cta-download-driver">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Main App (Drivers)
+          </a>
+          <a href="#" class="btn btn-outline-light btn-lg" id="cta-download-owner">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Owner App (Station Management)
+          </a>
+        </div>
+        <p class="cta-micro">Android 7.0+ &nbsp;·&nbsp; No account required &nbsp;·&nbsp; Under 15MB</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  FOOTER                                     -->
+  <!-- ═══════════════════════════════════════════ -->
+  <footer class="footer" id="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <img src="assets/logo.jpeg" alt="Fuel Finder" width="32" height="32">
+            <span>Fuel Finder</span>
+          </div>
+          <p>Find the cheapest fuel near you.<br>Built as a capstone/thesis project.</p>
+        </div>
+        <div class="footer-links">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#download">Download</a></li>
+          </ul>
+        </div>
+        <div class="footer-links">
+          <h4>Connect</h4>
+          <ul>
+            <li><a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+            <li><a href="mailto:contact@fuelfinder.app">Email</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-divider"></div>
+      <div class="footer-bottom">
+        <p>&copy; 2026 Fuel Finder. All rights reserved.</p>
+        <p>A thesis project by the Fuel Finder team.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
