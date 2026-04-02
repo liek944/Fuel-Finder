@@ -20,3 +20,10 @@ DOCUMENTATIONS AND CONTEXT/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Android/Gradle Build Artifacts
+**/build/
+**/.gradle/
+**/local.properties
+**/*.apk
+**/*.aar
