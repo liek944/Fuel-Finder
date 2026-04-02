@@ -100,9 +100,10 @@ app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
 
-# Android/Gradle Build Artifacts
-**/build/
-**/.gradle/
-**/local.properties
-**/*.apk
-**/*.aar
+
+/build/
+/.gradle/
+local.properties
+/*.apk
+/*.aar
+*.png

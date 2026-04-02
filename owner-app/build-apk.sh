@@ -31,11 +31,11 @@ npx cap sync android
 # Step 4: Build APK
 echo "🏗️  Building APK (this may take a few minutes on low-RAM machines)..."
 cd android
-./gradlew assembleDebug --no-daemon
+./gradlew assembleRelease --no-daemon
 cd ..
 
 # Step 5: Report result
-APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
 if [ -f "$APK_PATH" ]; then
   APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
   echo ""
