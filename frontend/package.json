@@ -55,6 +55,7 @@
     ]
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.4.4",
     "@types/react-datepicker": "^6.2.0",
     "@vitejs/plugin-react": "^4.3.4",
