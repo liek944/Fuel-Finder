@@ -1,31 +1,79 @@
+# =============================================
+# DIRECTORIES
+# =============================================
 orsm-data/
 node_modules/
 DOCUMENTATIONS AND CONTEXT/
-# Ignore environment variables
-/backend/.env
-/backend/.env.example
-/backend/.env.production
-/backend/.env.local.template
+coverage/
 
-# Frontend specific ignores
-/.pnp
-.pnp.js
-/coverage
-/frontend/build
-.DS_Store
-/frontend/.env.local
-/frontend/.env.development.local
-/frontend/.env.test.local
-/frontend/.env.production.local
+# =============================================
+# ENVIRONMENT VARIABLES — NEVER COMMIT SECRETS
+# =============================================
+.env
+.env.*
+!.env.example
+
+# =============================================
+# ANDROID SIGNING KEYS — KEEP OUTSIDE REPO
+# =============================================
+*.keystore
+*.jks
+*.p12
+local.properties
+
+# =============================================
+# BUILD ARTIFACTS
+# =============================================
+/build/
+/.gradle/
+*.apk
+*.aar
+/frontend/build/
+/frontend/android/app/build/
+/owner-app/android/app/build/
+dist/
+
+# =============================================
+# INTERNAL DEV SCRIPTS (not for public)
+# =============================================
+backend/test-*.js
+backend/fix-*.js
+backend/fix-*.sh
+backend/deploy-*.sh
+backend/check-*.js
+backend/cleanup-*.js
+backend/setup-*.js
+backend/verify-*.js
+backend/test_connection.js
+backend/coverage/
+backend/uploads/
+
+# =============================================
+# LOGS AND DEBUG
+# =============================================
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Android/Gradle Build Artifacts
-/build/
-/.gradle/
-local.properties
-/*.apk
-/*.aar
+# =============================================
+# SYSTEM FILES
+# =============================================
+.DS_Store
+.pnp
+.pnp.js
 
-/*.md
+# =============================================
+# FRONTEND SPECIFIC
+# =============================================
+/frontend/.env.local
+/frontend/.env.development.local
+/frontend/.env.test.local
+/frontend/.env.production.local
+/frontend/playwright-report/
+/frontend/test-results/
+
+# =============================================
+# IDE
+# =============================================
+.vscode/settings.json
