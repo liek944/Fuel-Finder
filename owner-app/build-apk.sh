@@ -1,7 +1,7 @@
 #!/bin/bash
-# Fuel Finder Owner — APK Build Script
-# Builds the debug APK entirely via terminal (no Android Studio required)
-# Tested on 3.7GB RAM machine with JDK 21
+# Fuel Finder Owner — Signed Release APK Build Script
+# Builds the signed release APK entirely via terminal (no Android Studio required)
+# Tested with JDK 21 and Node.js v20+
 
 set -e
 
@@ -10,6 +10,10 @@ cd "$SCRIPT_DIR"
 
 export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
 export JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
+
+# Load NVM to ensure we use the correct Node.js version (v20+)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
 echo "=== Fuel Finder Owner — APK Build ==="
 echo ""
@@ -28,10 +32,10 @@ npm run build
 echo "📱 Syncing to Android..."
 npx cap sync android
 
-# Step 4: Build APK
-echo "🏗️  Building APK (this may take a few minutes on low-RAM machines)..."
+# Step 4: Build Signed Release APK
+echo "🏗️  Building Signed Release APK (this may take a few minutes on low-RAM machines)..."
 cd android
-./gradlew assembleRelease --no-daemon
+./gradlew clean assembleRelease --no-daemon
 cd ..
 
 # Step 5: Report result
