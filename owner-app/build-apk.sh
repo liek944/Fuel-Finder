@@ -24,6 +24,25 @@ if [ ! -d "node_modules" ]; then
   npm install
 fi
 
+# Step 1.5: Sync shared code from frontend
+echo "🔄 Syncing shared code from frontend..."
+if [ -d "../frontend/src/components/owner" ]; then
+  # Automatically copy the latest files
+  cp ../frontend/src/api/ownerApi.ts src/api/
+  cp ../frontend/src/components/owner/* src/components/
+  
+  # The frontend imports use different relative depths.
+  # Adjust them to match the owner-app structure.
+  for file in src/components/*.tsx; do
+    if [ -f "$file" ]; then
+      sed -i 's|../../api|../api|g' "$file"
+      sed -i 's|../../contexts|../contexts|g' "$file"
+    fi
+  done
+else
+  echo "⚠️ Frontend directory not found, skipping sync."
+fi
+
 # Step 2: Build web assets
 echo "🔨 Building web assets..."
 npm run build
