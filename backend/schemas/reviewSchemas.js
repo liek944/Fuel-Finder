@@ -15,8 +15,8 @@ const createReviewSchema = {
     }),
     targetId: z.number().positive('Target ID must be a positive number'),
     rating: z.number().min(1, 'Rating must be at least 1').max(5, 'Rating must not exceed 5'),
-    comment: z.string().min(1, 'Comment is required').max(1000, 'Comment must not exceed 1000 characters'),
-    userName: z.string().optional(),
+    comment: z.string().max(1000, 'Comment must not exceed 1000 characters').nullable().optional(),
+    displayName: z.string().max(100).nullable().optional(),
     userEmail: z.string().email().optional()
   })
 };
