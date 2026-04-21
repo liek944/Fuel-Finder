@@ -45,9 +45,11 @@ interface LocationState {
   lastUpdate: number;
   /** Whether initial location is still being acquired */
   loading: boolean;
+  /** True when position is the hardcoded fallback, not real GPS */
+  isUsingFallback: boolean;
 }
 
-const DEFAULT_POSITION: [number, number] = [12.5966, 121.5258]; // Oriental Mindoro
+const DEFAULT_POSITION: [number, number] = [12.5800, 121.5100]; // Roxas, Oriental Mindoro town center
 const DEFAULT_THROTTLE_MS = 3000;
 const DEFAULT_MAX_ACCURACY_METERS = 50;
 const DEFAULT_STALE_POSITION_MS = 20000;
@@ -79,6 +81,7 @@ export function useLocationTracking(options?: LocationTrackingOptions): Location
   const [speed, setSpeed] = useState<number | null>(null);
   const [lastUpdate, setLastUpdate] = useState<number>(Date.now());
   const [loading, setLoading] = useState<boolean>(true);
+  const [isUsingFallback, setIsUsingFallback] = useState<boolean>(false);
 
   // Refs for throttling logic
   const lastUpdateRef = useRef<number>(0);
@@ -146,6 +149,7 @@ export function useLocationTracking(options?: LocationTrackingOptions): Location
           setAccuracy(newAccuracy);
           setSpeed(newSpeed);
           setLastUpdate(now);
+          setIsUsingFallback(false); // Real GPS received
           lastUpdateRef.current = now;
           lastAcceptedPositionRef.current = newPosition;
           lastAccuracyRef.current = newAccuracy;
@@ -161,8 +165,9 @@ export function useLocationTracking(options?: LocationTrackingOptions): Location
 
         // Only set default location if we don't have a position yet
         if (!lastAcceptedPositionRef.current) {
-          console.log("📍 Using default location (Oriental Mindoro)");
+          console.log("📍 Using default location (Roxas, Oriental Mindoro) — GPS unavailable");
           setPosition(defaultPosition);
+          setIsUsingFallback(true); // Notify UI that this is not a real GPS position
           lastAcceptedPositionRef.current = defaultPosition;
           lastAccuracyRef.current = null;
           lastUpdateRef.current = Date.now();
@@ -186,7 +191,7 @@ export function useLocationTracking(options?: LocationTrackingOptions): Location
     };
   }, [throttleMs, maxAccuracyMeters, stalePositionMs, defaultPosition]);
 
-  return { position, accuracy, speed, lastUpdate, loading };
+  return { position, accuracy, speed, lastUpdate, loading, isUsingFallback };
 }
 
 export default useLocationTracking;

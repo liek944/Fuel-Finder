@@ -74,6 +74,7 @@ const MainApp: React.FC = () => {
     speed: currentSpeed,
     lastUpdate: lastLocationUpdate,
     loading,
+    isUsingFallback,
   } = useLocationTracking();
   const [speedUnit, setSpeedUnit] = useState<'kmh' | 'mph'>('kmh');
 
@@ -514,6 +515,35 @@ const MainApp: React.FC = () => {
         </div>
       )}
 
+      {/* Fallback location banner — shown when real GPS is unavailable */}
+      {isUsingFallback && (
+        <div
+          style={{
+            position: "absolute",
+            top: isMobile ? "56px" : "72px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            background: "#e65100",
+            color: "#fff",
+            padding: "8px 16px",
+            borderRadius: "20px",
+            fontSize: "13px",
+            fontWeight: 600,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+          }}
+          role="alert"
+          aria-live="polite"
+        >
+          ⚠️ GPS unavailable — showing default location
+        </div>
+      )}
+
       {/* Map */}
       <MapShell
         center={position}
@@ -574,9 +604,11 @@ const MainApp: React.FC = () => {
         <Marker position={position} icon={DefaultIcon}>
           <Popup autoPan={false}>
             <div>
-              <b>📍 Your Location</b>
-              <div style={{ marginTop: 4, fontSize: 12, color: "#666" }}>
-                Current position
+              <b>{isUsingFallback ? "📍 Default Location" : "📍 Your Location"}</b>
+              <div style={{ marginTop: 4, fontSize: 12, color: isUsingFallback ? "#e65100" : "#666" }}>
+                {isUsingFallback
+                  ? "GPS unavailable — showing Roxas, Oriental Mindoro"
+                  : "Current position"}
               </div>
               <div style={{ marginTop: 4, fontSize: 11, color: "#888" }}>
                 {position[0].toFixed(6)}, {position[1].toFixed(6)}
