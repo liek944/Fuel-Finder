@@ -43,7 +43,7 @@ const config = {
 
   // OSRM Configuration
   osrm: {
-    url: process.env.OSRM_URL || "http://54.179.50.97:5000",
+    url: process.env.OSRM_URL || "http://54.242.12.213:5000",
     timeoutMs: parseInt(process.env.OSRM_TIMEOUT_MS || "15000", 10)
   },
 

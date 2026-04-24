@@ -5,7 +5,7 @@ import { offlineRouter, isOfflineRoute, getOfflineRouteWarning, type OfflineRout
 import { shouldActOffline } from '../utils/offlineModeState';
 
 // Routing requests need a longer timeout since they involve an extra network hop to OSRM
-// Backend uses public OSRM (router.project-osrm.org) which may be slow under heavy load
+// Backend uses self-hosted EC2 OSRM instance for routing
 const ROUTING_TIMEOUT_MS = 20000;
 
 export interface RouteData {

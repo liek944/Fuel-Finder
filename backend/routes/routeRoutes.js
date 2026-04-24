@@ -112,11 +112,8 @@ router.get("/", async (req, res) => {
       return res.json(cachedRoute);
     }
 
-    // Call OSRM API
-    // NOTE: EC2 OSRM temporarily disabled - using public OSRM directly
-    // To re-enable EC2, uncomment the OSRM_BASE_URL line and the try/catch block below
-    // const OSRM_BASE_URL = process.env.OSRM_BASE_URL || "http://52.64.226.94:5000";
-    const OSRM_BASE_URL = "https://router.project-osrm.org"; // Public OSRM (temporary)
+    // Call OSRM API (self-hosted EC2 instance)
+    const OSRM_BASE_URL = process.env.OSRM_BASE_URL || "http://54.242.12.213:5000";
     const queryParams = "overview=full&geometries=geojson&alternatives=false";
     
     const osrmUrl = `${OSRM_BASE_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
@@ -148,7 +145,7 @@ router.get("/", async (req, res) => {
 
     let osrmResponse;
     
-    // Single OSRM request (EC2 fallback logic disabled temporarily)
+    // Single OSRM request to EC2 instance
     console.log(`🔄 Calling OSRM...`);
     osrmResponse = await tryGet(osrmUrl);
     console.log(`✅ OSRM request succeeded`);

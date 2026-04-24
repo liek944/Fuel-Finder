@@ -6,6 +6,7 @@ node_modules/
 DOCUMENTATIONS AND CONTEXT/
 coverage/
 
+
 # =============================================
 # ENVIRONMENT VARIABLES — NEVER COMMIT SECRETS
 # =============================================
@@ -77,3 +78,9 @@ yarn-error.log*
 # IDE
 # =============================================
 .vscode/settings.json
+
+# =============================================
+# ROOT MARKDOWN FILES
+# =============================================
+/*.md
+!README.md
