@@ -8,6 +8,8 @@
     font-family:
         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
         Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    /* Prevent iOS tap highlight */
 }
 
 .admin-portal-navigation {
@@ -174,6 +176,8 @@
     width: 320px;
     max-height: calc(100vh - 100px);
     overflow-y: auto;
+    /* Smooth scrolling for touch devices */
+    -webkit-overflow-scrolling: touch;
 }
 
 .poi-form-overlay {
@@ -198,6 +202,7 @@
     max-height: 90%;
     overflow-y: auto;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Responsive Media Queries */
@@ -255,12 +260,14 @@
         display: none;
     }
 
-    /* Floating Back Button */
+    /* Floating Back Button — 44px minimum tap target */
     .back-to-map-button {
         pointer-events: auto;
         /* Re-enable clicks */
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
         border-radius: 50%;
         padding: 0;
         display: flex;
@@ -276,7 +283,7 @@
         font-size: 20px;
     }
 
-    /* Floating Hamburger Menu Button */
+    /* Floating Hamburger Menu Button — 44px minimum tap target */
     .hamburger-menu-button {
         display: flex;
         pointer-events: auto;
@@ -285,14 +292,16 @@
         /* Force absolute positioning */
         top: 10px;
         right: 10px;
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
         background: white;
         border-radius: 50%;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
         align-items: center;
         justify-content: center;
-        padding: 8px;
+        padding: 10px;
         z-index: 1001;
         /* Ensure it's on top */
     }
@@ -317,18 +326,18 @@
     /* View Switcher (The Menu) */
     .view-switcher {
         position: absolute;
-        top: 60px;
+        top: 64px;
         /* Below the floating buttons */
         right: 10px;
         /* Align right */
         left: auto;
         /* Not full width */
-        width: 200px;
-        /* Fixed width dropdown */
+        width: 220px;
+        /* Wider dropdown for better tap targets */
         margin: 0;
         flex-direction: column;
         background: white;
-        border-radius: 8px;
+        border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         max-height: 0;
         overflow: hidden;
@@ -348,13 +357,19 @@
     .view-switcher-button {
         width: 100%;
         text-align: left;
-        padding: 12px 15px;
-        font-size: 14px;
+        padding: 14px 16px;
+        /* Increased padding for 44px+ touch targets */
+        font-size: 15px;
+        /* Larger text for readability */
         margin: 0;
         border-radius: 0;
         background: transparent;
         border-bottom: 1px solid #f0f0f0;
         color: #333;
+        min-height: 48px;
+        /* Ensure minimum tap target height */
+        display: flex;
+        align-items: center;
     }
 
     .view-switcher-button:last-child {
@@ -376,28 +391,124 @@
         display: none;
     }
 
+    /* Admin Controls Panel — scrollable card on mobile */
     .admin-controls-panel {
         width: 90%;
         max-width: 350px;
         left: 50%;
         transform: translateX(-50%);
-        top: 60px;
+        top: 64px;
         /* Adjust for floating buttons */
         max-height: calc(100vh - 80px);
+        padding: 16px;
+        border-radius: 12px;
+    }
+
+    /* Increase base font size for admin controls on mobile */
+    .admin-controls-panel label {
+        font-size: 14px !important;
+    }
+
+    .admin-controls-panel input[type="text"],
+    .admin-controls-panel input[type="password"],
+    .admin-controls-panel input[type="number"],
+    .admin-controls-panel input[type="time"],
+    .admin-controls-panel input[type="tel"],
+    .admin-controls-panel select,
+    .admin-controls-panel textarea {
+        font-size: 16px !important;
+        /* Prevents iOS zoom on focus */
+        padding: 12px !important;
+        min-height: 44px;
+        border-radius: 8px !important;
+        box-sizing: border-box;
+    }
+
+    .admin-controls-panel button {
+        min-height: 44px;
+        font-size: 14px !important;
+        padding: 12px 16px !important;
+        border-radius: 8px !important;
+    }
+
+    /* POI Form Overlay — full-screen on mobile */
+    .poi-form-overlay {
+        align-items: flex-end;
+        /* Bottom sheet style */
     }
 
     .poi-form-container {
-        width: 95%;
+        width: 100%;
+        max-width: 100%;
+        max-height: 92vh;
+        border-radius: 16px 16px 0 0;
+        padding: 20px 16px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Increase tap targets and font sizes inside the POI form */
+    .poi-form-container label {
+        font-size: 14px !important;
+    }
+
+    .poi-form-container input[type="text"],
+    .poi-form-container input[type="password"],
+    .poi-form-container input[type="number"],
+    .poi-form-container input[type="time"],
+    .poi-form-container input[type="tel"],
+    .poi-form-container select,
+    .poi-form-container textarea {
+        font-size: 16px !important;
+        /* Prevents iOS zoom on focus */
+        padding: 12px !important;
+        min-height: 44px;
+        border-radius: 8px !important;
+        box-sizing: border-box;
+    }
+
+    .poi-form-container button {
+        min-height: 48px;
+        font-size: 15px !important;
+        border-radius: 8px !important;
+    }
+
+    /* Content areas */
+    .admin-content-offset {
+        height: 64px;
+    }
+
+    .user-analytics-container {
+        padding-top: 64px;
     }
 }
 
 /* Mobile Devices specific adjustments */
 @media (max-width: 480px) {
     .admin-controls-panel {
-        top: 60px;
+        top: 64px;
         width: 94%;
         left: 3%;
         transform: none;
+        max-height: calc(100vh - 80px);
+        padding: 14px;
+    }
+
+    /* POI type grid: 2 columns on very small screens */
+    .poi-form-container [style*="gridTemplateColumns"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+/* Very small screens (e.g., iPhone SE, small Androids) */
+@media (max-width: 360px) {
+    .admin-controls-panel {
+        width: 96%;
+        left: 2%;
+        padding: 12px;
+    }
+
+    .view-switcher {
+        width: 180px;
     }
 }
 

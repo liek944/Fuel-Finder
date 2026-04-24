@@ -33,7 +33,7 @@ local.properties
 /frontend/android/app/build/
 /owner-app/android/app/build/
 dist/
-
+/frontend/build-admin-apk.sh
 # =============================================
 # INTERNAL DEV SCRIPTS (not for public)
 # =============================================

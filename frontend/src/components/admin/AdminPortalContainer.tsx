@@ -172,15 +172,28 @@ const AdminPortalContainer: React.FC = () => {
         />
       )}
       
-      {/* Toast Notifications */}
-      <div style={{ position: 'fixed', top: 20, right: 20, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Toast Notifications — responsive: centered on mobile, top-right on desktop */}
+      <div style={{
+        position: 'fixed',
+        top: 'env(safe-area-inset-top, 12px)',
+        right: 0,
+        left: 0,
+        zIndex: 9999,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        padding: '12px 16px',
+        pointerEvents: 'none',
+      }}>
         {toasts.map((toast) => (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            onClose={() => hideToast(toast.id)}
-          />
+          <div key={toast.id} style={{ pointerEvents: 'auto', width: '100%', maxWidth: 400 }}>
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => hideToast(toast.id)}
+            />
+          </div>
         ))}
       </div>
     </div>
