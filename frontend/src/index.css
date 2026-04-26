@@ -11,3 +11,10 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Move Leaflet layer control to middle-left on mobile to prevent Android nav bar overlap */
+@media (max-width: 768px) {
+  .leaflet-bottom.leaflet-left .leaflet-control-layers {
+    margin-bottom: calc(50vh - 100px) !important;
+  }
+}
