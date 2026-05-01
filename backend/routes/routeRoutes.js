@@ -112,13 +112,44 @@ router.get("/", async (req, res) => {
       return res.json(cachedRoute);
     }
 
-    // Call OSRM API (self-hosted EC2 instance)
-    const OSRM_BASE_URL = process.env.OSRM_BASE_URL || "http://54.242.12.213:5000";
+    // OSRM servers: primary (self-hosted EC2), fallback (Valhalla at openstreetmap.de)
+    const OSRM_PRIMARY_URL = process.env.OSRM_BASE_URL || "http://54.242.12.213:5000";
     const queryParams = "overview=full&geometries=geojson&alternatives=false";
-    
-    const osrmUrl = `${OSRM_BASE_URL}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
-    
-    console.log(`➡️  OSRM URL: ${osrmUrl}`);
+
+    function buildOsrmUrl(baseUrl) {
+      return `${baseUrl}/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${queryParams}`;
+    }
+
+    /**
+     * Decode Google-style encoded polyline (precision 6, used by Valhalla)
+     * Returns array of [lat, lng] pairs
+     */
+    function decodePolyline(encoded, precision = 6) {
+      const factor = Math.pow(10, precision);
+      const coords = [];
+      let index = 0, lat = 0, lng = 0;
+
+      while (index < encoded.length) {
+        let shift = 0, result = 0, byte;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20);
+        lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+        shift = 0; result = 0;
+        do {
+          byte = encoded.charCodeAt(index++) - 63;
+          result |= (byte & 0x1f) << shift;
+          shift += 5;
+        } while (byte >= 0x20);
+        lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+        coords.push([lat / factor, lng / factor]);
+      }
+      return coords;
+    }
 
     // Prefer IPv4 for DNS resolution (workaround for some networks)
     try {
@@ -132,9 +163,9 @@ router.get("/", async (req, res) => {
     const httpAgent = new http.Agent({ keepAlive: true });
     const httpsAgent = new https.Agent({ keepAlive: true });
 
-    async function tryGet(url) {
+    async function tryGet(url, timeoutMs) {
       return axios.get(url, {
-        timeout: OSRM_TIMEOUT_MS,
+        timeout: timeoutMs,
         headers: { "User-Agent": "FuelFinder/1.0" },
         family: 4,
         lookup: ipv4Lookup,
@@ -143,38 +174,80 @@ router.get("/", async (req, res) => {
       });
     }
 
-    let osrmResponse;
-    
-    // Single OSRM request to EC2 instance
-    console.log(`🔄 Calling OSRM...`);
-    osrmResponse = await tryGet(osrmUrl);
-    console.log(`✅ OSRM request succeeded`);
+    let routeData;
+    let usedFallback = false;
 
-    if (
-      !osrmResponse.data ||
-      !osrmResponse.data.routes ||
-      osrmResponse.data.routes.length === 0
-    ) {
-      return res.status(404).json({
-        error: "No route found",
-        message: "OSRM could not find a route between the specified points",
-      });
+    // Try primary EC2 OSRM instance first
+    const primaryUrl = buildOsrmUrl(OSRM_PRIMARY_URL);
+    console.log(`🔄 Calling primary OSRM: ${primaryUrl}`);
+    try {
+      const osrmResponse = await tryGet(primaryUrl, OSRM_TIMEOUT_MS);
+      console.log(`✅ Primary OSRM request succeeded`);
+
+      if (!osrmResponse.data?.routes?.length) {
+        return res.status(404).json({
+          error: "No route found",
+          message: "OSRM could not find a route between the specified points",
+        });
+      }
+
+      const route = osrmResponse.data.routes[0];
+      const geometry = route.geometry;
+
+      routeData = {
+        coordinates: geometry.coordinates.map((coord) => [coord[1], coord[0]]),
+        distance: Math.round(route.distance),
+        duration: Math.round(route.duration),
+        distance_km: Math.round((route.distance / 1000) * 10) / 10,
+        duration_minutes: Math.round(route.duration / 60),
+      };
+    } catch (primaryErr) {
+      // Primary failed — try Valhalla (openstreetmap.de) as fallback
+      console.warn(`⚠️ Primary OSRM failed: ${primaryErr?.message || primaryErr}`);
+
+      const valhallaUrl = `https://valhalla1.openstreetmap.de/route?json=${encodeURIComponent(JSON.stringify({
+        locations: [
+          { lat: startLat, lon: startLng },
+          { lat: endLat, lon: endLng },
+        ],
+        costing: "auto",
+        directions_options: { units: "km" },
+      }))}`;
+
+      console.log(`🔄 Trying Valhalla fallback...`);
+      try {
+        const valhallaResponse = await tryGet(valhallaUrl, OSRM_TIMEOUT_MS);
+        usedFallback = true;
+        console.log(`✅ Valhalla fallback succeeded`);
+
+        const trip = valhallaResponse.data?.trip;
+        if (!trip?.legs?.length) {
+          return res.status(404).json({
+            error: "No route found",
+            message: "Valhalla could not find a route between the specified points",
+          });
+        }
+
+        // Decode the encoded polyline shape from Valhalla
+        const coordinates = decodePolyline(trip.legs[0].shape);
+        const distanceKm = trip.summary?.length || 0;
+        const durationSec = trip.summary?.time || 0;
+
+        routeData = {
+          coordinates,
+          distance: Math.round(distanceKm * 1000),
+          duration: Math.round(durationSec),
+          distance_km: Math.round(distanceKm * 10) / 10,
+          duration_minutes: Math.round(durationSec / 60),
+        };
+      } catch (fallbackErr) {
+        console.error(`❌ Valhalla fallback also failed: ${fallbackErr?.message || fallbackErr}`);
+        throw primaryErr;
+      }
     }
 
-    const route = osrmResponse.data.routes[0];
-    const geometry = route.geometry;
-
-    // Extract route information
-    const routeData = {
-      coordinates: geometry.coordinates.map((coord) => [coord[1], coord[0]]), // Convert [lng, lat] to [lat, lng]
-      distance: Math.round(route.distance), // meters
-      duration: Math.round(route.duration), // seconds
-      distance_km: Math.round((route.distance / 1000) * 10) / 10, // kilometers, rounded to 1 decimal
-      duration_minutes: Math.round(route.duration / 60), // minutes
-    };
-
     console.log(
-      `✅ Route found: ${routeData.distance_km}km, ${routeData.duration_minutes}min, ${routeData.coordinates.length} points`,
+      `✅ Route found${usedFallback ? ' (via Valhalla fallback)' : ''}: ${routeData.distance_km}km, ${routeData.duration_minutes}min, ${routeData.coordinates.length} points`,
     );
 
     // cache route

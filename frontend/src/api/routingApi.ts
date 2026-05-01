@@ -64,6 +64,22 @@ export const routingApi = {
       const json = await res.json().catch(() => ({}));
       
       if (!res.ok) {
+        // Gateway errors (502/503/504) mean the upstream OSRM proxy is down.
+        // Treat these like being offline — fall through to the offline router.
+        const isGatewayError = [502, 503, 504].includes(res.status);
+        if (isGatewayError) {
+          console.warn(`[routingApi] Gateway error ${res.status}, falling back to offline router`);
+          const offlineRoute = await offlineRouter.route(startLat, startLng, endLat, endLng);
+          console.log(`[routingApi] Offline route method: ${offlineRoute.routingMethod}`);
+          return {
+            coordinates: offlineRoute.coordinates,
+            distance: offlineRoute.distance,
+            duration: offlineRoute.duration,
+            isSimplified: offlineRoute.routingMethod === 'simplified',
+            cachedAt: offlineRoute.routingMethod === 'cached' ? Date.now() : undefined,
+          };
+        }
+
         throw new Error(json?.message || `HTTP ${res.status}`);
       }
       
