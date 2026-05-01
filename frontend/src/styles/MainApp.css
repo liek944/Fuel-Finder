@@ -505,7 +505,7 @@
 
 /* Mobile Filter Chip (top-center) */
 .filter-chip {
-    position: absolute;
+    position: fixed;
     top: 1rem;
     left: 50%;
     transform: translateX(-50%);
@@ -545,7 +545,7 @@
 }
 
 .mobile-menu-button {
-    position: absolute;
+    position: fixed;
     top: 1rem;
     right: 0.75rem;
     z-index: 1200;

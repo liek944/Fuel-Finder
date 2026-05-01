@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -19,6 +19,8 @@ import Register from "./components/auth/Register";
 import { OwnerThemeProvider } from "./contexts/OwnerThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { SavedStationsProvider } from "./contexts/SavedStationsContext";
+import { useUpdateChecker } from "./hooks/useUpdateChecker";
+import UpdateDialog from "./components/UpdateDialog";
 import "./App.css";
 
 /**
@@ -93,6 +95,16 @@ function App() {
   const [subdomain, setSubdomain] = useState<string | null>(null);
   const [isOwnerPortal, setIsOwnerPortal] = useState(false);
 
+  // ── In-app update check (Capacitor/Android only) ──────────────────────────
+  const { updateAvailable, latestVersion, releaseUrl } = useUpdateChecker();
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const handleDismissUpdate = useCallback(() => setShowUpdateDialog(false), []);
+
+  // Show the dialog once we know there is an update
+  useEffect(() => {
+    if (updateAvailable) setShowUpdateDialog(true);
+  }, [updateAvailable]);
+
   useEffect(() => {
     // Detect subdomain from hostname
     const hostname = window.location.hostname;
@@ -119,6 +131,13 @@ function App() {
             </Routes>
           </div>
         </Router>
+        {showUpdateDialog && latestVersion && (
+          <UpdateDialog
+            latestVersion={latestVersion}
+            releaseUrl={releaseUrl}
+            onDismiss={handleDismissUpdate}
+          />
+        )}
       </OwnerThemeProvider>
     );
   }
@@ -147,6 +166,15 @@ function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
+
+          {/* In-app update prompt (Android/Capacitor only) */}
+          {showUpdateDialog && latestVersion && (
+            <UpdateDialog
+              latestVersion={latestVersion}
+              releaseUrl={releaseUrl}
+              onDismiss={handleDismissUpdate}
+            />
+          )}
         </SavedStationsProvider>
       </AuthProvider>
     </Router>
