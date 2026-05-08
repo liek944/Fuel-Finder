@@ -96,25 +96,12 @@ if [ -f "$APK_PATH" ]; then
   echo "   🏷️  Version:  v$APP_VERSION"
   echo ""
 
-  # ── Step 8: Auto-publish to GitHub Releases ──────────────────────────────────
-  if command -v gh &>/dev/null && gh auth status &>/dev/null; then
-    echo "🚀 Publishing GitHub release v$APP_VERSION..."
-    gh release create "v$APP_VERSION" "$APK_PATH" \
-      --title "v$APP_VERSION" \
-      --generate-notes
-    echo ""
-    echo "🎉 Done! Users will now be notified of the update on next app launch."
-  else
-    echo "⚠️  GitHub CLI (gh) not found or not authenticated."
-    echo "   Install it: https://cli.github.com"
-    echo "   Then run:   gh auth login"
-    echo ""
-    echo "   Or upload manually:"
-    echo "   gh release create v$APP_VERSION $APK_PATH --title \"v$APP_VERSION\" --generate-notes"
-  fi
+  # ── Step 8: Print the GitHub Release command ─────────────────────────────────
+  echo "🎉 Done! To publish this release so users get notified, run:"
+  echo "   gh release create \"v$APP_VERSION\" \"$APK_PATH\" --title \"v$APP_VERSION\" --generate-notes"
+  echo ""
 else
   echo ""
   echo "❌ APK build failed — check output above for errors"
   exit 1
 fi
-

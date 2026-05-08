@@ -10,6 +10,7 @@
 
 # production
 /build
+/frontend
 
 # misc
 .DS_Store
@@ -21,3 +22,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Auto-generated build files
+android/app/build.gradle
+android/app/capacitor.build.gradle
+android/capacitor.settings.gradle
+public/version.json

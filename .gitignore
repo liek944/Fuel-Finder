@@ -84,3 +84,6 @@ yarn-error.log*
 # =============================================
 /*.md
 !README.md
+frontend/android/capacitor.settings.gradle
+frontend/android/app/build.gradle
+frontend/android/app/capacitor.build.gradle
