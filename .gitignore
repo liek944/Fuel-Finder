@@ -87,3 +87,4 @@ yarn-error.log*
 frontend/android/capacitor.settings.gradle
 frontend/android/app/build.gradle
 frontend/android/app/capacitor.build.gradle
+.agents/
