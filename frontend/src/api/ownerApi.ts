@@ -2,6 +2,16 @@ import { apiCall, getApiUrl } from '../utils/api';
 import { apiEndpoints } from '../constants/apiEndpoints';
 
 export const ownerApi = {
+  /**
+   * Get list of all active owner domains (for login dropdown)
+   */
+  getDomains: async (): Promise<{ name: string; domain: string }[]> => {
+    const url = getApiUrl(apiEndpoints.owner.domains());
+    const res = await apiCall(url, { method: 'GET' });
+    const json = await res.json().catch(() => []);
+    if (!res.ok) throw new Error('Failed to fetch domains');
+    return json;
+  },
   getOwnerInfo: async (subdomain: string) => {
     const url = getApiUrl(apiEndpoints.owner.info());
     const res = await apiCall(url, { method: 'GET', headers: { 'x-owner-domain': subdomain } });

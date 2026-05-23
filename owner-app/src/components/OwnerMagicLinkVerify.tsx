@@ -3,6 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ownerApi } from '../api/ownerApi';
 import './OwnerLogin.css';
 
+/**
+ * OwnerMagicLinkVerify
+ * Handles the verification of magic link tokens from email
+ * URL: /owner/verify/:token
+ */
 const OwnerMagicLinkVerify: React.FC<{ subdomain: string }> = ({ subdomain }) => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -23,8 +28,10 @@ const OwnerMagicLinkVerify: React.FC<{ subdomain: string }> = ({ subdomain }) =>
       const result = await ownerApi.verifyMagicLink(linkToken, subdomain);
 
       if (result.success && result.api_key) {
+        // Store credentials
         localStorage.setItem('owner_api_key', result.api_key);
         localStorage.setItem('owner_subdomain', subdomain);
+
         setStatus('success');
       } else {
         setStatus('error');
@@ -40,7 +47,7 @@ const OwnerMagicLinkVerify: React.FC<{ subdomain: string }> = ({ subdomain }) =>
     <div className="owner-login-container">
       <div className="owner-login-card">
         <div className="owner-login-header">
-          <h1>⛽ Fuel Finder Owner</h1>
+          <h1>🏪 Owner Portal</h1>
         </div>
 
         <div style={{ padding: '40px 30px', textAlign: 'center' }}>
@@ -77,7 +84,7 @@ const OwnerMagicLinkVerify: React.FC<{ subdomain: string }> = ({ subdomain }) =>
               <h2 style={{ margin: '0 0 10px', color: '#dc2626' }}>Verification Failed</h2>
               <p style={{ color: '#6b7280', marginBottom: '20px' }}>{error}</p>
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/owner/login')}
                 className="login-button"
                 style={{ maxWidth: '300px', margin: '0 auto' }}
               >
@@ -89,7 +96,7 @@ const OwnerMagicLinkVerify: React.FC<{ subdomain: string }> = ({ subdomain }) =>
       </div>
 
       <footer className="login-footer">
-        <p>Fuel Finder Owner</p>
+        <p>Fuel Finder Owner Management System</p>
       </footer>
     </div>
   );

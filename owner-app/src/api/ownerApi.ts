@@ -12,7 +12,6 @@ export const ownerApi = {
     if (!res.ok) throw new Error('Failed to fetch domains');
     return json;
   },
-
   getOwnerInfo: async (subdomain: string) => {
     const url = getApiUrl(apiEndpoints.owner.info());
     const res = await apiCall(url, { method: 'GET', headers: { 'x-owner-domain': subdomain } });
@@ -52,9 +51,9 @@ export const ownerApi = {
       {
         method: 'POST',
         headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: notes || 'Verified by owner' }),
+        body: JSON.stringify({ notes: notes || 'Verified by owner' })
       },
-      apiKey,
+      apiKey
     );
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
@@ -68,9 +67,9 @@ export const ownerApi = {
       {
         method: 'POST',
         headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: 'Rejected by owner', reason: reason || 'Incorrect price information' }),
+        body: JSON.stringify({ notes: 'Rejected by owner', reason: reason || 'Incorrect price information' })
       },
-      apiKey,
+      apiKey
     );
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
@@ -80,7 +79,7 @@ export const ownerApi = {
   getReviews: async (
     apiKey: string,
     subdomain: string,
-    params: { status?: string; stationId?: number | 'all'; page?: number; pageSize?: number } = {},
+    params: { status?: string; stationId?: number | 'all'; page?: number; pageSize?: number } = {}
   ) => {
     const search = new URLSearchParams();
     if (params.status && params.status !== 'all') search.set('status', params.status);
@@ -99,11 +98,7 @@ export const ownerApi = {
     const url = getApiUrl(apiEndpoints.owner.updateStation(stationId));
     const res = await apiCall(
       url,
-      {
-        method: 'PUT',
-        headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      },
+      { method: 'PUT', headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' }, body: JSON.stringify(data) },
       apiKey,
     );
     const json = await res.json().catch(() => ({}));
@@ -124,7 +119,7 @@ export const ownerApi = {
       {
         method: 'PUT',
         headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fuel_type, price }),
+        body: JSON.stringify({ fuel_type, price })
       },
       apiKey,
     );
@@ -147,16 +142,12 @@ export const ownerApi = {
     reviewId: number,
     apiKey: string,
     subdomain: string,
-    data: { status: 'published' | 'rejected' },
+    data: { status: 'published' | 'rejected' }
   ) => {
     const url = getApiUrl(apiEndpoints.owner.updateReview(reviewId));
     const res = await apiCall(
       url,
-      {
-        method: 'PATCH',
-        headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      },
+      { method: 'PATCH', headers: { 'x-owner-domain': subdomain, 'Content-Type': 'application/json' }, body: JSON.stringify(data) },
       apiKey,
     );
     const json = await res.json().catch(() => ({}));
@@ -164,7 +155,12 @@ export const ownerApi = {
     return json;
   },
 
-  deleteFuelPrice: async (stationId: number, fuelType: string, apiKey: string, subdomain: string) => {
+  deleteFuelPrice: async (
+    stationId: number,
+    fuelType: string,
+    apiKey: string,
+    subdomain: string,
+  ) => {
     const url = getApiUrl(apiEndpoints.owner.deleteFuelPrice(stationId, fuelType));
     const res = await apiCall(
       url,
@@ -178,6 +174,7 @@ export const ownerApi = {
     return true;
   },
 
+  // Magic link authentication
   requestMagicLink: async (email: string, subdomain: string) => {
     const url = getApiUrl(apiEndpoints.owner.requestMagicLink());
     const res = await apiCall(url, {
@@ -201,10 +198,8 @@ export const ownerApi = {
     return json;
   },
 
-  checkMagicLinkStatus: async (
-    sessionToken: string,
-    subdomain: string,
-  ): Promise<{
+  // Check magic link session status (for cross-device polling)
+  checkMagicLinkStatus: async (sessionToken: string, subdomain: string): Promise<{
     status: 'pending' | 'verified' | 'expired' | 'not_found';
     message: string;
     owner?: { name: string; domain: string; email: string };
@@ -216,6 +211,7 @@ export const ownerApi = {
       headers: { 'x-owner-domain': subdomain },
     });
     const json = await res.json().catch(() => ({}));
+    // Don't throw on 404 - that's a valid "not_found" status
     if (!res.ok && res.status !== 404) throw new Error(json?.message || `HTTP ${res.status}`);
     return json;
   },
