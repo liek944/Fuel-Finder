@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { apiGet } from '../utils/api';
 import '../styles/RegionalPricesBanner.css';
 
 interface RegionalPrice {
@@ -16,7 +17,7 @@ const RegionalPricesBanner: React.FC = () => {
   useEffect(() => {
     const fetchRegionalPrices = async () => {
       try {
-        const response = await fetch('/api/regional-prices');
+        const response = await apiGet('/api/regional-prices');
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.data) {

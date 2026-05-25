@@ -31,19 +31,26 @@ const fetchAndAggregateFuelPrices = async () => {
         }
 
         // Extract snippets to feed to Gemini
-        const snippets = articles.map(article => `Title: ${article.title}\nSnippet: ${article.snippet}`).join('\n\n');
+        const snippets = articles.map(article => `Title: ${article.title}\nDate: ${article.date || 'Unknown'}\nSnippet: ${article.snippet}`).join('\n\n');
         
         // 2. Use Gemini to extract prices
         const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         
+        const currentDate = new Date().toDateString();
         const prompt = `
         Analyze the following search snippets about fuel prices in Oriental Mindoro, Philippines.
-        Extract the current average price for all mentioned fuel types (e.g., Regular/Gasoline, Premium, Diesel, Kerosene, etc.).
-        If a price is a range, take the midpoint.
-        Return ONLY a JSON array of objects with the following keys: "fuel_type" (must be "Regular", "Premium", "Diesel", "Kerosene", or other specific types found) and "average_price" (number).
-        If no price can be confidently found for a fuel type, do not include it. Note: If the snippet just says "Gasoline", map it to "Regular".
+        The current date is ${currentDate}.
+        Extract the current average price for EACH fuel type mentioned (e.g., Gasoline, Diesel, Premium, Regular, Kerosene).
+        Look carefully at the text and the provided Date. If the information is "way too old" (e.g., older than 30 days from the current date), DISCARD it and do not extract those prices.
+        If a snippet says "Gasoline prices range from ₱83.50 to ₱97.29... while diesel...", you MUST extract BOTH Gasoline and Diesel.
+        If a price is a range, take the midpoint (e.g., (83.50 + 97.29) / 2 = 90.40).
+        Return ONLY a JSON array of objects. Each object must have:
+        - "fuel_type": String (e.g., "Gasoline", "Diesel", "Premium", "Regular", "Kerosene").
+        - "average_price": Number (the extracted price or midpoint of range).
+        If all snippets are too old or contain no prices, return an empty array [].
+        Do not include markdown blocks, just the JSON array.
         
-        Snippets:
+        Snippets:U
         ${snippets}
         `;
 
