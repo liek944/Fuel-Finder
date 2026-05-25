@@ -48,6 +48,7 @@ backend/verify-*.js
 backend/test_connection.js
 backend/coverage/
 backend/uploads/
+backend/node_modules/
 
 # =============================================
 # LOGS AND DEBUG
@@ -88,3 +89,4 @@ frontend/android/capacitor.settings.gradle
 frontend/android/app/build.gradle
 frontend/android/app/capacitor.build.gradle
 .agents/
+skills-lock.json

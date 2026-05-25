@@ -38,6 +38,8 @@ export interface Station {
   brand: string;
   fuel_price: number; // Legacy field - kept for backward compatibility
   fuel_prices?: FuelPrice[]; // New field for multiple fuel types
+  price_updated_at?: string;
+  price_updated_by?: string;
   services: string[];
   address: string;
   phone?: string;

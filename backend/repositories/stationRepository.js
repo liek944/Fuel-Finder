@@ -23,6 +23,7 @@ async function getNearbyStations(latitude, longitude, radiusMeters = 3000, owner
       s.address,
       s.phone,
       s.operating_hours,
+      s.price_updated_by,
       ST_X(s.geom) AS lng,
       ST_Y(s.geom) AS lat,
       ST_Distance(
@@ -89,6 +90,7 @@ async function getAllStations(ownerFilter = null) {
       s.address,
       s.phone,
       s.operating_hours,
+      s.price_updated_by,
       ST_X(s.geom) AS lng,
       ST_Y(s.geom) AS lat,
       COALESCE(
@@ -141,6 +143,7 @@ async function getStationById(id) {
       s.address,
       s.phone,
       s.operating_hours,
+      s.price_updated_by,
       ST_X(s.geom) AS lng,
       ST_Y(s.geom) AS lat,
       COALESCE(
@@ -220,9 +223,10 @@ async function updateStation(id, updates) {
         address = $6,
         phone = $7,
         operating_hours = $8,
+        price_updated_by = COALESCE($11, price_updated_by),
         geom = ST_SetSRID(ST_MakePoint($10, $9), 4326)
     WHERE id = $1
-    RETURNING id, name, brand, fuel_price, services, address, phone, operating_hours, 
+    RETURNING id, name, brand, fuel_price, services, address, phone, operating_hours, price_updated_by,
               ST_X(geom) AS lng, ST_Y(geom) AS lat
   `;
 
@@ -236,7 +240,8 @@ async function updateStation(id, updates) {
     phone,
     operating_hours,
     lat,
-    lng
+    lng,
+    updates.price_updated_by
   ]);
   
   return result.rows[0];
@@ -265,6 +270,7 @@ async function searchStations(searchQuery) {
       s.address,
       s.phone,
       s.operating_hours,
+      s.price_updated_by,
       ST_X(s.geom) AS lng,
       ST_Y(s.geom) AS lat
     FROM stations s
@@ -294,6 +300,7 @@ async function getStationsByBrand(brand) {
       s.address,
       s.phone,
       s.operating_hours,
+      s.price_updated_by,
       ST_X(s.geom) AS lng,
       ST_Y(s.geom) AS lat
     FROM stations s

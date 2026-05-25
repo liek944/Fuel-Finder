@@ -33,6 +33,7 @@ export const apiEndpoints = {
     count: () => `/api/user/count`,
   },
   owner: {
+    domains: () => `/api/owner/domains`,
     info: () => `/api/owner/info`,
     dashboard: () => `/api/owner/dashboard`,
     stations: () => `/api/owner/stations`,

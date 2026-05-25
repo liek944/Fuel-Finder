@@ -145,6 +145,7 @@ async function updateStation(stationId, updateData) {
     address: address !== undefined ? address : existing.address,
     phone: phone !== undefined ? phone : existing.phone,
     operating_hours: operating_hours !== undefined ? operating_hours : existing.operating_hours,
+    price_updated_by: "admin",
     lat: location?.lat || existing.lat,
     lng: location?.lng || existing.lng,
   });

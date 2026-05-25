@@ -7,6 +7,7 @@ const app = require("./app");
 const config = require("./config/environment");
 const { testConnection } = require("./config/database");
 const { verifySupabaseConnection } = require("./services/supabaseStorage");
+const { initCronJobs } = require("./scripts/cronJobs");
 
 const port = config.port;
 
@@ -33,6 +34,11 @@ console.log(`🔑 ADMIN_API_KEY configured: ${config.adminApiKey ? `"${config.ad
     console.error("❌ Startup checks failed:", err.message);
   }
 })();
+
+// Initialize cron jobs
+if (!process.env.VERCEL) {
+    initCronJobs();
+}
 
 // Start server (skip on Vercel - serverless doesn't need app.listen)
 if (!process.env.VERCEL) {

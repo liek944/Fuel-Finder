@@ -16,6 +16,8 @@ interface Station {
   brand: string;
   fuel_price: number;
   fuel_prices?: FuelPrice[];
+  price_updated_at?: string;
+  price_updated_by?: string;
   services: string[];
   address: string;
   phone?: string;
@@ -139,7 +141,7 @@ const StationDetail: React.FC<StationDetailProps> = React.memo(({
                             fontWeight: 500,
                           }}
                         >
-                          (verified by owner)
+                          Verified by Owner
                         </span>
                       )}
                       {fp.price_updated_by === "community" && (
@@ -163,7 +165,19 @@ const StationDetail: React.FC<StationDetailProps> = React.memo(({
           (() => {
             const numericPrice = Number(station.fuel_price);
             const hasPrice = Number.isFinite(numericPrice) && numericPrice > 0;
-            return <span> {hasPrice ? `₱${numericPrice.toFixed(2)}/L` : "Unknown"}</span>;
+            return (
+              <span>
+                {hasPrice ? `₱${numericPrice.toFixed(2)}/L` : "Unknown"}
+                {hasPrice && (station.price_updated_by === "owner" || station.price_updated_by === "admin") && (
+                  <span style={{ fontSize: 10, color: "#2563eb", marginLeft: 4, fontWeight: 500 }}>
+                    Verified by Owner
+                  </span>
+                )}
+                {hasPrice && station.price_updated_by === "community" && (
+                  <span style={{ fontSize: 10, color: "#666", marginLeft: 4 }}>(community)</span>
+                )}
+              </span>
+            );
           })()
         )}
       </div>

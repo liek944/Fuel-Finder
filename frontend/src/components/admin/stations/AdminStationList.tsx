@@ -91,7 +91,7 @@ const AdminStationList: React.FC<AdminStationListProps> = ({
                                   ₱{numericPrice.toFixed(2)}/L
                                   {(fp.price_updated_by === "owner" || fp.price_updated_by === "admin") && (
                                     <span style={{ fontSize: 10, color: "#2563eb", marginLeft: 4, fontWeight: 500 }}>
-                                      (verified by owner)
+                                      Verified by Owner
                                     </span>
                                   )}
                                   {fp.price_updated_by === "community" && (
@@ -107,7 +107,19 @@ const AdminStationList: React.FC<AdminStationListProps> = ({
                       (() => {
                         const numericPrice = Number(station.fuel_price);
                         const hasPrice = Number.isFinite(numericPrice) && numericPrice > 0;
-                        return <span> {hasPrice ? `₱${numericPrice.toFixed(2)}/L` : "Unknown"}</span>;
+                        return (
+                          <span>
+                            {hasPrice ? `₱${numericPrice.toFixed(2)}/L` : "Unknown"}
+                            {hasPrice && (station.price_updated_by === "owner" || station.price_updated_by === "admin") && (
+                              <span style={{ fontSize: 10, color: "#2563eb", marginLeft: 4, fontWeight: 500 }}>
+                                Verified by Owner
+                              </span>
+                            )}
+                            {hasPrice && station.price_updated_by === "community" && (
+                              <span style={{ fontSize: 10, color: "#666", marginLeft: 4 }}>(community)</span>
+                            )}
+                          </span>
+                        );
                       })()
                     )}
                   </div>
