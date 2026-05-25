@@ -38,9 +38,9 @@ const fetchAndAggregateFuelPrices = async () => {
         
         const prompt = `
         Analyze the following search snippets about fuel prices in Oriental Mindoro, Philippines.
-        Extract the current average price for these specific fuel types: Regular (often called Gasoline), Premium, and Diesel.
+        Extract the current average price for all mentioned fuel types (e.g., Regular/Gasoline, Premium, Diesel, Kerosene, etc.).
         If a price is a range, take the midpoint.
-        Return ONLY a JSON array of objects with the following keys: "fuel_type" (must be "Regular", "Premium", or "Diesel") and "average_price" (number).
+        Return ONLY a JSON array of objects with the following keys: "fuel_type" (must be "Regular", "Premium", "Diesel", "Kerosene", or other specific types found) and "average_price" (number).
         If no price can be confidently found for a fuel type, do not include it. Note: If the snippet just says "Gasoline", map it to "Regular".
         
         Snippets:

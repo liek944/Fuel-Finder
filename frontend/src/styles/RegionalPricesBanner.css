@@ -2,13 +2,36 @@
   background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
   color: white;
   border-radius: 12px;
-  padding: 16px 20px;
-  margin: 20px auto;
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  margin: 20px auto;
+  pointer-events: auto;
+}
+
+.regional-prices-banner.expanded {
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   max-width: 800px;
+}
+
+.regional-prices-banner.collapsed {
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  width: fit-content;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+  margin-top: 10px;
+}
+
+.regional-prices-banner.collapsed:active {
+  transform: scale(0.95);
 }
 
 .banner-header {
@@ -23,6 +46,30 @@
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+.banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.close-banner-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.close-banner-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .banner-subtitle {

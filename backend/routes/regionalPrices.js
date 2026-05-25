@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../database/db');
+const { pool } = require('../database/db');
 
 // GET /api/regional-prices
 // Fetches the latest average fuel prices for Oriental Mindoro
