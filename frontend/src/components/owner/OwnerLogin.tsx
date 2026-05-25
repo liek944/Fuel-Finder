@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOwnerTheme, ThemeConfig } from '../contexts/OwnerThemeContext';
+import { useOwnerTheme, ThemeConfig } from '../../contexts/OwnerThemeContext';
 import './OwnerLogin.css';
-import { ownerApi } from '../api/ownerApi';
+import { ownerApi } from '../../api/ownerApi';
 
 interface OwnerInfo {
   name: string;
