@@ -130,7 +130,7 @@ const StationDetail: React.FC<StationDetailProps> = React.memo(({
                   return (
                     <>
                       ₱{numericPrice.toFixed(2)}/L
-                      {fp.price_updated_by === "owner" && (
+                      {(fp.price_updated_by === "owner" || fp.price_updated_by === "admin") && (
                         <span
                           style={{
                             fontSize: 10,

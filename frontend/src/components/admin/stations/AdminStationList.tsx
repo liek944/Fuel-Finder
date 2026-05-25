@@ -89,7 +89,7 @@ const AdminStationList: React.FC<AdminStationListProps> = ({
                               return (
                                 <>
                                   ₱{numericPrice.toFixed(2)}/L
-                                  {fp.price_updated_by === "owner" && (
+                                  {(fp.price_updated_by === "owner" || fp.price_updated_by === "admin") && (
                                     <span style={{ fontSize: 10, color: "#2563eb", marginLeft: 4, fontWeight: 500 }}>
                                       (verified by owner)
                                     </span>
