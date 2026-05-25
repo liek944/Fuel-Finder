@@ -1,6 +1,6 @@
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const pool = require('../database/db'); // Using existing db pool
+const { pool } = require('../database/db'); // Using existing db pool
 
 // Initialize Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy_key');
@@ -19,11 +19,11 @@ const fetchAndAggregateFuelPrices = async () => {
         }
 
         // 1. Search the web using SerpApi
-        const searchQuery = "fuel prices Oriental Mindoro update regular premium diesel";
-        const searchUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(searchQuery)}&api_key=${SERPAPI_KEY}&tbm=nws`;
+        const searchQuery = "site:ormindoro.gov.ph OR site:facebook.com fuel prices Oriental Mindoro";
+        const searchUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(searchQuery)}&api_key=${SERPAPI_KEY}`;
         
         const response = await axios.get(searchUrl);
-        const articles = response.data.news_results || [];
+        const articles = response.data.organic_results || [];
         
         if (articles.length === 0) {
             console.log('[Price Aggregator] No recent news found for fuel prices.');
@@ -37,11 +37,11 @@ const fetchAndAggregateFuelPrices = async () => {
         const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         
         const prompt = `
-        Analyze the following news snippets about fuel prices in Oriental Mindoro, Philippines.
-        Extract the current average price for these specific fuel types: Regular, Premium, and Diesel.
+        Analyze the following search snippets about fuel prices in Oriental Mindoro, Philippines.
+        Extract the current average price for these specific fuel types: Regular (often called Gasoline), Premium, and Diesel.
         If a price is a range, take the midpoint.
         Return ONLY a JSON array of objects with the following keys: "fuel_type" (must be "Regular", "Premium", or "Diesel") and "average_price" (number).
-        If no price can be confidently found for a fuel type, do not include it.
+        If no price can be confidently found for a fuel type, do not include it. Note: If the snippet just says "Gasoline", map it to "Regular".
         
         Snippets:
         ${snippets}
