@@ -14,7 +14,7 @@ export function useIsMobile(breakpoint: number = 768): boolean {
       window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     
     // Also check screen size as fallback for unusual configurations
-    const isSmallScreen = Math.min(window.innerWidth, window.innerHeight) <= breakpoint;
+    const isSmallScreen = window.innerWidth <= breakpoint;
     
     return isTouchOnly || isSmallScreen;
   };

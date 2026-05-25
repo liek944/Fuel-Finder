@@ -34,7 +34,7 @@ const fetchAndAggregateFuelPrices = async () => {
         const snippets = articles.map(article => `Title: ${article.title}\nSnippet: ${article.snippet}`).join('\n\n');
         
         // 2. Use Gemini to extract prices
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         
         const prompt = `
         Analyze the following news snippets about fuel prices in Oriental Mindoro, Philippines.
