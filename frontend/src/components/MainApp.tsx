@@ -20,7 +20,6 @@ import CenterToLocationButton from "./map/CenterToLocationButton";
 import PopupScaleFix from "./map/PopupScaleFix";
 import { stationsApi } from "../api/stationsApi";
 import { poisApi } from "../api/poisApi";
-import PWAInstallButton from "./PWAInstallButton";
 import SettingsButton from "./SettingsButton";
 import Toast from "./Toast";
 import { useToast } from "../hooks/useToast";
@@ -805,9 +804,6 @@ const MainApp: React.FC = () => {
 
           {/* Center to My Location Button - simple one-click recenter */}
           <CenterToLocationButton position={position} />
-
-          {/* PWA Install Button */}
-          <PWAInstallButton />
         </MapOverlays>
       </MapShell>
 
