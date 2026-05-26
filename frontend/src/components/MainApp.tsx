@@ -489,7 +489,7 @@ const MainApp: React.FC = () => {
       </div>
 
       {/* Location Accuracy & Speed Indicator */}
-      {locationAccuracy !== null && (
+      {!isMobile && locationAccuracy !== null && (
         <div className="location-accuracy-indicator">
           <div className="location-accuracy-header">
             <span className="location-accuracy-dot" />
