@@ -51,6 +51,8 @@ import {
   calculateDistance,
 } from "../utils/mapIcons";
 import RegionalPricesBanner from "./RegionalPricesBanner";
+import { useSavedStations } from "../contexts/SavedStationsContext";
+import FavoriteStationsPanel from "./FavoriteStationsPanel";
 
 // Create user location icon instance
 const DefaultIcon = createUserLocationIcon();
@@ -101,6 +103,8 @@ const MainApp: React.FC = () => {
   const [showOfflineSettings, setShowOfflineSettings] = useState(false);
   const navigate = useNavigate();
   const routerLocation = useLocation();
+  const { isSaved } = useSavedStations();
+  const [isFavoritesPanelOpen, setIsFavoritesPanelOpen] = useState(false);
 
   // Bottom sheet selection (shared via context)
   const { selectedItem, setSelectedItem, sheetMode, setSheetMode, closeSheet, expandSheet, collapseSheet } = useMapSelection();
@@ -430,6 +434,14 @@ const MainApp: React.FC = () => {
             <h1 className="main-header-title">Fuel Finder</h1>
           </div>
           <div className="main-header-auth">
+            <button
+              className="header-auth-button"
+              onClick={() => setIsFavoritesPanelOpen(true)}
+              style={{ marginRight: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              type="button"
+            >
+              ❤️ Favorites
+            </button>
             {isAuthenticated ? (
               <>
                 <span className="header-user-email">{user?.email}</span>
@@ -674,7 +686,7 @@ const MainApp: React.FC = () => {
               )}
               <Marker
                 position={[station.location.lat, station.location.lng]}
-                icon={createFuelStationIcon(station.brand, proximity, !isOpen)}
+                icon={createFuelStationIcon(station.brand, proximity, !isOpen, isSaved(station.id))}
                 eventHandlers={isMobile ? {
                   click: () => {
                     setSelectedItem({ type: 'station', data: station });
@@ -865,6 +877,16 @@ const MainApp: React.FC = () => {
                 }}
               >
                 ⛽ Nearby Stations
+              </button>
+              <button
+                className="mobile-menu-link"
+                type="button"
+                onClick={() => {
+                  setIsFavoritesPanelOpen(true);
+                  setIsMenuOpen(false);
+                }}
+              >
+                ❤️ Favorite Stations
               </button>
             </div>
             
@@ -1081,6 +1103,16 @@ const MainApp: React.FC = () => {
       
       {/* Offline Indicator - Always visible when offline/cached data is used */}
       <OfflineIndicator />
+
+      {/* Favorite Stations Panel */}
+      <FavoriteStationsPanel 
+        isOpen={isFavoritesPanelOpen} 
+        onClose={() => setIsFavoritesPanelOpen(false)}
+        onSelectStation={(stationId) => {
+          setIsFavoritesPanelOpen(false);
+          navigate(routerLocation.pathname, { replace: true, state: { selectStationId: stationId } });
+        }}
+      />
     </div>
   );
 };

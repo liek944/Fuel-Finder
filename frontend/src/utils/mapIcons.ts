@@ -108,11 +108,12 @@ export const createUserLocationIcon = (): L.Icon => {
 export const createFuelStationIcon = (
   brand: string,
   proximity?: number,
-  isClosed: boolean = false
+  isClosed: boolean = false,
+  isFavorite: boolean = false
 ): L.Icon => {
   // Quantize proximity to reduce cache misses (group similar values)
   const proxKey = proximity !== undefined ? Math.round(proximity * 4) / 4 : "none";
-  const cacheKey = `fuel-${brand}-${proxKey}-${isClosed}`;
+  const cacheKey = `fuel-${brand}-${proxKey}-${isClosed}-${isFavorite}`;
 
   // Return cached icon if available
   if (iconCache.has(cacheKey)) {
@@ -184,6 +185,30 @@ export const createFuelStationIcon = (
       ctx.fillStyle = "#f44336";
       ctx.font = "bold 8px Arial";
       ctx.fillText("CLOSED", centerX, pointY + 8);
+    }
+
+    // Draw favorite badge (heart) if favored
+    if (isFavorite) {
+      const badgeX = centerX + radius * 0.7;
+      const badgeY = circleY - radius * 0.7;
+      
+      // Badge background (red circle)
+      ctx.fillStyle = "#ff4081";
+      ctx.beginPath();
+      ctx.arc(badgeX, badgeY, 9, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Badge border
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      
+      // Heart emoji
+      ctx.fillStyle = "white";
+      ctx.font = "10px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("❤", badgeX, badgeY + 1);
     }
   }
 
