@@ -19,13 +19,18 @@ export const reviewsApi = {
   create: async (
     payload: { targetType: 'station' | 'poi'; targetId: number; rating: number; comment: string | null; displayName: string | null },
     sessionId: string,
+    token: string,
   ): Promise<any> => {
     const path = apiEndpoints.reviews.create();
     const res = await apiCall(
       getApiUrl(path),
       {
         method: 'POST',
-        headers: { 'X-Session-Id': sessionId, 'Content-Type': 'application/json' },
+        headers: { 
+          'X-Session-Id': sessionId, 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
         body: JSON.stringify(payload),
       },
     );

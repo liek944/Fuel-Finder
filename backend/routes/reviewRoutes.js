@@ -10,6 +10,7 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { createRateLimiter } = require('../middleware/rateLimiter');
 const { validate } = require('../middleware/validate');
 const schemas = require('../schemas').review;
+const { verifyToken } = require('../middleware/jwtAuth');
 
 // Rate limiters
 const reviewReadLimiter = createRateLimiter({
@@ -25,7 +26,7 @@ const reviewWriteLimiter = createRateLimiter({
 });
 
 // Public routes
-router.post('/', reviewWriteLimiter, validate(schemas.createReviewSchema), asyncHandler(reviewController.createReview));
+router.post('/', verifyToken, reviewWriteLimiter, validate(schemas.createReviewSchema), asyncHandler(reviewController.createReview));
 router.get('/', reviewReadLimiter, validate(schemas.getReviewsSchema), asyncHandler(reviewController.getReviews));
 router.get('/summary', reviewReadLimiter, validate(schemas.getReviewSummarySchema), asyncHandler(reviewController.getReviewSummary));
 

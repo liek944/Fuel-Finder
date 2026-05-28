@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -873,7 +873,7 @@ const MainApp: React.FC = () => {
               {isAuthenticated ? (
                 <>
                   <div className="mobile-menu-user-info">
-                    👤 {user?.display_name || user?.email}
+                    👤 {user?.displayName || user?.email}
                   </div>
                   <button
                     className="mobile-menu-link"

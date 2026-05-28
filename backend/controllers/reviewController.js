@@ -44,24 +44,25 @@ async function createReview(req, res) {
       });
     }
 
-    // Get session/IP/UA for anti-spam
-    const sessionId = req.headers['x-session-id'] || req.sessionID || null;
+    // Get IP/UA for logging
     const ip = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'] || null;
+    
+    // Get user details from auth token
+    const userId = req.user.id;
+    const finalDisplayName = displayName || req.user.displayName || (req.user.email ? req.user.email.split('@')[0] : 'Anonymous');
 
-    // Check anti-spam (1 review per target per device per 24h)
-    if (sessionId) {
-      const canSubmit = await reviewRepository.canSubmitReview(
-        sessionId,
-        targetType,
-        parseInt(targetId)
-      );
+    // Check anti-spam (1 review per target per user per 24h)
+    const canSubmit = await reviewRepository.canSubmitReview(
+      userId,
+      targetType,
+      parseInt(targetId)
+    );
 
-      if (!canSubmit) {
-        return res.status(429).json({
-          error: 'You can only submit one review per location per 24 hours'
-        });
-      }
+    if (!canSubmit) {
+      return res.status(429).json({
+        error: 'You can only submit one review per location per 24 hours'
+      });
     }
 
     // Create review
@@ -70,8 +71,9 @@ async function createReview(req, res) {
       targetId: parseInt(targetId),
       rating: parseInt(rating),
       comment: comment || null,
-      displayName: displayName || null,
-      sessionId,
+      displayName: finalDisplayName,
+      userId,
+      sessionId: req.headers['x-session-id'] || req.sessionID || null, // Keep for backward compatibility/logging
       ip,
       userAgent,
       status: 'published' // Auto-publish by default

@@ -11,38 +11,40 @@ const { pool } = require('../config/database');
  * @returns {Promise<Object>} Created review
  */
 async function createReview(reviewData) {
-  const {
-    targetType,
-    targetId,
-    rating,
-    comment = null,
-    displayName = null,
-    sessionId = null,
-    ip = null,
-    userAgent = null,
-    status = 'published'
-  } = reviewData;
+    const {
+      targetType,
+      targetId,
+      rating,
+      comment = null,
+      displayName = null,
+      userId = null,
+      sessionId = null,
+      ip = null,
+      userAgent = null,
+      status = 'published'
+    } = reviewData;
 
-  const query = `
-    INSERT INTO reviews (
-      target_type, target_id, rating, comment, 
-      display_name, session_id, ip, user_agent, status
-    )
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    RETURNING *
-  `;
+    const query = `
+      INSERT INTO reviews (
+        target_type, target_id, rating, comment, 
+        display_name, user_id, session_id, ip, user_agent, status
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `;
 
-  const values = [
-    targetType,
-    targetId,
-    rating,
-    comment,
-    displayName,
-    sessionId,
-    ip,
-    userAgent,
-    status
-  ];
+    const values = [
+      targetType,
+      targetId,
+      rating,
+      comment,
+      displayName,
+      userId,
+      sessionId,
+      ip,
+      userAgent,
+      status
+    ];
 
   const result = await pool.query(query, values);
   return result.rows[0];
@@ -159,21 +161,21 @@ async function getReviewSummary(targetType, targetId) {
 
 /**
  * Check if user can submit review (anti-spam)
- * @param {string} sessionId - Session ID
+ * @param {string} userId - User ID (UUID)
  * @param {string} targetType - 'station' or 'poi'
  * @param {number} targetId - Station or POI ID
  * @returns {Promise<boolean>} True if can submit, false if blocked
  */
-async function canSubmitReview(sessionId, targetType, targetId) {
+async function canSubmitReview(userId, targetType, targetId) {
   const query = `
     SELECT COUNT(*) FROM reviews
-    WHERE session_id = $1 
+    WHERE user_id = $1 
       AND target_type = $2 
       AND target_id = $3
       AND created_at > NOW() - INTERVAL '24 hours'
   `;
 
-  const result = await pool.query(query, [sessionId, targetType, targetId]);
+  const result = await pool.query(query, [userId, targetType, targetId]);
   const count = parseInt(result.rows[0].count);
   
   return count === 0;

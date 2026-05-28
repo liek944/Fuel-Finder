@@ -4,7 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { reviewsApi } from '../api/reviewsApi';
+import { useAuth } from '../contexts/AuthContext';
 import './ReviewWidget.css';
 
 interface ReviewWidgetProps {
@@ -41,10 +43,12 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const { isAuthenticated, token, user } = useAuth();
+  const navigate = useNavigate();
 
   // Generate session ID (stored in localStorage for persistence)
   const getSessionId = () => {
@@ -108,15 +112,15 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
           targetId,
           rating,
           comment: comment.trim() || null,
-          displayName: displayName.trim() || null,
+          displayName: (user as any)?.display_name || user?.displayName || user?.email?.split('@')[0] || null,
         },
         getSessionId(),
+        token || '',
       );
 
       setSuccess('Review submitted successfully!');
       setRating(0);
       setComment('');
-      setDisplayName('');
       setShowForm(false);
       
       // Refresh summary and reviews
@@ -222,10 +226,14 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setShowForm(true);
+            if (isAuthenticated) {
+              setShowForm(true);
+            } else {
+              navigate('/login');
+            }
           }}
         >
-          ✍️ Write a Review
+          {isAuthenticated ? '✍️ Write a Review' : '🔒 Sign in to Write a Review'}
         </button>
       )}
 
@@ -248,18 +256,6 @@ const ReviewWidget: React.FC<ReviewWidgetProps> = ({ targetType, targetId, targe
           <div className="form-group">
             <label>Your Rating *</label>
             {renderStars(rating, true)}
-          </div>
-
-          <div className="form-group">
-            <label>Your Name (optional)</label>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Anonymous"
-              maxLength={50}
-              disabled={submitting}
-            />
           </div>
 
           <div className="form-group">
