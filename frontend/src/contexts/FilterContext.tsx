@@ -12,9 +12,6 @@ interface FilterContextValue {
   setMaxPrice: (v: number) => void;
   selectedRouteType: string;
   setSelectedRouteType: (v: string) => void;
-  autoRefreshEnabled: boolean;
-  setAutoRefreshEnabled: (v: boolean) => void;
-  toggleAutoRefresh: () => void;
   lastDataRefresh: number;
   setLastDataRefresh: (v: number) => void;
   autoRefreshIntervalMs: number;
@@ -45,15 +42,10 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [maxPrice, setMaxPrice] = useState<number>(100);
   const [selectedRouteType, setSelectedRouteType] = useState<string>("gas");
 
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true);
   const [lastDataRefresh, setLastDataRefresh] = useState<number>(() => Date.now());
   const autoRefreshIntervalMs = 60000;
 
   const [isSearchPanelCollapsed, setIsSearchPanelCollapsed] = useState<boolean>(false);
-
-  const toggleAutoRefresh = useCallback(() => {
-    setAutoRefreshEnabled((prev) => !prev);
-  }, []);
 
   const toggleSearchPanelCollapsed = useCallback(() => {
     setIsSearchPanelCollapsed((prev) => !prev);
@@ -71,16 +63,13 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setMaxPrice,
     selectedRouteType,
     setSelectedRouteType,
-    autoRefreshEnabled,
-    setAutoRefreshEnabled,
-    toggleAutoRefresh,
     lastDataRefresh,
     setLastDataRefresh,
     autoRefreshIntervalMs,
     isSearchPanelCollapsed,
     setIsSearchPanelCollapsed,
     toggleSearchPanelCollapsed,
-  }), [searchQuery, radiusMeters, debouncedRadiusMeters, selectedBrand, maxPrice, selectedRouteType, autoRefreshEnabled, lastDataRefresh, isSearchPanelCollapsed]);
+  }), [searchQuery, radiusMeters, debouncedRadiusMeters, selectedBrand, maxPrice, selectedRouteType, lastDataRefresh, isSearchPanelCollapsed]);
 
   return (
     <FilterContext.Provider value={value}>{children}</FilterContext.Provider>

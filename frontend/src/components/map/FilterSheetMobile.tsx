@@ -14,7 +14,6 @@ interface FilterSheetMobileProps {
   onRouteToNearest: () => void;
   loading: boolean;
   uniqueBrands: string[];
-  getTimeAgo: (timestamp: number) => string;
 }
 
 const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
@@ -28,7 +27,6 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
   onRouteToNearest,
   loading,
   uniqueBrands,
-  getTimeAgo,
 }) => {
   const {
     searchQuery,
@@ -39,16 +37,10 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
     setSelectedBrand,
     maxPrice,
     setMaxPrice,
-    autoRefreshEnabled,
-    toggleAutoRefresh,
-    autoRefreshIntervalMs,
-    lastDataRefresh,
     selectedRouteType,
     setSelectedRouteType,
   } = useFilterContext();
 
-  // Collapsible state for auto-refresh section (saves space on small screens)
-  const [isAutoRefreshExpanded, setIsAutoRefreshExpanded] = useState(false);
 
   if (!open) return null;
 
@@ -120,34 +112,6 @@ const FilterSheetMobile: React.FC<FilterSheetMobileProps> = ({
           <span>📊 <strong>{filteredStationsCount}</strong> stations</span>
           <span className="filter-results-divider">•</span>
           <span><strong>{poisCount}</strong> POIs</span>
-        </div>
-
-        {/* Collapsible auto-refresh section */}
-        <div className={`filter-auto-refresh ${autoRefreshEnabled ? 'filter-auto-refresh--active' : ''}`}>
-          <button
-            className="filter-auto-refresh-toggle"
-            onClick={() => setIsAutoRefreshExpanded(!isAutoRefreshExpanded)}
-            type="button"
-          >
-            <span>🔄 Auto-refresh {autoRefreshEnabled ? 'ON' : 'OFF'}</span>
-            <span className="filter-toggle-arrow">{isAutoRefreshExpanded ? '▲' : '▼'}</span>
-          </button>
-          {isAutoRefreshExpanded && (
-            <div className="filter-auto-refresh-content">
-              <button
-                className={`filter-auto-refresh-btn ${autoRefreshEnabled ? 'filter-auto-refresh-btn--on' : ''}`}
-                onClick={toggleAutoRefresh}
-                type="button"
-              >
-                {autoRefreshEnabled ? 'Disable' : 'Enable'}
-              </button>
-              {autoRefreshEnabled && (
-                <div className="filter-auto-refresh-info">
-                  Every {autoRefreshIntervalMs / 1000}s • Last: {getTimeAgo(lastDataRefresh)}
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Route to nearest - compact layout */}

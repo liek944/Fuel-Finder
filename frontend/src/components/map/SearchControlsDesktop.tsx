@@ -4,7 +4,6 @@ import { useFilterContext } from "../../contexts/FilterContext";
 interface SearchControlsDesktopProps {
   filteredStationsCount: number;
   poisCount: number;
-  getTimeAgo: (timestamp: number) => string;
   onRouteToNearest: () => void;
   loading: boolean;
   uniqueBrands: string[];
@@ -13,7 +12,6 @@ interface SearchControlsDesktopProps {
 const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
   filteredStationsCount,
   poisCount,
-  getTimeAgo,
   onRouteToNearest,
   loading,
   uniqueBrands,
@@ -27,10 +25,6 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
     setSelectedBrand,
     maxPrice,
     setMaxPrice,
-    autoRefreshEnabled,
-    toggleAutoRefresh,
-    autoRefreshIntervalMs,
-    lastDataRefresh,
     selectedRouteType,
     setSelectedRouteType,
     isSearchPanelCollapsed,
@@ -119,63 +113,7 @@ const SearchControlsDesktop: React.FC<SearchControlsDesktopProps> = ({
             </div>
           </div>
 
-          {/* Auto-refresh toggle */}
-          <div
-            className="auto-refresh-control"
-            style={{
-              marginTop: 12,
-              padding: "10px",
-              background: autoRefreshEnabled ? "#e8f5e9" : "#fafafa",
-              borderRadius: 8,
-              border: `1px solid ${autoRefreshEnabled ? "#4CAF50" : "#ddd"}`,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: 6,
-              }}
-           >
-              <label
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: autoRefreshEnabled ? "#2e7d32" : "#666",
-                }}
-              >
-                
-🔄 Auto-refresh
-              </label>
-              <button
-                onClick={toggleAutoRefresh}
-                style={{
-                  background: autoRefreshEnabled ? "#4CAF50" : "#9e9e9e",
-                  color: "white",
-                  border: "none",
-                  padding: "4px 12px",
-                  borderRadius: 12,
-                  cursor: "pointer",
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-              >
-                {autoRefreshEnabled ? "ON" : "OFF"}
-              </button>
-            </div>
-            <div style={{ fontSize: 10, color: "#666" }}>
-              {autoRefreshEnabled ? (
-                <>
-                  Updates every {autoRefreshIntervalMs / 1000}s
-                  <br />
-                  Last: {getTimeAgo(lastDataRefresh)}
-                </>
-              ) : (
-                "Enable to auto-update prices"
-              )}
-            </div>
-          </div>
+
 
           {/* Route to Nearest POI Section */}
           <div className="route-to-nearest">

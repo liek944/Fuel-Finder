@@ -88,8 +88,6 @@ const MainApp: React.FC = () => {
     debouncedRadiusMeters,
     selectedRouteType,
     setSelectedRouteType: _setSelectedRouteType,
-    autoRefreshEnabled,
-    toggleAutoRefresh: _toggleAutoRefresh,
     lastDataRefresh: _lastDataRefresh,
     setLastDataRefresh,
     autoRefreshIntervalMs,
@@ -199,7 +197,8 @@ const MainApp: React.FC = () => {
       try {
         const stationsData = await stationsApi.nearby(position[0], position[1], debouncedRadiusMeters);
         if (!cancelled) {
-          setStations(Array.isArray(stationsData) ? stationsData : []);
+          const newStations = Array.isArray(stationsData) ? stationsData : [];
+          setStations((prev) => JSON.stringify(prev) !== JSON.stringify(newStations) ? newStations : prev);
         }
       } catch (error: any) {
         if (!cancelled && error.name !== 'AbortError') {
@@ -211,7 +210,8 @@ const MainApp: React.FC = () => {
       try {
         const poisData = await poisApi.nearby(position[0], position[1], debouncedRadiusMeters);
         if (!cancelled) {
-          setPois(Array.isArray(poisData) ? poisData : []);
+          const newPois = Array.isArray(poisData) ? poisData : [];
+          setPois((prev) => JSON.stringify(prev) !== JSON.stringify(newPois) ? newPois : prev);
         }
       } catch (error: any) {
         if (!cancelled && error.name !== 'AbortError') {
@@ -229,20 +229,22 @@ const MainApp: React.FC = () => {
 
   // Auto-refresh timer - periodically refetch stations and POIs
   useEffect(() => {
-    if (!autoRefreshEnabled || !position) return;
+    if (!position) return;
 
     const refreshData = async () => {
       try {
         const stationsData = await stationsApi.nearby(position[0], position[1], radiusMeters);
-        setStations(Array.isArray(stationsData) ? stationsData : []);
+        const newStations = Array.isArray(stationsData) ? stationsData : [];
+        setStations((prev) => JSON.stringify(prev) !== JSON.stringify(newStations) ? newStations : prev);
 
         const poisData = await poisApi.nearby(position[0], position[1], radiusMeters);
-        setPois(Array.isArray(poisData) ? poisData : []);
+        const newPois = Array.isArray(poisData) ? poisData : [];
+        setPois((prev) => JSON.stringify(prev) !== JSON.stringify(newPois) ? newPois : prev);
 
         // Update last refresh timestamp
         setLastDataRefresh(Date.now());
 
-        console.log("🔄 Auto-refresh: Data updated");
+        console.log("🔄 Auto-refresh: Data updated silently");
       } catch (error) {
         console.error("Auto-refresh failed:", error);
       }
@@ -255,7 +257,7 @@ const MainApp: React.FC = () => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [autoRefreshEnabled, position, radiusMeters, autoRefreshIntervalMs]);
+  }, [position, radiusMeters, autoRefreshIntervalMs]);
 
   // Initialize user activity tracking
   // Start tracking when component mounts
@@ -824,7 +826,6 @@ const MainApp: React.FC = () => {
         <SearchControlsDesktop
           filteredStationsCount={filteredStations.length}
           poisCount={pois.length}
-          getTimeAgo={getTimeAgo}
           onRouteToNearest={routeToNearestPOI}
           loading={loading || loadingRoute}
           uniqueBrands={uniqueBrands}
@@ -1051,7 +1052,6 @@ const MainApp: React.FC = () => {
           poisCount={pois.length}
           onRouteToNearest={routeToNearestPOI}
           loading={loading || loadingRoute}
-          getTimeAgo={getTimeAgo}
           uniqueBrands={uniqueBrands}
         />
       )}
