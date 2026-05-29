@@ -2,6 +2,9 @@
  * Arrival Notifications System
  * Provides visual notifications and voice announcements when user approaches/arrives at destination
  */
+import { TextToSpeech } from '@capacitor-community/text-to-speech';
+import { Capacitor } from '@capacitor/core';
+
 
 interface Destination {
   name: string;
@@ -37,6 +40,8 @@ class ArrivalNotificationManager {
   private wakeLock: any | null = null;
   private visualAlertCallback: VisualAlertCallback | null = null;
   private routeClearCallback: RouteClearCallback | null = null;
+  private unlocked: boolean = false;
+  private utterances: SpeechSynthesisUtterance[] = [];
   private handleWakeLockVisibilityChange = async (): Promise<void> => {
     if (!this.keepScreenOn) return;
     if (document.hidden) {
@@ -117,13 +122,28 @@ class ArrivalNotificationManager {
   }
 
   /**
-   * Speak message using Web Speech API
+   * Speak message using Web Speech API or Native TTS
    */
-  private speak(message: string): void {
-    if (!this.voiceEnabled || !this.speechSynthesis) return;
+  private async speak(message: string): Promise<void> {
+    if (!this.voiceEnabled) return;
 
-    // Cancel any ongoing speech
-    this.speechSynthesis.cancel();
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await TextToSpeech.speak({
+          text: message,
+          lang: 'en-US',
+          rate: 1.0,
+          pitch: 1.0,
+          volume: 1.0,
+          category: 'ambient',
+        });
+      } catch (error) {
+        console.error('Native TTS Failed:', error);
+      }
+      return;
+    }
+
+    if (!this.speechSynthesis) return;
 
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = 'en-US';
@@ -131,10 +151,47 @@ class ArrivalNotificationManager {
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
+    // Fix for Chrome/Safari garbage collection bug
+    this.utterances.push(utterance);
+    utterance.onend = () => {
+      const index = this.utterances.indexOf(utterance);
+      if (index > -1) this.utterances.splice(index, 1);
+    };
+    utterance.onerror = () => {
+      const index = this.utterances.indexOf(utterance);
+      if (index > -1) this.utterances.splice(index, 1);
+    };
+
     try {
-      this.speechSynthesis.speak(utterance);
+      if (this.speechSynthesis.speaking || this.speechSynthesis.pending) {
+        this.speechSynthesis.cancel();
+        setTimeout(() => {
+          this.speechSynthesis?.speak(utterance);
+        }, 50);
+      } else {
+        this.speechSynthesis.speak(utterance);
+      }
     } catch (error) {
       console.error('Failed to speak:', error);
+    }
+  }
+
+  /**
+   * Unlock Web Speech API on mobile web browsers.
+   * Must be called synchronously from a user interaction event.
+   */
+  unlockAudio(): void {
+    if (Capacitor.isNativePlatform()) return; // Native TTS doesn't need this
+    if (!this.speechSynthesis || this.unlocked) return;
+    
+    try {
+      const utterance = new SpeechSynthesisUtterance('');
+      utterance.volume = 0;
+      this.speechSynthesis.speak(utterance);
+      this.unlocked = true;
+      console.log('🔓 Speech synthesis unlocked');
+    } catch (e) {
+      console.warn('Failed to unlock speech synthesis', e);
     }
   }
 
@@ -170,7 +227,9 @@ class ArrivalNotificationManager {
     this.notificationState = null;
     
     // Cancel any ongoing speech
-    if (this.speechSynthesis) {
+    if (Capacitor.isNativePlatform()) {
+      TextToSpeech.stop().catch(() => {});
+    } else if (this.speechSynthesis) {
       this.speechSynthesis.cancel();
     }
     if (this.keepScreenOn) {
@@ -213,8 +272,11 @@ class ArrivalNotificationManager {
       
       // Automatically clear the route when user arrives
       if (this.routeClearCallback) {
-        console.log('🧹 Auto-clearing route on arrival');
-        this.routeClearCallback();
+        console.log('🧹 Auto-clearing route on arrival in 8s');
+        const clearCb = this.routeClearCallback;
+        setTimeout(() => {
+          clearCb();
+        }, 8000);
       }
     }
     // 100m notification
@@ -326,8 +388,12 @@ class ArrivalNotificationManager {
   setVoiceEnabled(enabled: boolean): void {
     this.voiceEnabled = enabled;
     
-    if (!enabled && this.speechSynthesis) {
-      this.speechSynthesis.cancel();
+    if (!enabled) {
+      if (Capacitor.isNativePlatform()) {
+        TextToSpeech.stop().catch(() => {});
+      } else if (this.speechSynthesis) {
+        this.speechSynthesis.cancel();
+      }
     }
   }
 

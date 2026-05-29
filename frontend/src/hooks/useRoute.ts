@@ -74,6 +74,9 @@ export function useRoute(userPosition: LatLngTuple | null) {
   const routeTo = useCallback(
     async (location: RoutableLocation) => {
       if (!userPosition) return;
+      
+      // Unlock audio synchronously on user interaction
+      arrivalNotifications.unlockAudio();
 
       setRoutingTo(location);
       setLoadingRoute(true);
