@@ -19,7 +19,7 @@ const fetchAndAggregateFuelPrices = async () => {
         }
 
         // 1. Search the web using SerpApi
-        const searchQuery = `("fuel prices" OR "pump prices" OR "price hike" OR "rollback") "Oriental Mindoro" OR "Calapan" (site:ormindoro.gov.ph OR site:facebook.com OR site:gmanetwork.com OR site:inquirer.net OR site:news.abs-cbn.com OR site:doe.gov.ph)`;
+        const searchQuery = `("fuel prices" OR "pump prices" OR "price hike" OR "rollback") "Oriental Mindoro" OR "Calapan" (site:ormindoro.gov.ph OR site:facebook.com OR site:gmanetwork.com OR site:inquirer.net OR site:news.abs-cbn.com OR site:doe.gov.ph OR site:philstar.com OR site:mb.com.ph OR site:rappler.com OR site:autoindustriya.com)`;
         const searchUrl = `https://serpapi.com/search.json?q=${encodeURIComponent(searchQuery)}&api_key=${SERPAPI_KEY}`;
         
         const response = await axios.get(searchUrl);
@@ -33,6 +33,10 @@ const fetchAndAggregateFuelPrices = async () => {
         // Extract snippets to feed to Gemini
         const snippets = articles.map(article => `Title: ${article.title}\nDate: ${article.date || 'Unknown'}\nSnippet: ${article.snippet}`).join('\n\n');
         
+        console.log('\n--- RAW SNIPPETS ---');
+        console.log(snippets);
+        console.log('--------------------\n');
+        
         // 2. Use Gemini to extract prices
         const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         
@@ -41,16 +45,16 @@ const fetchAndAggregateFuelPrices = async () => {
         Analyze the following search snippets about fuel prices in Oriental Mindoro, Philippines.
         The current date is ${currentDate}.
         Extract the current average price for EACH fuel type mentioned (e.g., Gasoline, Diesel, Premium, Regular, Kerosene).
-        Look carefully at the text and the provided Date. If the information is "way too old" (e.g., older than 7 days from the current date), DISCARD it and do not extract those prices.
+        Look carefully at the text and the provided Date. Prioritize the most recent information available and extract the latest known prices.
         If a snippet says "Gasoline prices range from ₱83.50 to ₱97.29... while diesel...", you MUST extract BOTH Gasoline and Diesel.
         If a price is a range, take the midpoint (e.g., (83.50 + 97.29) / 2 = 90.40).
         Return ONLY a JSON array of objects. Each object must have:
         - "fuel_type": String (e.g., "Gasoline", "Diesel", "Premium", "Regular", "Kerosene").
         - "average_price": Number (the extracted price or midpoint of range).
-        If all snippets are too old or contain no prices, return an empty array [].
+        If snippets contain no valid prices, return an empty array [].
         Do not include markdown blocks, just the JSON array.
         
-        Snippets:U
+        Snippets:
         ${snippets}
         `;
 

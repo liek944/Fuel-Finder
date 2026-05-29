@@ -50,7 +50,7 @@ import {
   createPOIIcon,
   calculateDistance,
 } from "../utils/mapIcons";
-import RegionalPricesBanner from "./RegionalPricesBanner";
+
 import { useSavedStations } from "../contexts/SavedStationsContext";
 import FavoriteStationsPanel from "./FavoriteStationsPanel";
 
@@ -495,11 +495,7 @@ const MainApp: React.FC = () => {
         </button>
       )}
 
-      <div style={{ position: 'absolute', top: isMobile ? '80px' : '90px', left: 0, right: 0, zIndex: 900, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
-        <div style={{ pointerEvents: 'auto', width: '90%' }}>
-          <RegionalPricesBanner />
-        </div>
-      </div>
+
 
       {/* Location Accuracy & Speed Indicator */}
       {!isMobile && locationAccuracy !== null && (
