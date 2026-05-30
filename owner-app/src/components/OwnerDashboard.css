@@ -746,6 +746,10 @@
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: modalFadeIn 0.3s ease-out;
+  /* Override dark-theme text colors so content is readable on white bg */
+  --owner-text: #4a5568;
+  --owner-text-secondary: #718096;
+  color: #2d3748;
 }
 
 @keyframes modalFadeIn {
