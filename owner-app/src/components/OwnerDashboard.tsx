@@ -75,6 +75,7 @@ export interface DoePriceUpdate {
   diesel_adjustment: number;
   kerosene_adjustment: number;
   date: string;
+  pdf_url?: string;
 }
 
 export interface OwnerNotification {
@@ -463,12 +464,24 @@ const OwnerDashboard: React.FC = () => {
       {doePrice && (
         <div className="doe-banner" style={{ background: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: '8px', padding: '15px', margin: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h3 style={{ margin: '0 0 5px 0', color: '#0050b3' }}>📢 Latest DOE Fuel Price Adjustments ({new Date(doePrice.date).toLocaleDateString()})</h3>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#003a8c' }}>
-              <strong>Gasoline:</strong> {doePrice.gasoline_adjustment > 0 ? '+' : ''}{doePrice.gasoline_adjustment} |{' '}
-              <strong>Diesel:</strong> {doePrice.diesel_adjustment > 0 ? '+' : ''}{doePrice.diesel_adjustment} |{' '}
-              <strong>Kerosene:</strong> {doePrice.kerosene_adjustment > 0 ? '+' : ''}{doePrice.kerosene_adjustment}
-            </p>
+            <h3 style={{ margin: '0 0 5px 0', color: '#0050b3' }}>
+              📢 Latest DOE Fuel Price Updates ({new Date(doePrice.date).toLocaleDateString()})
+              {doePrice.pdf_url && (
+                <a href={doePrice.pdf_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.85rem', marginLeft: '10px', color: '#1890ff', textDecoration: 'underline' }}>
+                  View Source Document
+                </a>
+              )}
+            </h3>
+            <div style={{ margin: 0, fontSize: '0.9rem', color: '#003a8c' }}>
+              <p style={{ margin: '0 0 4px 0' }}>
+                <strong>Prices:</strong> Gasoline: ₱{doePrice.gasoline_price} | Diesel: ₱{doePrice.diesel_price} | Kerosene: ₱{doePrice.kerosene_price}
+              </p>
+              <p style={{ margin: 0 }}>
+                <strong>Adjustments:</strong> Gasoline: {doePrice.gasoline_adjustment > 0 ? '+' : ''}{doePrice.gasoline_adjustment} |{' '}
+                Diesel: {doePrice.diesel_adjustment > 0 ? '+' : ''}{doePrice.diesel_adjustment} |{' '}
+                Kerosene: {doePrice.kerosene_adjustment > 0 ? '+' : ''}{doePrice.kerosene_adjustment}
+              </p>
+            </div>
           </div>
           <div>
             <button onClick={() => setActiveTab('stations')} style={{ background: '#1890ff', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>
