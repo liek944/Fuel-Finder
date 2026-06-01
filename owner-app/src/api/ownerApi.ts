@@ -215,37 +215,4 @@ export const ownerApi = {
     if (!res.ok && res.status !== 404) throw new Error(json?.message || `HTTP ${res.status}`);
     return json;
   },
-
-  // DOE and Notifications
-  getLatestDoePrices: async (apiKey: string) => {
-    const url = getApiUrl(apiEndpoints.owner.latestDoePrices());
-    const res = await apiCall(url, { method: 'GET' }, apiKey);
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-    return json;
-  },
-
-  getNotifications: async (apiKey: string, subdomain: string) => {
-    const url = getApiUrl(apiEndpoints.owner.notifications());
-    const res = await apiCall(url, { method: 'GET', headers: { 'x-owner-domain': subdomain } }, apiKey);
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-    return json;
-  },
-
-  getUnreadNotificationsCount: async (apiKey: string, subdomain: string) => {
-    const url = getApiUrl(apiEndpoints.owner.unreadNotificationsCount());
-    const res = await apiCall(url, { method: 'GET', headers: { 'x-owner-domain': subdomain } }, apiKey);
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-    return json;
-  },
-
-  markNotificationRead: async (notificationId: string, apiKey: string, subdomain: string) => {
-    const url = getApiUrl(apiEndpoints.owner.markNotificationRead(notificationId));
-    const res = await apiCall(url, { method: 'PUT', headers: { 'x-owner-domain': subdomain } }, apiKey);
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-    return json;
-  },
 };

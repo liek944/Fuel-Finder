@@ -63,24 +63,6 @@ interface Review {
   updated_at: string;
 }
 
-export interface DoePriceUpdate {
-  gasoline_price: number;
-  diesel_price: number;
-  kerosene_price: number;
-  gasoline_adjustment: number;
-  diesel_adjustment: number;
-  kerosene_adjustment: number;
-  date: string;
-}
-
-export interface OwnerNotification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  is_read: boolean;
-  created_at: string;
-}
 
 const OwnerDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -90,12 +72,6 @@ const OwnerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'reports' | 'reviews'>('overview');
-  
-  // DOE and Notifications
-  const [doePrice, setDoePrice] = useState<DoePriceUpdate | null>(null);
-  const [notifications, setNotifications] = useState<OwnerNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [showNotificationsList, setShowNotificationsList] = useState(false);
   
   // Reviews filtering and pagination
   const [reviewsFilter, setReviewsFilter] = useState<string>('all'); // all, published, rejected
@@ -155,29 +131,6 @@ const OwnerDashboard: React.FC = () => {
         setPendingReports((reportsData && reportsData.reports) || []);
       } catch (e) {
         console.warn('Failed to fetch pending reports');
-      }
-
-      // Fetch DOE and Notifications
-      try {
-        const doeData = await ownerApi.getLatestDoePrices(apiKey);
-        if (doeData.success && doeData.data) {
-          setDoePrice(doeData.data);
-        }
-      } catch (e) {
-        console.warn('Failed to fetch DOE prices');
-      }
-
-      try {
-        const notifData = await ownerApi.getNotifications(apiKey, subdomain);
-        if (notifData.success) {
-          setNotifications(notifData.notifications || []);
-        }
-        const countData = await ownerApi.getUnreadNotificationsCount(apiKey, subdomain);
-        if (countData.success) {
-          setUnreadCount(countData.count || 0);
-        }
-      } catch (e) {
-        console.warn('Failed to fetch notifications');
       }
 
       const params = new URLSearchParams();
@@ -331,19 +284,6 @@ const OwnerDashboard: React.FC = () => {
     }
   };
 
-  const handleMarkRead = async (id: string) => {
-    const apiKey = getApiKey();
-    const subdomain = getSubdomain();
-    if (!apiKey) return;
-    try {
-      await ownerApi.markNotificationRead(id, apiKey, subdomain || '');
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (e) {
-      console.error('Failed to mark read', e);
-    }
-  };
-
   if (loading) {
     return (
       <div className="owner-dashboard loading">
@@ -406,42 +346,6 @@ const OwnerDashboard: React.FC = () => {
             <h1>{stats.owner_name}</h1>
           </div>
           <div className="header-actions">
-            <div className="notifications-container" style={{ position: 'relative' }}>
-              <button 
-                className="icon-button" 
-                onClick={() => setShowNotificationsList(!showNotificationsList)}
-                title="Notifications"
-                style={{ fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}
-              >
-                🔔
-                {unreadCount > 0 && (
-                  <span className="badge" style={{ position: 'absolute', top: '-5px', right: '-10px', background: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.8rem' }}>
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-              {showNotificationsList && (
-                <div className="notifications-dropdown" style={{ position: 'absolute', right: 0, top: '40px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', width: '300px', maxHeight: '400px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                  <div style={{ padding: '10px', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>Notifications</div>
-                  {notifications.length === 0 ? (
-                    <div style={{ padding: '10px', color: '#666', textAlign: 'center' }}>No notifications</div>
-                  ) : (
-                    notifications.map(n => (
-                      <div key={n.id} style={{ padding: '10px', borderBottom: '1px solid #eee', background: n.is_read ? 'white' : '#f0f8ff' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{n.title}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#444', margin: '5px 0' }}>{n.message}</div>
-                        <div style={{ fontSize: '0.7rem', color: '#888', display: 'flex', justifyContent: 'space-between' }}>
-                          <span>{new Date(n.created_at).toLocaleDateString()}</span>
-                          {!n.is_read && (
-                            <button onClick={() => handleMarkRead(n.id)} style={{ background: 'none', border: 'none', color: '#0066cc', cursor: 'pointer', fontSize: '0.7rem' }}>Mark read</button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
             <button 
               onClick={handleRefresh} 
               className="refresh-button"
@@ -456,24 +360,6 @@ const OwnerDashboard: React.FC = () => {
           </div>
         </div>
       </header>
-
-      {doePrice && (
-        <div className="doe-banner" style={{ background: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: '8px', padding: '15px', margin: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 style={{ margin: '0 0 5px 0', color: '#0050b3' }}>📢 Latest DOE Fuel Price Adjustments ({new Date(doePrice.date).toLocaleDateString()})</h3>
-            <p style={{ margin: 0, fontSize: '0.9rem', color: '#003a8c' }}>
-              <strong>Gasoline:</strong> {doePrice.gasoline_adjustment > 0 ? '+' : ''}{doePrice.gasoline_adjustment} |{' '}
-              <strong>Diesel:</strong> {doePrice.diesel_adjustment > 0 ? '+' : ''}{doePrice.diesel_adjustment} |{' '}
-              <strong>Kerosene:</strong> {doePrice.kerosene_adjustment > 0 ? '+' : ''}{doePrice.kerosene_adjustment}
-            </p>
-          </div>
-          <div>
-            <button onClick={() => setActiveTab('stations')} style={{ background: '#1890ff', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>
-              Update Prices
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Tabs */}
       <div className="dashboard-tabs">
