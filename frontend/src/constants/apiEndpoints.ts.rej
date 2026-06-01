@@ -1,0 +1,13 @@
+--- frontend/src/constants/apiEndpoints.ts
++++ frontend/src/constants/apiEndpoints.ts
+@@ -20,5 +20,10 @@ export const apiEndpoints = {
+     updateFuelPrice: (stationId: number) => `/api/owner/stations/${stationId}/fuel-price`,
+     deleteFuelPrice: (stationId: number, fuelType: string) =>
+       `/api/owner/stations/${stationId}/fuel-price/${encodeURIComponent(fuelType)}`,
++    // Notifications and DOE
++    latestDoePrices: () => `/api/doe/latest`,
++    notifications: () => `/api/notifications/`,
++    unreadNotificationsCount: () => `/api/notifications/unread-count`,
++    markNotificationRead: (id: string) => `/api/notifications/${id}/read`,
+   },
+ };
