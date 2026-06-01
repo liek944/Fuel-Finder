@@ -18,6 +18,8 @@ const reviewRoutes = require("./reviewRoutes");
 const authRoutes = require("./authRoutes");
 const savedStationsRoutes = require("./savedStationsRoutes");
 const regionalPricesRoutes = require("./regionalPrices");
+const notificationRoutes = require("./notificationRoutes");
+const doeRoutes = require("./doeRoutes");
 
 // Register routes
 router.use("/stations", stationRoutes);
@@ -30,6 +32,8 @@ router.use("/reviews", reviewRoutes);
 router.use("/auth", authRoutes);
 router.use("/saved-stations", savedStationsRoutes);
 router.use("/regional-prices", regionalPricesRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/doe", doeRoutes);
 
 // Health and stats routes
 router.use("/", healthRoutes);
