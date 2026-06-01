@@ -406,34 +406,33 @@ const OwnerDashboard: React.FC = () => {
             <h1>{stats.owner_name}</h1>
           </div>
           <div className="header-actions">
-            <div className="notifications-container" style={{ position: 'relative' }}>
+            <div className="notifications-container">
               <button 
-                className="icon-button" 
+                className="notification-bell-btn" 
                 onClick={() => setShowNotificationsList(!showNotificationsList)}
                 title="Notifications"
-                style={{ fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}
               >
                 🔔
                 {unreadCount > 0 && (
-                  <span className="badge" style={{ position: 'absolute', top: '-5px', right: '-10px', background: 'red', color: 'white', borderRadius: '50%', padding: '2px 6px', fontSize: '0.8rem' }}>
+                  <span className="notification-badge">
                     {unreadCount}
                   </span>
                 )}
               </button>
               {showNotificationsList && (
-                <div className="notifications-dropdown" style={{ position: 'absolute', right: 0, top: '40px', background: 'white', border: '1px solid #ccc', borderRadius: '8px', width: '300px', maxHeight: '400px', overflowY: 'auto', zIndex: 1000, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                  <div style={{ padding: '10px', borderBottom: '1px solid #eee', fontWeight: 'bold' }}>Notifications</div>
+                <div className="notifications-dropdown">
+                  <div className="notifications-dropdown-header">Notifications</div>
                   {notifications.length === 0 ? (
-                    <div style={{ padding: '10px', color: '#666', textAlign: 'center' }}>No notifications</div>
+                    <div className="notifications-empty">No notifications</div>
                   ) : (
                     notifications.map(n => (
-                      <div key={n.id} style={{ padding: '10px', borderBottom: '1px solid #eee', background: n.is_read ? 'white' : '#f0f8ff' }}>
-                        <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{n.title}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#444', margin: '5px 0' }}>{n.message}</div>
-                        <div style={{ fontSize: '0.7rem', color: '#888', display: 'flex', justifyContent: 'space-between' }}>
+                      <div key={n.id} className={`notification-item ${!n.is_read ? 'unread' : ''}`}>
+                        <div className="notification-title">{n.title}</div>
+                        <div className="notification-message">{n.message}</div>
+                        <div className="notification-meta">
                           <span>{new Date(n.created_at).toLocaleDateString()}</span>
                           {!n.is_read && (
-                            <button onClick={() => handleMarkRead(n.id)} style={{ background: 'none', border: 'none', color: '#0066cc', cursor: 'pointer', fontSize: '0.7rem' }}>Mark read</button>
+                            <button onClick={() => handleMarkRead(n.id)} className="mark-read-btn">Mark read</button>
                           )}
                         </div>
                       </div>
