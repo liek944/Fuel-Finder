@@ -19,6 +19,7 @@ const DOE_URL = 'https://www.doe.gov.ph/oil-monitor';
  * Fetch the latest DOE PDF URL
  */
 async function getLatestPdfUrl() {
+  const FALLBACK_URL = 'https://prod-cms.doe.gov.ph/documents/d/guest/region-iv-b-mimaropa-8-pdf-2';
   try {
     const { data } = await axios.get(DOE_URL, {
       headers: {
@@ -30,12 +31,15 @@ async function getLatestPdfUrl() {
     
     let pdfUrl = null;
     
-    // Look for PDF links that might contain pump prices
+    // Look for PDF links that might contain pump prices for MIMAROPA
     $('a').each((i, el) => {
       const href = $(el).attr('href');
       const text = $(el).text().toLowerCase();
       
-      if (href && href.endsWith('.pdf') && (text.includes('prevailing') || text.includes('pump price') || text.includes('retail'))) {
+      const isDocument = href && (href.endsWith('.pdf') || href.includes('/documents/d/guest/'));
+      const isRelevant = text.includes('mimaropa') || text.includes('region iv-b') || text.includes('region iv b') || href.toLowerCase().includes('mimaropa');
+      
+      if (isDocument && isRelevant) {
         if (!pdfUrl) { // get the first one (most recent usually at the top)
           pdfUrl = href;
         }
@@ -46,10 +50,11 @@ async function getLatestPdfUrl() {
       pdfUrl = 'https://www.doe.gov.ph' + (pdfUrl.startsWith('/') ? '' : '/') + pdfUrl;
     }
 
-    return pdfUrl;
+    return pdfUrl || FALLBACK_URL;
   } catch (error) {
     console.error('Error fetching DOE website:', error.message);
-    return null;
+    console.log('Using fallback URL for MIMAROPA...');
+    return FALLBACK_URL;
   }
 }
 
@@ -75,7 +80,7 @@ async function parsePdf(pdfUrl) {
       return match ? parseFloat(match[1]) : null;
     };
     
-    const gasoline_price = extractPrice('Gasoline') || extractPrice('RON91') || 60.00;
+    const gasoline_price = extractPrice('Gasoline') || extractPrice('RON 95') || extractPrice('RON 91') || extractPrice('RON91') || 60.00;
     const diesel_price = extractPrice('Diesel') || 55.00;
     const kerosene_price = extractPrice('Kerosene') || 65.00;
     

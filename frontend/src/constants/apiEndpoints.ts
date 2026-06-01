@@ -58,6 +58,7 @@ export const apiEndpoints = {
     reviewById: (reviewId: number) => `/api/admin/reviews/${reviewId}`,
     usersStats: () => `/api/admin/users/stats`,
     usersActive: () => `/api/admin/users/active`,
+    doeTriggerScraper: () => `/api/doe/trigger-scraper`,
   },
   savedStations: {
     list: () => `/api/saved-stations`,

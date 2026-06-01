@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { apiGet } from "../../utils/api";
+import { adminApi } from "../../api/adminApi";
 import StationsTabContainer from "./stations/StationsTabContainer.tsx";
 import { ReviewsManagement } from "../ReviewsManagement.tsx";
 import UserAnalytics from "../UserAnalytics.tsx";
@@ -16,6 +17,7 @@ const AdminPortalContainer: React.FC = () => {
     "map" | "user-analytics" | "reviews" | "owners"
   >("map");
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [triggeringScraper, setTriggeringScraper] = useState<boolean>(false);
   
   // Toast notifications
   const { toasts, hideToast, error: toastError } = useToast();
@@ -68,6 +70,22 @@ const AdminPortalContainer: React.FC = () => {
     } catch {}
     setAdminApiKey("");
     setAdminValidated(false);
+  };
+
+  const handleTriggerScraper = async () => {
+    setTriggeringScraper(true);
+    try {
+      const result = await adminApi.triggerDoeScraper(adminApiKey);
+      if (result.success) {
+        toastError("DOE Scraper triggered successfully! It will run in the background.");
+      } else {
+        toastError("Failed to trigger scraper: " + (result.message || "Unknown error"));
+      }
+    } catch (e: any) {
+      toastError("Error triggering scraper: " + e.message);
+    } finally {
+      setTriggeringScraper(false);
+    }
   };
 
   const isAdminEnabled = adminValidated;
@@ -141,8 +159,27 @@ const AdminPortalContainer: React.FC = () => {
             </button>
           </div>
         )}
-        <div className={`admin-status ${isAdminEnabled ? "enabled" : "disabled"}`}>
+        <div className={`admin-status ${isAdminEnabled ? "enabled" : "disabled"}`} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {isAdminEnabled ? "✅ Admin Enabled" : "❌ Admin Disabled"}
+          {isAdminEnabled && (
+            <button 
+              onClick={handleTriggerScraper} 
+              disabled={triggeringScraper}
+              style={{
+                marginLeft: '10px',
+                padding: '4px 8px',
+                fontSize: '0.8rem',
+                backgroundColor: '#1890ff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: triggeringScraper ? 'not-allowed' : 'pointer',
+                opacity: triggeringScraper ? 0.7 : 1
+              }}
+            >
+              {triggeringScraper ? '⏳ Triggering...' : '🔄 Run DOE Scraper'}
+            </button>
+          )}
         </div>
       </div>
 

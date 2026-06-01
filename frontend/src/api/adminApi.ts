@@ -49,4 +49,13 @@ export const adminApi = {
     }
     return true;
   },
+
+  triggerDoeScraper: async (apiKey: string): Promise<any> => {
+    const path = apiEndpoints.admin.doeTriggerScraper();
+    // This is a POST request, but it might not require body data
+    const res = await apiPost(path, {}, apiKey);
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+    return json;
+  },
 };
