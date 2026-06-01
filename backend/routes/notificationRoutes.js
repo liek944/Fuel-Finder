@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../database/db');
-const { ownerAuth } = require('../middleware/ownerAuth');
+const { pool } = require('../config/database');
+const { detectOwner, requireOwner } = require('../middleware/ownerDetection');
+const { verifyOwnerApiKey } = require('../middleware/ownerAuth');
 
 // Apply owner authentication middleware
-router.use(ownerAuth);
+router.use(detectOwner);
+router.use(requireOwner);
+router.use(verifyOwnerApiKey);
 
 /**
  * Get all notifications for the authenticated owner
