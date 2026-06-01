@@ -1,5 +1,5 @@
-import React from "react";
-import { Polyline } from "react-leaflet";
+import React, { useMemo } from "react";
+import { Polyline, Tooltip } from "react-leaflet";
 import { RouteData } from "../../api/routingApi";
 
 type LatLngTuple = [number, number];
@@ -8,6 +8,25 @@ interface RouteDisplayProps {
   routeData: RouteData | null;
   traveledCoordinates?: LatLngTuple[];
   remainingCoordinates?: LatLngTuple[];
+}
+
+function calculateDistanceKm(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLng = (lng2 - lng1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) *
+      Math.cos(lat2 * (Math.PI / 180)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 const RouteDisplay: React.FC<RouteDisplayProps> = ({ 
@@ -23,6 +42,21 @@ const RouteDisplay: React.FC<RouteDisplayProps> = ({
   const remainingPath = remainingCoordinates && remainingCoordinates.length > 0 
     ? remainingCoordinates 
     : routeData.coordinates;
+
+  const remainingDistanceStr = useMemo(() => {
+    if (!remainingPath || remainingPath.length < 2) return null;
+    let distance = 0;
+    for (let i = 0; i < remainingPath.length - 1; i++) {
+      distance += calculateDistanceKm(
+        remainingPath[i][0], remainingPath[i][1],
+        remainingPath[i+1][0], remainingPath[i+1][1]
+      );
+    }
+    if (distance < 1) {
+      return `${Math.round(distance * 1000)}m`;
+    }
+    return `${distance.toFixed(1)}km`;
+  }, [remainingPath]);
 
   return (
     <>
@@ -76,7 +110,15 @@ const RouteDisplay: React.FC<RouteDisplayProps> = ({
           lineCap: "round",
           lineJoin: "round",
         }}
-      />
+      >
+        {remainingDistanceStr && (
+          <Tooltip permanent direction="center" className="route-distance-tooltip">
+            <div style={{ fontWeight: 'bold', color: '#1976D2' }}>
+              {remainingDistanceStr}
+            </div>
+          </Tooltip>
+        )}
+      </Polyline>
       {/* Animated dashed overlay */}
       <Polyline
         positions={remainingPath}
