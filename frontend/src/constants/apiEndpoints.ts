@@ -47,6 +47,11 @@ export const apiEndpoints = {
     updateFuelPrice: (stationId: number) => `/api/owner/stations/${stationId}/fuel-price`,
     deleteFuelPrice: (stationId: number, fuelType: string) =>
       `/api/owner/stations/${stationId}/fuel-price/${encodeURIComponent(fuelType)}`,
+    // Notifications and DOE
+    latestDoePrices: () => `/api/doe/latest`,
+    notifications: () => `/api/notifications/`,
+    unreadNotificationsCount: () => `/api/notifications/unread-count`,
+    markNotificationRead: (id: string) => `/api/notifications/${id}/read`,
     // Magic link auth endpoints
     requestMagicLink: () => `/api/owner/auth/request-link`,
     verifyMagicLink: (token: string) => `/api/owner/auth/verify/${token}`,
