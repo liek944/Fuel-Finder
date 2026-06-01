@@ -1,7 +1,9 @@
 // API Configuration for Fuel Finder Owner App
 // Points directly at the production backend
 
-const API_BASE_URL = 'https://fuel-finder-six.vercel.app';
+const API_BASE_URL = import.meta.env.DEV 
+  ? 'http://localhost:3001' 
+  : 'https://fuel-finder-six.vercel.app';
 
 /**
  * Fetch with timeout support

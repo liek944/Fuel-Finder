@@ -2,6 +2,8 @@
  * Express Application Configuration
  * Sets up middleware, routes, and error handling
  */
+require('./utils/polyfills');
+
 
 const express = require("express");
 const cors = require("cors");
